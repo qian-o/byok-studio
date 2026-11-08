@@ -12,7 +12,7 @@ A visual editor for Copilot's **Custom Endpoint** configuration in `chatLanguage
 - **Chat Completions**, **Responses**, or **Messages** protocol settings, shared by all models or assigned per model.
 - Model lists, display names, token limits, capability declarations, and reasoning defaults.
 
-[Parameter sources](data/SOURCES.md)
+[Parameter sources](docs/SOURCES.md)
 
 ## Usage
 
@@ -54,6 +54,12 @@ Requires **VS Code 1.145+** and **GitHub Copilot Chat**.
 </details>
 
 ## Development
+
+- `src/` — extension and configuration logic
+- `resources/` — webview, shared modules, and runtime catalog
+- `scripts/` — development tools and catalog maintenance
+- `test/` — regression tests
+- `docs/` — screenshots and parameter sources
 
 ```powershell
 npm ci

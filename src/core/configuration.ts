@@ -1,7 +1,7 @@
 import type { ApiType, ContextPricing, ModelApiProfile, ModelConfig, ModelDatabase, ModelParameters, ParameterOverrides, ParameterValue, ProviderConfig, ReasoningControls } from './types';
-import { t } from '../../media/i18n.js';
-import { validDate } from '../../media/model-order.js';
-import { apiTypes, vendors, normalizeRouting, routeForModel, excludedKind } from '../../media/model-vendors.js';
+import { t } from '../../resources/shared/i18n.js';
+import { validDate } from '../../resources/shared/model-policy.js';
+import { apiTypes, vendors, normalizeRouting, routeForModel, excludedKind } from '../../resources/shared/routing.js';
 
 const unsafeKeys = new Set(['__proto__', 'constructor', 'prototype']);
 const parameterKeys = ['contextWindow', 'maxInputTokens', 'maxOutputTokens', 'defaultOutputTokens', 'toolCalling', 'vision', 'thinking', 'supportsReasoningEffort'] as const;
@@ -169,7 +169,7 @@ export function validateReasoningControls(value: unknown): ReasoningControls {
   const protocols = v.protocols === undefined ? {} : { ...object(v.protocols, t('协议配置列表')) };
   if (Object.keys(protocols).some(key => !apiTypes.includes(key as ApiType))) throw new Error(t('协议配置类型无效。'));
   if (legacyTypes.length) {
-    const legacyProfiles = require('../../data/legacy-protocol-profiles.json') as Partial<Record<ApiType, Record<string, unknown>>>;
+    const legacyProfiles = require('../../resources/catalog/migrations.json').legacyProfiles as Partial<Record<ApiType, Record<string, unknown>>>;
     for (const api of legacyTypes) {
       const profiles = legacyProfiles[api], name = v[api];
       if (Object.hasOwn(protocols, api) || typeof name !== 'string' || !profiles || !Object.hasOwn(profiles, name)) throw new Error(t('旧思考控制缺少已声明的迁移配置。'));

@@ -12,7 +12,7 @@
 - **Chat Completions**、**Responses** 或 **Messages** 协议配置，可统一设置或按模型分配。
 - 模型列表、显示名称、Token 限制、能力声明和默认推理档位。
 
-[参数来源](data/SOURCES.md)
+[参数来源](docs/SOURCES.md)
 
 ## 使用
 
@@ -54,6 +54,12 @@
 </details>
 
 ## 开发
+
+- `src/` — 扩展与配置逻辑
+- `resources/` — 页面、共享模块及运行时参数库
+- `scripts/` — 开发工具与参数库维护资料
+- `test/` — 回归测试
+- `docs/` — 截图与参数来源
 
 ```powershell
 npm ci

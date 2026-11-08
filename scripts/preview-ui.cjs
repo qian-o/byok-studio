@@ -6,21 +6,24 @@ const crypto = require('node:crypto');
 const {StudioStore} = require('../dist/core/store');
 const {validateProvider, sanitizeError} = require('../dist/core/configuration');
 const {discoverProviderModels} = require('../dist/core/discovery');
-const {setLocale,renderHtml} = require('../media/i18n');
+const {setLocale,renderHtml} = require('../resources/shared/i18n');
 setLocale(process.env.BYOK_PREVIEW_LANGUAGE || 'en');
 const root = path.resolve(__dirname,'..');
 const data = new Map(), keys = new Map();
-const store = new StudioStore({get:key=>data.get(key),update:async(key,value)=>{data.set(key,value);}}, {get:async key=>keys.get(key),store:async(key,value)=>{keys.set(key,value);},delete:async key=>{keys.delete(key);}},require('../data/model-parameters.json'),()=>{});
+const store = new StudioStore({get:key=>data.get(key),update:async(key,value)=>{data.set(key,value);}}, {get:async key=>keys.get(key),store:async(key,value)=>{keys.set(key,value);},delete:async key=>{keys.delete(key);}},require('../resources/catalog/models.json'),()=>{});
+const template=fs.readFileSync(path.join(root,'resources','webview','index.html'),'utf8');
+const resourcePattern=/\{\{resource:((?:webview|shared)\/[a-z0-9.-]+)\}\}/g;
+const allowedResources=new Set([...template.matchAll(resourcePattern)].map(match=>'/resources/'+match[1]));
 const nonce=crypto.randomBytes(18).toString('base64');
 const bridge=`window.acquireVsCodeApi=()=>({postMessage(message){fetch('/rpc',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(message)}).then(r=>r.json()).then(data=>window.dispatchEvent(new MessageEvent('message',{data})));},getState(){return undefined;},setState(){}});`;
 const server = http.createServer(async(req,res)=>{
   try {
     if(req.method==='GET'&&req.url==='/'){
-      let html=renderHtml(fs.readFileSync(path.join(root,'media','index.html'),'utf8')).replaceAll('{{STYLE_URI}}','/media/style.css').replaceAll('{{SCRIPT_URI}}','/media/app.js').replaceAll('{{ORDER_URI}}','/media/model-order.js').replaceAll('{{VENDORS_URI}}','/media/model-vendors.js').replaceAll('{{CONTEXT_POLICY_URI}}','/media/context-policy.js').replaceAll('{{I18N_EN_URI}}','/media/i18n-en.js').replaceAll('{{I18N_ERRORS_URI}}','/media/i18n-errors.js').replaceAll('{{I18N_URI}}','/media/i18n.js').replaceAll('{{OFFICIAL_EFFORT_URI}}','/media/official-effort.js').replaceAll('{{CSP_SOURCE}}',"'self'").replaceAll('{{NONCE}}',nonce);
+      let html=renderHtml(template).replace(resourcePattern,(_match,file)=>'/resources/'+file).replaceAll('{{CSP_SOURCE}}',"'self'").replaceAll('{{NONCE}}',nonce);
       html=html.replace("default-src 'none';","default-src 'none'; connect-src 'self';").replace('</head>',`<script nonce="${nonce}">${bridge}</script></head>`);
       res.writeHead(200,{'content-type':'text/html; charset=utf-8'});res.end(html);return;
     }
-    if(req.method==='GET'&&['/media/style.css','/media/app.js','/media/model-order.js','/media/model-vendors.js','/media/context-policy.js','/media/i18n-en.js','/media/i18n-errors.js','/media/i18n.js','/media/official-effort.js'].includes(req.url)){
+    if(req.method==='GET'&&allowedResources.has(req.url)){
       res.writeHead(200,{'content-type':req.url.endsWith('.css')?'text/css':'text/javascript'});res.end(fs.readFileSync(path.join(root,req.url)));return;
     }
     if(req.method==='GET'&&['/v1/models','/responses/v1/models','/chat/v1/models','/messages/v1/models'].includes(req.url.split('?')[0])){

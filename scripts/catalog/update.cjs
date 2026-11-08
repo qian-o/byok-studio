@@ -4,12 +4,12 @@ const assert = require('node:assert/strict');
 const { createHash } = require('node:crypto');
 const { mkdir, readFile, writeFile } = require('node:fs/promises');
 const path = require('node:path');
-const CONTEXT_PRICING = require('../data/context-pricing.json').models;
-const DISPLAY_NAMES = require('../data/model-display-names.json');
-const REVIEWED_MODELS = require('../data/official-model-overrides.json').models;
+const CONTEXT_PRICING = require('./pricing.json').models;
+const DISPLAY_NAMES = require('../../resources/catalog/migrations.json').updates.find(migration => migration.id === '0.4.0-friendly-alias-names').payload;
+const REVIEWED_MODELS = require('./overrides.json').models;
 
-const ROOT = path.resolve(__dirname, '..');
-const generation = require('../data/catalog-generation.json');
+const ROOT = path.resolve(__dirname, '..', '..');
+const generation = require('./generation.json');
 const { API_URL, CHECKED_ON, UPDATED_ON, PROVIDERS, REQUIRED_MODEL_IDS, ALIAS_NOTES, KNOWN_CONFLICTS, DEFAULTS, REQUESTED_MODELS, OFFICIAL_MODELS, OFFICIAL_PROVIDERS, INPUT_SOURCES, EFFORT_SOURCES } = generation;
 const ADDITIONAL_ONLY = new Set(generation.ADDITIONAL_ONLY);
 
@@ -249,7 +249,7 @@ This catalog is a metadata snapshot, not a guarantee of availability on a proxy.
 
 ## Declarative configuration
 
-[official-model-overrides.json](official-model-overrides.json) holds checked model facts; [model-rules.json](model-rules.json) holds routing recommendations and non-chat exclusions; [catalog-generation.json](catalog-generation.json) holds source-selection and historical evidence. Runtime code interprets protocol configuration without recognizing model IDs or manufacturers.
+[overrides.json](../scripts/catalog/overrides.json) holds checked model facts; [rules.json](../resources/catalog/rules.json) holds routing recommendations and non-chat exclusions; [generation.json](../scripts/catalog/generation.json) holds source-selection and historical evidence. Runtime code interprets protocol configuration without recognizing model IDs or manufacturers.
 
 Physical output capacity is distinct from the default generation budget. Native input and output reservations must fit together, even for models whose independently documented output capacity equals the whole window. Unknown physical limits remain labeled rather than inferred from a model name.
 
@@ -259,7 +259,7 @@ ${reviewedRows}
 
 ## Context pricing
 
-[context-pricing.json](context-pricing.json) contains input ceilings inclusive of the lower price band, optional output-dependent bands, currency, rates per million tokens, sources and dates. Null is an open-ended last band. Service tiers, time-of-day tariffs, promotions, cache duration and region are separate from context-length tiers and are described in each policy. Unknown is never treated as flat. Original API prices need not match a proxy's prices.
+[pricing.json](../scripts/catalog/pricing.json) contains input ceilings inclusive of the lower price band, optional output-dependent bands, currency, rates per million tokens, sources and dates. Null is an open-ended last band. Service tiers, time-of-day tariffs, promotions, cache duration and region are separate from context-length tiers and are described in each policy. Unknown is never treated as flat. Original API prices need not match a proxy's prices.
 
 ## Source selection
 
@@ -281,7 +281,9 @@ ${conflictRows}
 
 ## Maintenance
 
-Run \`node scripts/update-catalog.cjs --check\` after a catalog change. Generation never changes the user's stored database. Installed upgrades use declarative migration records and preserve manual model settings. Dates are recorded only when explicitly present; unknown/future dates are not invented from IDs.
+Run \`node scripts/catalog/update.cjs --check\` after a catalog change. Generation never changes the user's stored database. Installed upgrades use declarative migration records and preserve manual model settings. Dates are recorded only when explicitly present; unknown/future dates are not invented from IDs.
+
+Runtime data lives in [models.json](../resources/catalog/models.json), [rules.json](../resources/catalog/rules.json) and [migrations.json](../resources/catalog/migrations.json). The migration document is a plain JSON object: \`legacyProfiles\` retains the protocol defaults needed to validate pre-0.6 configurations, and \`updates\` is an ordered array of records with unchanged \`id\` and \`kind\` values and an inline \`payload\` when needed. Date and pricing migrations use the current model seed. The names migration also supplies the generator's display-name map. [release-dates.json](../scripts/catalog/release-dates.json) is historical authoring evidence, not a runtime migration input. Authoring evidence in \`scripts/catalog/\` and the source and audit documents in \`docs/\` are not runtime resources. Historical model \`source\` strings are retained verbatim, including old paths.
 `;
 
 }
@@ -289,12 +291,12 @@ Run \`node scripts/update-catalog.cjs --check\` after a catalog change. Generati
 async function main() {
   const args = process.argv.slice(2);
   if (args.length === 1 && args[0] === '--check') {
-    const database = JSON.parse(await readFile(path.join(ROOT, 'data', 'model-parameters.json'), 'utf8'));
+    const database = JSON.parse(await readFile(path.join(ROOT, 'resources', 'catalog', 'models.json'), 'utf8'));
     validate(database);
     console.log(`Validated ${Object.keys(database.models).length} model entries (schemaVersion 1).`);
     return;
   }
-  assert.equal(args.length, 0, 'Usage: node scripts/update-catalog.cjs [--check]');
+  assert.equal(args.length, 0, 'Usage: node scripts/catalog/update.cjs [--check]');
   const response = await fetch(API_URL, { signal: AbortSignal.timeout(30000) });
   assert(response.ok, `models.dev returned HTTP ${response.status}`);
   const raw = await response.text();
@@ -302,9 +304,10 @@ async function main() {
   const { database, counts, skipped, excludedCeilings } = buildCatalog(JSON.parse(raw), localCalendarDate());
   const digest = createHash('sha256').update(raw).digest('hex');
   const sources = sourceDocument(database, counts, skipped, excludedCeilings, retrievedAt, digest);
-  await mkdir(path.join(ROOT, 'data'), { recursive: true });
-  await writeFile(path.join(ROOT, 'data', 'model-parameters.json'), JSON.stringify(database, null, 2) + '\n', 'utf8');
-  await writeFile(path.join(ROOT, 'data', 'SOURCES.md'), sources, 'utf8');
+  await mkdir(path.join(ROOT, 'resources', 'catalog'), { recursive: true });
+  await mkdir(path.join(ROOT, 'docs'), { recursive: true });
+  await writeFile(path.join(ROOT, 'resources', 'catalog', 'models.json'), JSON.stringify(database, null, 2) + '\n', 'utf8');
+  await writeFile(path.join(ROOT, 'docs', 'SOURCES.md'), sources, 'utf8');
   console.log(`Updated ${Object.keys(database.models).length} models: ${[...counts].map(([id, count]) => `${id}=${count}`).join(', ')}`);
 }
 

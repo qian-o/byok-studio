@@ -1,8 +1,8 @@
 const { test, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
-const routing = require('../media/model-vendors.js');
+const routing = require('../resources/shared/routing.js');
 const { validateProvider } = require('../dist/core/configuration');
-const { setLocale } = require('../media/i18n.js');
+const { setLocale } = require('../resources/shared/i18n.js');
 
 const database = { schemaVersion: 1, models: {}, defaults: {
   name: '', contextWindow: 128000, maxOutputTokens: 16000, toolCalling: true,

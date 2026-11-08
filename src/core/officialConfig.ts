@@ -1,10 +1,9 @@
 import { effectiveParameters, modelName, requestParametersForApi } from './configuration';
 import { resolveEndpoint } from './endpoints';
 import type { ApiType, ModelConfig, ModelDatabase, ModelParameters, ProviderConfig } from './types';
-import { inputCeiling } from '../../media/context-policy.js';
-import { t } from '../../media/i18n.js';
-import { normalizeRouting, routeForModel } from '../../media/model-vendors.js';
-import { projectEfforts } from '../../media/official-effort.js';
+import { inputCeiling, projectEfforts } from '../../resources/shared/model-policy.js';
+import { t } from '../../resources/shared/i18n.js';
+import { normalizeRouting, routeForModel } from '../../resources/shared/routing.js';
 
 export type OfficialProtocol = 'chat-completions' | 'responses' | 'messages';
 export interface OfficialModel {

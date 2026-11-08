@@ -2,8 +2,8 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
-const catalog=require('../data/model-parameters.json');
-const rules=require('../data/model-rules.json');
+const catalog=require('../resources/catalog/models.json');
+const rules=require('../resources/catalog/rules.json');
 const root=path.resolve(__dirname,'..');
 function codeFiles(directory){return fs.readdirSync(directory,{withFileTypes:true}).flatMap(entry=>entry.isDirectory()?codeFiles(path.join(directory,entry.name)):/\.(?:ts|js|cjs)$/.test(entry.name)&&!/^host.*Test\.ts$|^hostTest\.ts$|\.d\.ts$/.test(entry.name)?[path.join(directory,entry.name)]:[]);}
 
@@ -11,7 +11,7 @@ test('production source has no embedded model IDs or manufacturer identity branc
   const ids=new Set(Object.keys(catalog.models));
   const identities=new Set(rules.vendors.filter(x=>x.pattern).map(x=>x.id));
   const findings=[];
-  for(const file of [...codeFiles(path.join(root,'src')),...codeFiles(path.join(root,'media')),...codeFiles(path.join(root,'scripts'))]){
+  for(const file of ['src','resources/shared','resources/webview','scripts'].flatMap(folder=>codeFiles(path.join(root,folder)))){
     const source=fs.readFileSync(file,'utf8').replace(/\/\*[\s\S]*?\*\//g,'');
     for(const literal of source.matchAll(/(['"])((?:\\.|(?!\1)[^\\])*)\1/g)){
       const value=literal[2];

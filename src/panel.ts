@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { object, sanitizeError, text, validId, validateDatabase, validateProvider } from './core/configuration';
 import { StudioStore } from './core/store';
 import { discoverProviderModels } from './core/discovery';
-import { renderHtml, t } from '../media/i18n.js';
+import { renderHtml, t } from '../resources/shared/i18n.js';
 
 export class SettingsPanel implements vscode.Disposable {
   private panel: vscode.WebviewPanel | undefined;
@@ -14,8 +14,8 @@ export class SettingsPanel implements vscode.Disposable {
   }
   async open(): Promise<void> {
     if (this.panel) { this.panel.reveal(); return; }
-    const media = vscode.Uri.joinPath(this.context.extensionUri, 'media');
-    const panel = vscode.window.createWebviewPanel('byokStudio.settings', t('BYOK Studio · 模型设置'), vscode.ViewColumn.Active, { enableScripts: true, localResourceRoots: [media], retainContextWhenHidden: true });
+    const resources = vscode.Uri.joinPath(this.context.extensionUri, 'resources');
+    const panel = vscode.window.createWebviewPanel('byokStudio.settings', t('BYOK Studio · 模型设置'), vscode.ViewColumn.Active, { enableScripts: true, localResourceRoots: [resources], retainContextWhenHidden: true });
     this.panel = panel;
     const receive = panel.webview.onDidReceiveMessage(message => { void this.handle(message, panel); });
     panel.onDidDispose(() => {
@@ -24,20 +24,12 @@ export class SettingsPanel implements vscode.Disposable {
       this.pending.clear();
       if (this.panel === panel) this.panel = undefined;
     });
-    const raw = Buffer.from(await vscode.workspace.fs.readFile(vscode.Uri.joinPath(media, 'index.html'))).toString('utf8');
-    const replacements: Record<string, string> = {
-      STYLE_URI: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'style.css')).toString(),
-      SCRIPT_URI: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'app.js')).toString(),
-      ORDER_URI: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'model-order.js')).toString(),
-      VENDORS_URI: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'model-vendors.js')).toString(),
-      CONTEXT_POLICY_URI: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'context-policy.js')).toString(),
-      I18N_EN_URI: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'i18n-en.js')).toString(),
-      I18N_ERRORS_URI: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'i18n-errors.js')).toString(),
-      I18N_URI: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'i18n.js')).toString(),
-      OFFICIAL_EFFORT_URI: panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'official-effort.js')).toString(),
-      CSP_SOURCE: panel.webview.cspSource, NONCE: randomBytes(24).toString('base64')
-    };
-    panel.webview.html = renderHtml(raw).replace(/\{\{(STYLE_URI|SCRIPT_URI|ORDER_URI|VENDORS_URI|CONTEXT_POLICY_URI|OFFICIAL_EFFORT_URI|I18N_EN_URI|I18N_ERRORS_URI|I18N_URI|CSP_SOURCE|NONCE)\}\}/g, (_, key: string) => replacements[key]!);
+    const raw = Buffer.from(await vscode.workspace.fs.readFile(vscode.Uri.joinPath(resources, 'webview', 'index.html'))).toString('utf8');
+    const nonce = randomBytes(24).toString('base64');
+    panel.webview.html = renderHtml(raw)
+      .replace(/\{\{resource:((?:webview|shared)\/[a-z0-9.-]+)\}\}/g, (_, path: string) => panel.webview.asWebviewUri(vscode.Uri.joinPath(resources, ...path.split('/'))).toString())
+      .replace(/\{\{CSP_SOURCE\}\}/g, panel.webview.cspSource)
+      .replace(/\{\{NONCE\}\}/g, nonce);
   }
   private async broadcast(): Promise<void> {
     const panel = this.panel;

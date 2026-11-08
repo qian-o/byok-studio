@@ -1,11 +1,11 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { validateDatabase } = require('../dist/core/configuration');
-const { buildCatalog, sourceDocument, validate } = require('../scripts/update-catalog.cjs');
-const catalog = require('../data/model-parameters.json');
-const displayNames = require('../data/model-display-names.json');
-const reviewed = require('../data/official-model-overrides.json').models;
-const releaseDates = require('../data/catalog-release-dates-0.1.4.json');
+const { buildCatalog, sourceDocument, validate } = require('../scripts/catalog/update.cjs');
+const catalog = require('../resources/catalog/models.json');
+const displayNames = require('../resources/catalog/migrations.json').updates.find(migration => migration.id === '0.4.0-friendly-alias-names').payload;
+const reviewed = require('../scripts/catalog/overrides.json').models;
+const releaseDates = require('../scripts/catalog/release-dates.json');
 const asOf = '2026-11-08';
 const officialSource = reviewed['gpt-6-astra'].source;
 const communityReleaseSource = 'release date only: models.dev community catalog (first-party provider: openai): https://models.dev/api.json (not officially verified)';
@@ -154,7 +154,7 @@ test('bundled release-date seed contains only known dates for existing exact IDs
   const known = Object.entries(catalog.models).filter(([, model]) => model.releaseDate != null);
   assert.equal(known.length, 158);
   assert.ok(Object.keys(catalog.models).length - known.length >= 23);
-  assert.equal(Object.keys(releaseDates).length, 134, 'The historical migration seed is unchanged');
+  assert.equal(Object.keys(releaseDates).length, 134, 'The historical release-date evidence is unchanged');
   for (const [id, date] of Object.entries(releaseDates)) assert.equal(catalog.models[id].releaseDate, date, id);
   assert.equal(catalog.defaults.releaseDate, undefined);
   assert.equal(catalog.models['codex-auto-review'].releaseDate, undefined);

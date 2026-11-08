@@ -4,11 +4,9 @@ const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
 const root=path.resolve(__dirname,'..');
-const i18n=require('../media/i18n');
-const ui=require('../media/i18n-en');
-const errors=require('../media/i18n-errors');
-const messages={...ui,...errors};
-const template=fs.readFileSync(path.join(root,'media','index.html'),'utf8');
+const i18n=require('../resources/shared/i18n');
+const messages=require('../resources/shared/messages.en');
+const template=fs.readFileSync(path.join(root,'resources','webview','index.html'),'utf8');
 const placeholders=text=>[...text.matchAll(/\{\d+\}/g)].map(m=>m[0]).sort();
 
 test('translations cover every literal UI label and preserve all interpolation placeholders',()=>{
@@ -17,10 +15,9 @@ test('translations cover every literal UI label and preserve all interpolation p
     assert.ok(value.length,key);
     assert.deepEqual(placeholders(value),placeholders(key),key);
   }
-  for(const key of Object.keys(ui))if(Object.hasOwn(errors,key))assert.equal(errors[key],ui[key],`Conflicting shared translation: ${key}`);
   const keys=[...template.matchAll(/\{\{t:([^}]+)\}\}/g)].map(m=>m[1]);
-  for(const file of ['app.js','context-policy.js']){
-    const code=fs.readFileSync(path.join(root,'media',file),'utf8');
+  for(const file of ['webview/app.js','shared/model-policy.js']){
+    const code=fs.readFileSync(path.join(root,'resources',file),'utf8');
     for(const match of code.matchAll(/\bt\(('(?:\\.|[^'\\])*')/g))keys.push(vm.runInNewContext(match[1]));
   }
   for(const key of keys)assert.ok(Object.hasOwn(messages,key),`Missing English translation: ${key}`);

@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const { t, setLocale, getLocale } = require('../media/i18n.js');
+const { t, setLocale, getLocale } = require('../resources/shared/i18n.js');
 const {
   object, text, validId, validateParameters, validateOverrides, validateProvider,
   validateReasoningControls, sanitizeError
@@ -189,15 +189,15 @@ test('activation selects the VS Code language before reading or validating store
   }
 });
 
-test('the backend dictionary exports the same messages for Node and the webview', () => {
-  const messages = require('../media/i18n-errors.js');
+test('the shared dictionary exports the same messages for Node and the webview', () => {
+  const messages = require('../resources/shared/messages.en.js');
   const browser = {};
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../media/i18n-errors.js'), 'utf8'), browser);
-  assert.deepEqual(Object.entries(browser.ByokErrorMessages), Object.entries(messages));
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../resources/shared/messages.en.js'), 'utf8'), browser);
+  assert.deepEqual(Object.entries(browser.ByokEnglishMessages), Object.entries(messages));
   for (const [message, translated] of Object.entries(messages)) {
     assert.equal(typeof translated, 'string');
     assert.ok(translated.length > 0, message);
     assert.doesNotMatch(translated, /\p{Script=Han}/u, message);
-    assert.deepEqual(translated.match(/\{\d+\}/g) ?? [], message.match(/\{\d+\}/g) ?? [], message);
+    assert.deepEqual((translated.match(/\{\d+\}/g) ?? []).sort(), (message.match(/\{\d+\}/g) ?? []).sort(), message);
   }
 });

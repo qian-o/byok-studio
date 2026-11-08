@@ -1,4 +1,4 @@
-require('../media/i18n').setLocale('zh-CN');
+require('../resources/shared/i18n').setLocale('zh-CN');
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { validateDatabase, validateProvider, effectiveParameters, modelName, validateUrl } = require('../dist/core/configuration');
@@ -304,7 +304,7 @@ test('field revisions repair untouched capabilities independently and preserve m
   assert.equal(s.store.snapshot().database.models['request-id'].thinking,false,'Later edits are not overwritten by a repeated migration');
 });
 test('K3 sampling migration updates saved presets once and preserves user-maintained profiles',async()=>{
-  const {replacements}=require('../data/catalog-updates-0.7.1.json');
+  const replacements=require('../resources/catalog/migrations.json').updates.find(update=>update.id==='0.7.1-k3-sampling').payload;
   for(const customized of [false,true]){
     const s=storage();const db=database();
     for(const {id,before} of replacements){
