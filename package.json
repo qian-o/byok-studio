@@ -2,7 +2,7 @@
   "name": "byok-studio",
   "displayName": "BYOK Studio",
   "description": "%extension.description%",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "byok-studio-local",
   "license": "MIT",
   "icon": "resources/icon.png",

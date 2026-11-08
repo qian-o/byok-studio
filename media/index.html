@@ -70,7 +70,7 @@
   </main>
 
   <dialog id="model-dialog" aria-labelledby="model-title">
-    <form id="model-form" novalidate>
+    <form id="model-form" class="dialog-scroll" novalidate>
       <header class="dialog-header"><h2 id="model-title">{{t:添加模型}}</h2><button class="icon-button" type="button" data-close="model-dialog" aria-label="{{t:关闭模型设置}}"><svg aria-hidden="true"><use href="#i-close"/></svg></button></header>
       <div class="field"><label for="model-name">{{t:显示名称}}</label><input id="model-name" maxlength="200" placeholder="{{t:对话中显示的名称}}" autocomplete="off" required><p id="model-match" class="source-note"></p><details class="pricing-source"><summary>{{t:参数来源}}</summary><p id="model-source" class="source-note"></p></details></div>
       <p id="model-update" class="notice compact-notice" role="status" hidden>{{t:配置已在其他位置更新。当前编辑内容已保留，请在保存供应商前检查。}}</p>
@@ -94,6 +94,7 @@
   </dialog>
 
   <dialog id="database-dialog" class="database-dialog" aria-labelledby="database-title">
+    <div class="dialog-scroll">
     <header class="dialog-header"><h2 id="database-title">{{t:模型参数库}}</h2><button class="icon-button" type="button" data-close="database-dialog" aria-label="{{t:关闭参数库}}"><svg aria-hidden="true"><use href="#i-close"/></svg></button></header>
     <p class="database-copy">{{t:按请求 ID 精确匹配参数。未知模型使用初始配置，供应商中的手动调整优先。}}</p>
     <p id="database-update" class="notice compact-notice" role="status" hidden>{{t:参数库已在其他位置更新，当前草稿已保留。保存将覆盖参数库，或取消后重新打开。}}</p>
@@ -102,10 +103,11 @@
     <p class="source-note database-notice">{{t:条目保留参数来源与核验日期；未核验的参数请按服务商文档调整。}}</p>
     <p id="database-error" class="dialog-error" role="alert" hidden></p>
     <footer class="dialog-footer database-footer"><span id="database-count" class="source-note" role="status"></span><div class="database-file-actions"><button id="database-import" class="button secondary small" type="button">{{t:导入 JSON}}</button><button id="database-export" class="button secondary small" type="button">{{t:导出 JSON}}</button></div><div class="database-save-actions"><button class="button secondary" type="button" data-close="database-dialog">{{t:取消}}</button><button id="database-save" class="button primary" type="button">{{t:保存参数库}}</button></div></footer>
-  </dialog>
+        </div>
+      </dialog>
 
   <dialog id="database-editor" class="database-editor" aria-labelledby="database-editor-title">
-    <form id="database-form" novalidate>
+    <form id="database-form" class="dialog-scroll" novalidate>
       <header class="dialog-header"><h2 id="database-editor-title">{{t:编辑参数}}</h2><button class="icon-button" type="button" data-close="database-editor" aria-label="{{t:关闭参数编辑}}"><svg aria-hidden="true"><use href="#i-close"/></svg></button></header>
       <div class="dialog-fields">
         <div class="field"><label for="database-name">{{t:显示名称}}</label><input id="database-name" maxlength="200" placeholder="{{t:模型显示名称}}" autocomplete="off"></div>
@@ -134,10 +136,12 @@
   </dialog>
 
   <dialog id="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+    <div class="dialog-scroll">
     <header class="dialog-header"><h2 id="confirm-title">{{t:确认操作}}</h2><button class="icon-button" type="button" data-close="confirm-dialog" aria-label="{{t:关闭确认}}"><svg aria-hidden="true"><use href="#i-close"/></svg></button></header>
     <p id="confirm-message" class="dialog-copy"></p>
     <footer class="dialog-footer"><button id="confirm-cancel" class="button secondary" type="button" data-close="confirm-dialog">{{t:取消}}</button><button id="confirm-action" class="button primary" type="button">{{t:确认}}</button></footer>
-  </dialog>
+        </div>
+      </dialog>
   <div id="toast" class="toast error-toast" role="alert" aria-live="assertive" aria-atomic="true" hidden></div>
   <script nonce="{{NONCE}}" src="{{I18N_EN_URI}}"></script>
   <script nonce="{{NONCE}}" src="{{I18N_ERRORS_URI}}"></script>

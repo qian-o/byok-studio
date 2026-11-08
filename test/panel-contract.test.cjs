@@ -199,7 +199,10 @@ test('desktop model viewport is shared by protocol columns and narrow screens us
   assert.match(rule('.panel-footer'),/flex-shrink: 0/);
   assert.match(css,/@media \(max-width: 420px\), \(max-height: 480px\)\s*\{[\s\S]*?html \{[^}]*overflow-y: auto/);
   assert.match(css,/\.model-list \{ flex: none; overflow: visible; scrollbar-gutter: auto; \}/);
-  assert.match(rule('dialog'),/max-height: calc\(100dvh - 32px\); overflow: auto/);
+  assert.match(rule('dialog'),/max-height: calc\(100dvh - 32px\); overflow: hidden/);
+  assert.match(rule('dialog'),/padding: 8px/);
+  assert.match(rule('.dialog-scroll'),/max-height: calc\(100dvh - 50px\); overflow: auto/);
+  for(const dialog of html.matchAll(/<dialog\b[^>]*>\s*<([^>]+)>/g))assert.match(dialog[1],/class="dialog-scroll"/);
 });
 test('supplier navigation and model rows show only names without saved or enabled status markers',async()=>{
   assert.doesNotMatch(html,/id="save-status"|id="provider-enabled"|enabled-badge|class="sidebar"/);

@@ -171,8 +171,9 @@ input[readonly] { background: var(--subtle); color: var(--muted); }
 .page > .notice, #provider-error { flex-shrink: 0; }
 .page > .notice { margin-bottom: 8px; padding: 7px 10px; }
 #provider-error { padding-top: 6px; }
-dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--text); box-shadow: 0 16px 60px var(--shadow); padding: 23px; width: min(475px, calc(100vw - 28px)); max-height: calc(100dvh - 32px); overflow: auto; overscroll-behavior: contain; }
+dialog { --dialog-padding: 23px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--text); box-shadow: 0 16px 60px var(--shadow); padding: 8px; width: min(475px, calc(100vw - 28px)); max-height: calc(100dvh - 32px); overflow: hidden; }
 dialog::backdrop { background: #16162060; }
+.dialog-scroll { max-height: calc(100dvh - 50px); overflow: auto; overscroll-behavior: contain; padding: calc(var(--dialog-padding) - 8px); scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: var(--vscode-scrollbarSlider-background, #79797966) transparent; }
 .dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 19px; }
 .dialog-header h2 { font-size: 19px; font-weight: 650; }
 .dialog-fields { display: grid; gap: 15px; }
@@ -273,7 +274,7 @@ dialog::backdrop { background: #16162060; }
   .segmented-control span { padding: 3px 7px; }
   .provider-zdr { font-size: 10px; }
   .provider-zdr input { width: 12px; height: 12px; }
-  dialog { padding: 19px; }
+  dialog { --dialog-padding: 19px; }
   .database-toolbar { gap: 8px; }
   .database-toolbar .button { padding: 8px 10px; font-size: 11px; }
   .database-footer { gap: 12px; }
