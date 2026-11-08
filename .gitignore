@@ -1,0 +1,12 @@
+node_modules/
+dist/
+releases/
+.vscode-test/
+*.log
+*.vsix
+.env
+.env.*
+!.env.example
+chatLanguageModels.json
+.DS_Store
+Thumbs.db

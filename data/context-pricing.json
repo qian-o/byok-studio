@@ -1,0 +1,2932 @@
+{
+  "schemaVersion": 1,
+  "checkedOn": "2026-11-08",
+  "models": {
+    "claude-fable-5": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为20 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 10,
+            "output": 50,
+            "cacheRead": 1,
+            "cacheWrite": 12.5
+          }
+        ]
+      }
+    },
+    "claude-fable-5-1": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为20 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 10,
+            "output": 50,
+            "cacheRead": 0.25,
+            "cacheWrite": 12.5
+          }
+        ]
+      }
+    },
+    "claude-haiku-4-5-20251001": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为2 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 1,
+            "output": 5,
+            "cacheRead": 0.1,
+            "cacheWrite": 1.25
+          }
+        ]
+      }
+    },
+    "claude-haiku-5-5": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        100000
+      ],
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "原厂直连 Standard：输入≤100,000为标准档；超过100,000，整次请求的输入、输出及缓存费率乘5。缓存写入表内为5分钟；1小时分别为0.20/1.00 USD/百万 tokens。Batch、地区费率及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 100000,
+            "input": 0.1,
+            "output": 0.5,
+            "cacheRead": 0.01,
+            "cacheWrite": 0.125
+          },
+          {
+            "inputUpTo": null,
+            "input": 0.5,
+            "output": 2.5,
+            "cacheRead": 0.05,
+            "cacheWrite": 0.625
+          }
+        ]
+      }
+    },
+    "claude-opus-4-6": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为10 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 5,
+            "output": 25,
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25
+          }
+        ]
+      }
+    },
+    "claude-opus-4-7": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为10 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 5,
+            "output": 25,
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25
+          }
+        ]
+      }
+    },
+    "claude-opus-4-8": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为10 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 5,
+            "output": 25,
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25
+          }
+        ]
+      }
+    },
+    "claude-opus-5": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为10 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 5,
+            "output": 25,
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25
+          }
+        ]
+      }
+    },
+    "claude-opus-5-5": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为8 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。 cheaper per-token than Opus 5 despite being the newer model — verified, not an error",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 4,
+            "output": 20,
+            "cacheRead": 0.2,
+            "cacheWrite": 5
+          }
+        ]
+      }
+    },
+    "claude-sonnet-4-6": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为6 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 3,
+            "output": 15,
+            "cacheRead": 0.3,
+            "cacheWrite": 3.75
+          }
+        ]
+      }
+    },
+    "claude-sonnet-5": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为4 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。 footnote: this $2/$10 rate was originally introductory but is now PERMANENT standard price; a previously planned 2026-09-01 increase to $3/$15 was CANCELLED",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 2,
+            "output": 10,
+            "cacheRead": 0.2,
+            "cacheWrite": 2.5
+          }
+        ]
+      }
+    },
+    "claude-sonnet-5-5": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为4 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 2,
+            "output": 10,
+            "cacheRead": 0.1,
+            "cacheWrite": 2.5
+          }
+        ]
+      }
+    },
+    "gemini-3-flash-preview": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://aistudio.google.com/docs/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "原厂Standard，表内为文本/图像/视频输入价格；批量、音频及其他服务档另计。不按Context长度加价；音频输入及缓存读取为表内2倍，缓存存储另计1 USD/百万tokens/小时。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.5,
+            "output": 3,
+            "cacheRead": 0.05
+          }
+        ]
+      }
+    },
+    "gemini-3.1-flash-lite-preview": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://aistudio.google.com/docs/models/gemini-3.1-flash-lite-preview",
+      "checkedAt": "2026-11-08",
+      "note": "原厂预览端点已退役，无当前计费表；代理是否映射为稳定版及其价格需要由代理确认。"
+    },
+    "gemini-3.1-pro-preview": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        200000
+      ],
+      "source": "https://aistudio.google.com/docs/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "原厂Standard，表内为文本/图像/视频输入价格；批量、音频及其他服务档另计。输入≤200000为标准档，超过200000整次请求输入及输出按长上下文费率。缓存存储另计4.50 USD/百万tokens/小时。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 200000,
+            "input": 2,
+            "output": 12,
+            "cacheRead": 0.2
+          },
+          {
+            "inputUpTo": null,
+            "input": 4,
+            "output": 18,
+            "cacheRead": 0.4
+          }
+        ]
+      }
+    },
+    "gemini-3.8-flash": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://aistudio.google.com/docs/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "原厂Standard，表内为文本/图像/视频输入价格；批量、音频及其他服务档另计。当前优惠至2026-12-31；2027-01-01起输入1.5、输出7.5、缓存读取0.15 USD/百万tokens。缓存存储当前0.50、届时1.00 USD/百万tokens/小时。不按Context长度加价。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.75,
+            "output": 3.75,
+            "cacheRead": 0.075
+          }
+        ]
+      }
+    },
+    "gemini-4-argon": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://aistudio.google.com/docs/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "原厂Standard，表内为文本/图像/视频输入价格；批量、音频及其他服务档另计。当前优惠至2026-11-30；2026-12-01起输入4、输出20、缓存读取0.20 USD/百万tokens。不按Context长度加价。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 2,
+            "output": 10,
+            "cacheRead": 0.1
+          }
+        ]
+      }
+    },
+    "gpt-5.6-luna": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        272000
+      ],
+      "source": "https://developers.openai.com/api/docs/pricing ; https://developers.openai.com/api/docs/models/gpt-5.6-luna",
+      "checkedAt": "2026-11-08",
+      "note": "Standard 原厂直连 API；输入超过272,000 tokens时整次请求进入高价档，恰好272,000仍为标准档。输入/缓存读取乘2，输出乘1.5。缓存写入另计：30分钟 0.25 / 12小时 0.5 USD/百万 tokens（标准区间）。 Batch/Flex/Fast/地区和订阅价格不属于此表；代理价格以实际规则为准。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 272000,
+            "input": 0.2,
+            "output": 1.2,
+            "cacheRead": 0.02
+          },
+          {
+            "inputUpTo": null,
+            "input": 0.4,
+            "output": 1.7999999999999998,
+            "cacheRead": 0.04
+          }
+        ]
+      }
+    },
+    "gpt-5.6-sol": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        272000
+      ],
+      "source": "https://developers.openai.com/api/docs/pricing ; https://developers.openai.com/api/docs/models/gpt-5.6-sol",
+      "checkedAt": "2026-11-08",
+      "note": "Standard 原厂直连 API；输入超过272,000 tokens时整次请求进入高价档，恰好272,000仍为标准档。输入/缓存读取乘2，输出乘1.5。缓存写入另计：30分钟 5 / 12小时 10 USD/百万 tokens（标准区间）。 Batch/Flex/Fast/地区和订阅价格不属于此表；代理价格以实际规则为准。 promotional pricing stated to hold until 2026-11-30",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 272000,
+            "input": 4,
+            "output": 20,
+            "cacheRead": 0.4
+          },
+          {
+            "inputUpTo": null,
+            "input": 8,
+            "output": 30,
+            "cacheRead": 0.8
+          }
+        ]
+      }
+    },
+    "gpt-5.6-terra": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        272000
+      ],
+      "source": "https://developers.openai.com/api/docs/pricing ; https://developers.openai.com/api/docs/models/gpt-5.6-terra",
+      "checkedAt": "2026-11-08",
+      "note": "Standard 原厂直连 API；输入超过272,000 tokens时整次请求进入高价档，恰好272,000仍为标准档。输入/缓存读取乘2，输出乘1.5。缓存写入另计：30分钟 2.5 / 12小时 5 USD/百万 tokens（标准区间）。 Batch/Flex/Fast/地区和订阅价格不属于此表；代理价格以实际规则为准。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 272000,
+            "input": 2,
+            "output": 12,
+            "cacheRead": 0.2
+          },
+          {
+            "inputUpTo": null,
+            "input": 4,
+            "output": 18,
+            "cacheRead": 0.4
+          }
+        ]
+      }
+    },
+    "gpt-6-astra": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        272000
+      ],
+      "source": "https://developers.openai.com/api/docs/pricing ; https://developers.openai.com/api/docs/models/gpt-6-astra ; https://developers.openai.com/api/docs/guides/reasoning",
+      "checkedAt": "2026-11-08",
+      "note": "Standard 原厂直连 API；输入超过272,000 tokens时整次请求进入高价档，恰好272,000仍为标准档。输入/缓存读取乘2，输出乘1.5。缓存写入另计：30分钟 12.5 / 12小时 25 USD/百万 tokens（标准区间）。 Batch/Flex/Fast/地区和订阅价格不属于此表；代理价格以实际规则为准。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 272000,
+            "input": 10,
+            "output": 50,
+            "cacheRead": 1
+          },
+          {
+            "inputUpTo": null,
+            "input": 20,
+            "output": 75,
+            "cacheRead": 2
+          }
+        ]
+      }
+    },
+    "gpt-6-sol": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        272000
+      ],
+      "source": "https://developers.openai.com/api/docs/pricing ; https://developers.openai.com/api/docs/models/gpt-6-sol",
+      "checkedAt": "2026-11-08",
+      "note": "Standard 原厂直连 API；输入超过272,000 tokens时整次请求进入高价档，恰好272,000仍为标准档。输入/缓存读取乘2，输出乘1.5。缓存写入另计：30分钟 2.5 / 12小时 5 USD/百万 tokens（标准区间）。 Batch/Flex/Fast/地区和订阅价格不属于此表；代理价格以实际规则为准。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 272000,
+            "input": 2,
+            "output": 10,
+            "cacheRead": 0.2
+          },
+          {
+            "inputUpTo": null,
+            "input": 4,
+            "output": 15,
+            "cacheRead": 0.4
+          }
+        ]
+      }
+    },
+    "gpt-6.1-sol": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        272000
+      ],
+      "source": "https://developers.openai.com/api/docs/pricing ; https://developers.openai.com/api/docs/models/gpt-6.1-sol",
+      "checkedAt": "2026-11-08",
+      "note": "Standard 原厂直连 API；输入超过272,000 tokens时整次请求进入高价档，恰好272,000仍为标准档。输入/缓存读取乘2，输出乘1.5。缓存写入另计：30分钟 2.5 / 12小时 5 USD/百万 tokens（标准区间）。 Batch/Flex/Fast/地区和订阅价格不属于此表；代理价格以实际规则为准。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 272000,
+            "input": 2,
+            "output": 10,
+            "cacheRead": 0.1
+          },
+          {
+            "inputUpTo": null,
+            "input": 4,
+            "output": 15,
+            "cacheRead": 0.2
+          }
+        ]
+      }
+    },
+    "gpt-6.1-terra": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        272000
+      ],
+      "source": "https://developers.openai.com/api/docs/pricing ; https://developers.openai.com/api/docs/models/gpt-6.1-terra",
+      "checkedAt": "2026-11-08",
+      "note": "Standard 原厂直连 API；输入超过272,000 tokens时整次请求进入高价档，恰好272,000仍为标准档。输入/缓存读取乘2，输出乘1.5。缓存写入另计：30分钟 1.25 / 12小时 2.5 USD/百万 tokens（标准区间）。 Batch/Flex/Fast/地区和订阅价格不属于此表；代理价格以实际规则为准。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 272000,
+            "input": 1,
+            "output": 5,
+            "cacheRead": 0.05
+          },
+          {
+            "inputUpTo": null,
+            "input": 2,
+            "output": 7.5,
+            "cacheRead": 0.1
+          }
+        ]
+      }
+    },
+    "grok-4.5": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        199999
+      ],
+      "source": "https://docs.x.ai/docs/models/grok-4.5",
+      "checkedAt": "2026-11-08",
+      "note": "原厂直连 Standard：输入<200,000为标准档，达到200,000即进入高价档（低价档最后一个输入token为199,999）；整次请求按该档费率计价。Batch优惠、工具费用和代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 199999,
+            "input": 2,
+            "output": 6,
+            "cacheRead": 0.3
+          },
+          {
+            "inputUpTo": null,
+            "input": 4,
+            "output": 12,
+            "cacheRead": 0.6
+          }
+        ]
+      }
+    },
+    "grok-4.6": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        199999
+      ],
+      "source": "https://docs.x.ai/docs/models/grok-4.6",
+      "checkedAt": "2026-11-08",
+      "note": "原厂直连 Standard：输入<200,000为标准档，达到200,000即进入高价档（低价档最后一个输入token为199,999）；整次请求按该档费率计价。Batch优惠、工具费用和代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 199999,
+            "input": 2,
+            "output": 6,
+            "cacheRead": 0.5
+          },
+          {
+            "inputUpTo": null,
+            "input": 4,
+            "output": 12,
+            "cacheRead": 1
+          }
+        ]
+      }
+    },
+    "grok-4.7": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        199999
+      ],
+      "source": "https://docs.x.ai/docs/models/grok-4.7",
+      "checkedAt": "2026-11-08",
+      "note": "原厂直连 Standard：输入<200,000为标准档，达到200,000即进入高价档（低价档最后一个输入token为199,999）；整次请求按该档费率计价。Batch优惠、工具费用和代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 199999,
+            "input": 2,
+            "output": 6,
+            "cacheRead": 0.5
+          },
+          {
+            "inputUpTo": null,
+            "input": 4,
+            "output": 12,
+            "cacheRead": 1
+          }
+        ]
+      }
+    },
+    "gpt-6-luna": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        272000
+      ],
+      "source": "https://developers.openai.com/api/docs/pricing ; https://developers.openai.com/api/docs/models/gpt-6-luna",
+      "checkedAt": "2026-11-08",
+      "note": "Standard 原厂直连 API；输入超过272,000 tokens时整次请求进入高价档，恰好272,000仍为标准档。输入/缓存读取乘2，输出乘1.5。缓存写入另计：30分钟 0.125 / 12小时 未列 USD/百万 tokens（标准区间）。 Batch/Flex/Fast/地区和订阅价格不属于此表；代理价格以实际规则为准。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 272000,
+            "input": 0.1,
+            "output": 0.5,
+            "cacheRead": 0.01
+          },
+          {
+            "inputUpTo": null,
+            "input": 0.2,
+            "output": 0.75,
+            "cacheRead": 0.02
+          }
+        ]
+      }
+    },
+    "codex-auto-review": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://developers.openai.com/api/docs/pricing ; https://learn.chatgpt.com/docs/sandboxing/auto-review",
+      "checkedAt": "2026-11-08",
+      "note": "未找到此精确代理ID对应的公开模型规格和独立计费表；名称也用于Codex自动审核功能，不能据此推断代理的底层模型。需代理提供映射和计费。"
+    },
+    "deepseek-flash": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://api-docs.deepseek.com/quick_start/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "不按输入长度加价；表内为峰时价格，闲时全部费率为一半。峰时：UTC周一至周五01:00–04:00及06:00–10:00，中国法定节假日除外；其余为闲时。代理及火山方舟渠道另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.3,
+            "output": 1.2,
+            "cacheRead": 0.006
+          }
+        ]
+      }
+    },
+    "deepseek-v4-pro": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://api-docs.deepseek.com/quick_start/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "不按输入长度加价；表内为峰时价格，闲时全部费率为一半。峰时：UTC周一至周五01:00–04:00及06:00–10:00，中国法定节假日除外；其余为闲时。代理及火山方舟渠道另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 1.32,
+            "output": 3.96,
+            "cacheRead": 0.044
+          }
+        ]
+      }
+    },
+    "deepseek-v4.1-flash": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://api-docs.deepseek.com/quick_start/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "不按输入长度加价；表内为峰时价格，闲时全部费率为一半。峰时：UTC周一至周五01:00–04:00及06:00–10:00，中国法定节假日除外；其余为闲时。代理及火山方舟渠道另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.3,
+            "output": 1.2,
+            "cacheRead": 0.006
+          }
+        ]
+      }
+    },
+    "deepseek-v4.1-flash-1017": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://api-docs.deepseek.com/quick_start/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "不按输入长度加价；表内为峰时价格，闲时全部费率为一半。峰时：UTC周一至周五01:00–04:00及06:00–10:00，中国法定节假日除外；其余为闲时。代理及火山方舟渠道另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.3,
+            "output": 1.2,
+            "cacheRead": 0.006
+          }
+        ]
+      }
+    },
+    "glm-5.3": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.z.ai/guides/overview/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "Z.ai原厂按百万tokens标准计费；当前价格页未按输入长度分段。缓存存储标注限时免费；Coding Plan订阅、地区和代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 1.4,
+            "output": 4.4,
+            "cacheRead": 0.26
+          }
+        ]
+      }
+    },
+    "glm-5.3-flash": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.z.ai/guides/overview/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "Z.ai原厂按百万tokens标准计费；当前价格页未按输入长度分段。缓存存储标注限时免费；Coding Plan订阅、地区和代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.15,
+            "output": 0.5,
+            "cacheRead": 0.03
+          }
+        ]
+      }
+    },
+    "glm-5.3-flashx": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.z.ai/guides/overview/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "Z.ai原厂按百万tokens标准计费；当前价格页未按输入长度分段。缓存存储标注限时免费；Coding Plan订阅、地区和代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.37,
+            "output": 1.25,
+            "cacheRead": 0.075
+          }
+        ]
+      }
+    },
+    "GLM-5.3": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.z.ai/guides/overview/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "Z.ai原厂按百万tokens标准计费；当前价格页未按输入长度分段。缓存存储标注限时免费；Coding Plan订阅、地区和代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 1.4,
+            "output": 4.4,
+            "cacheRead": 0.26
+          }
+        ]
+      }
+    },
+    "GLM-5.3-Flash": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.z.ai/guides/overview/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "Z.ai原厂按百万tokens标准计费；当前价格页未按输入长度分段。缓存存储标注限时免费；Coding Plan订阅、地区和代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.15,
+            "output": 0.5,
+            "cacheRead": 0.03
+          }
+        ]
+      }
+    },
+    "doubao-seed-2-1-pro-260628": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.volcengine.com/docs/ark/model-pricing",
+      "checkedAt": "2026-11-08",
+      "note": "火山方舟标准在线服务，按当前2.1家族价格表不分Context长度档。缓存存储另计0.017元/百万tokens/小时；Flex/Batch输入与输出约为标准一半，缓存读取另按服务档。Pro未列低延迟档。服务档不等于上下文长度档；代理价格另计。",
+      "rates": {
+        "currency": "CNY",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 6,
+            "output": 30,
+            "cacheRead": 1.2
+          }
+        ]
+      }
+    },
+    "doubao-seed-2-1-pro-260915": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.volcengine.com/docs/ark/model-pricing",
+      "checkedAt": "2026-11-08",
+      "note": "火山方舟标准在线服务，按当前2.1家族价格表不分Context长度档。缓存存储另计0.017元/百万tokens/小时；Flex/Batch输入与输出约为标准一半，缓存读取另按服务档。Pro未列低延迟档。服务档不等于上下文长度档；代理价格另计。",
+      "rates": {
+        "currency": "CNY",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 6,
+            "output": 30,
+            "cacheRead": 1.2
+          }
+        ]
+      }
+    },
+    "doubao-seed-2-1-turbo-260628": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.volcengine.com/docs/ark/model-pricing",
+      "checkedAt": "2026-11-08",
+      "note": "火山方舟标准在线服务，按当前2.1家族价格表不分Context长度档。缓存存储另计0.017元/百万tokens/小时；Flex/Batch输入与输出约为标准一半，缓存读取另按服务档。Turbo低延迟档为6/1.2/30元（输入/缓存/输出）。服务档不等于上下文长度档；代理价格另计。",
+      "rates": {
+        "currency": "CNY",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 3,
+            "output": 15,
+            "cacheRead": 0.6
+          }
+        ]
+      }
+    },
+    "doubao-seed-2-1-pro": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.volcengine.com/docs/ark/model-pricing",
+      "checkedAt": "2026-11-08",
+      "note": "火山方舟标准在线服务，按当前2.1家族价格表不分Context长度档。缓存存储另计0.017元/百万tokens/小时；Flex/Batch输入与输出约为标准一半，缓存读取另按服务档。Pro未列低延迟档。服务档不等于上下文长度档；代理价格另计。",
+      "rates": {
+        "currency": "CNY",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 6,
+            "output": 30,
+            "cacheRead": 1.2
+          }
+        ]
+      }
+    },
+    "doubao-seed-2-1-turbo": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.volcengine.com/docs/ark/model-pricing",
+      "checkedAt": "2026-11-08",
+      "note": "火山方舟标准在线服务，按当前2.1家族价格表不分Context长度档。缓存存储另计0.017元/百万tokens/小时；Flex/Batch输入与输出约为标准一半，缓存读取另按服务档。Turbo低延迟档为6/1.2/30元（输入/缓存/输出）。服务档不等于上下文长度档；代理价格另计。",
+      "rates": {
+        "currency": "CNY",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 3,
+            "output": 15,
+            "cacheRead": 0.6
+          }
+        ]
+      }
+    },
+    "kimi-k3": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.kimi.ai/docs/pricing/chat",
+      "checkedAt": "2026-11-08",
+      "note": "原厂直连Standard按token计费，不按上下文长度分段。缓存写入表内为5分钟；1小时为6.0 USD/百万tokens。Batch/订阅和代理费率另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 3,
+            "output": 15,
+            "cacheRead": 0.3,
+            "cacheWrite": 3
+          }
+        ]
+      }
+    },
+    "kimi-k3.1-pro": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.kimi.ai/docs/pricing/chat",
+      "checkedAt": "2026-11-08",
+      "note": "原厂直连Standard按token计费，不按上下文长度分段。缓存写入表内为5分钟；1小时为4.0 USD/百万tokens。Batch/订阅和代理费率另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 2,
+            "output": 10,
+            "cacheRead": 0.2,
+            "cacheWrite": 2
+          }
+        ]
+      }
+    },
+    "kimi-k3.1-pro-highspeed": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.kimi.ai/docs/pricing/chat",
+      "checkedAt": "2026-11-08",
+      "note": "原厂直连Standard按token计费，不按上下文长度分段。缓存写入表内为5分钟；1小时为8.0 USD/百万tokens。Batch/订阅和代理费率另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 4,
+            "output": 20,
+            "cacheRead": 0.2,
+            "cacheWrite": 4
+          }
+        ]
+      }
+    },
+    "kimi-k2.6": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.kimi.ai/docs/pricing/chat",
+      "checkedAt": "2026-11-08",
+      "note": "原厂直连Standard按token计费，不按上下文长度分段。Batch/订阅和代理费率另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.95,
+            "output": 4,
+            "cacheRead": 0.16
+          }
+        ]
+      }
+    },
+    "kimi-k2.7-code": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.kimi.ai/docs/pricing/chat",
+      "checkedAt": "2026-11-08",
+      "note": "原厂直连Standard按token计费，不按上下文长度分段。Batch/订阅和代理费率另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.95,
+            "output": 4,
+            "cacheRead": 0.19
+          }
+        ]
+      }
+    },
+    "kimi-k2.7-code-highspeed": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.kimi.ai/docs/pricing/chat",
+      "checkedAt": "2026-11-08",
+      "note": "原厂直连Standard按token计费，不按上下文长度分段。Batch/订阅和代理费率另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 1.9,
+            "output": 8,
+            "cacheRead": 0.38
+          }
+        ]
+      }
+    },
+    "gemini-3.1-flash-lite": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://aistudio.google.com/docs/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "原厂Standard，表内为文本/图像/视频输入价格；批量、音频及其他服务档另计。不按Context长度加价；音频输入及缓存读取为表内2倍，缓存存储另计1 USD/百万tokens/小时。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.25,
+            "output": 1.5,
+            "cacheRead": 0.025
+          }
+        ]
+      }
+    },
+    "gemini-3.1-pro-preview-customtools": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        200000
+      ],
+      "source": "https://aistudio.google.com/docs/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "与Gemini3.1ProPreview共用官方价格卡；输入≤200000为标准档，超过时整次输入及输出采用长上下文档。缓存等附加收费见官方价格页。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 200000,
+            "input": 2,
+            "output": 12
+          },
+          {
+            "inputUpTo": null,
+            "input": 4,
+            "output": 18
+          }
+        ]
+      }
+    },
+    "doubao-seed-2-0-lite-260428": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        32000,
+        128000
+      ],
+      "source": "https://docs.volcengine.com/docs/ark/model-pricing",
+      "checkedAt": "2026-11-08",
+      "note": "方舟标准在线2.0 Lite价格表，长度单位千token：≤32K、(32K,128K]、(128K,256K]；按整次输入长度选择输入/输出费率。Flex/低延迟/批量是另一服务维度，不是Context档位。",
+      "rates": {
+        "currency": "CNY",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 32000,
+            "input": 0.3,
+            "output": 4.5,
+            "cacheRead": 0.12
+          },
+          {
+            "inputUpTo": 128000,
+            "input": 0.45,
+            "output": 6.75,
+            "cacheRead": 0.18
+          },
+          {
+            "inputUpTo": null,
+            "input": 0.9,
+            "output": 13.5,
+            "cacheRead": 0.36
+          }
+        ]
+      }
+    },
+    "deepseek-v4-flash": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://api-docs.deepseek.com/quick_start/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "不按输入长度加价；表内为峰时价格，闲时全部费率为一半。峰时：UTC周一至周五01:00–04:00及06:00–10:00，中国法定节假日除外；其余为闲时。代理及火山方舟渠道另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.3,
+            "output": 1.2,
+            "cacheRead": 0.006
+          }
+        ]
+      }
+    },
+    "deepseek-v4-flash-vision-exp": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://api-docs.deepseek.com/quick_start/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "不按输入长度加价；表内为峰时价格，闲时全部费率为一半。峰时：UTC周一至周五01:00–04:00及06:00–10:00，中国法定节假日除外；其余为闲时。代理及火山方舟渠道另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.3,
+            "output": 1.2,
+            "cacheRead": 0.006
+          }
+        ]
+      }
+    },
+    "glm-4.5": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.z.ai/guides/overview/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "Z.ai原厂按百万tokens标准计费；当前价格页未按输入长度分段。缓存存储标注限时免费；Coding Plan订阅、地区和代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.6,
+            "output": 2.2,
+            "cacheRead": 0.11
+          }
+        ]
+      }
+    },
+    "glm-4.5-air": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.z.ai/guides/overview/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "Z.ai原厂按百万tokens标准计费；当前价格页未按输入长度分段。缓存存储标注限时免费；Coding Plan订阅、地区和代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.2,
+            "output": 1.1,
+            "cacheRead": 0.03
+          }
+        ]
+      }
+    },
+    "glm-4.5-flash": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.z.ai/guides/overview/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "Z.ai原厂按百万tokens标准计费；当前价格页未按输入长度分段。缓存存储标注限时免费；Coding Plan订阅、地区和代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0
+          }
+        ]
+      }
+    },
+    "glm-4.5v": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.z.ai/guides/overview/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "Z.ai原厂按百万tokens标准计费；当前价格页未按输入长度分段。缓存存储标注限时免费；Coding Plan订阅、地区和代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.6,
+            "output": 1.8,
+            "cacheRead": 0.11
+          }
+        ]
+      }
+    },
+    "glm-4.6": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.z.ai/guides/overview/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "Z.ai原厂按百万tokens标准计费；当前价格页未按输入长度分段。缓存存储标注限时免费；Coding Plan订阅、地区和代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.6,
+            "output": 2.2,
+            "cacheRead": 0.11
+          }
+        ]
+      }
+    },
+    "glm-4.6v": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.z.ai/guides/overview/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "Z.ai原厂按百万tokens标准计费；当前价格页未按输入长度分段。缓存存储标注限时免费；Coding Plan订阅、地区和代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.3,
+            "output": 0.9,
+            "cacheRead": 0.05
+          }
+        ]
+      }
+    },
+    "glm-4.6v-flash": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.z.ai/guides/overview/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "Z.ai原厂按百万tokens标准计费；当前价格页未按输入长度分段。缓存存储标注限时免费；Coding Plan订阅、地区和代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0
+          }
+        ]
+      }
+    },
+    "glm-4.7": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.z.ai/guides/overview/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "Z.ai原厂按百万tokens标准计费；当前价格页未按输入长度分段。缓存存储标注限时免费；Coding Plan订阅、地区和代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.6,
+            "output": 2.2,
+            "cacheRead": 0.11
+          }
+        ]
+      }
+    },
+    "glm-4.7-flash": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.z.ai/guides/overview/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "Z.ai原厂按百万tokens标准计费；当前价格页未按输入长度分段。缓存存储标注限时免费；Coding Plan订阅、地区和代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0
+          }
+        ]
+      }
+    },
+    "glm-4.7-flashx": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.z.ai/guides/overview/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "Z.ai原厂按百万tokens标准计费；当前价格页未按输入长度分段。缓存存储标注限时免费；Coding Plan订阅、地区和代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.07,
+            "output": 0.4,
+            "cacheRead": 0.01
+          }
+        ]
+      }
+    },
+    "glm-5": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.z.ai/guides/overview/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "Z.ai原厂按百万tokens标准计费；当前价格页未按输入长度分段。缓存存储标注限时免费；Coding Plan订阅、地区和代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 1,
+            "output": 3.2,
+            "cacheRead": 0.2
+          }
+        ]
+      }
+    },
+    "glm-5.1": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.z.ai/guides/overview/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "Z.ai原厂按百万tokens标准计费；当前价格页未按输入长度分段。缓存存储标注限时免费；Coding Plan订阅、地区和代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 1.4,
+            "output": 4.4,
+            "cacheRead": 0.26
+          }
+        ]
+      }
+    },
+    "glm-5.2": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.z.ai/guides/overview/pricing",
+      "checkedAt": "2026-11-08",
+      "note": "Z.ai原厂按百万tokens标准计费；当前价格页未按输入长度分段。缓存存储标注限时免费；Coding Plan订阅、地区和代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 1.4,
+            "output": 4.4,
+            "cacheRead": 0.26
+          }
+        ]
+      }
+    },
+    "claude-haiku-4-5": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.claude.com/docs/en/models/haiku-4-5/overview",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 1,
+            "output": 5
+          }
+        ]
+      }
+    },
+    "claude-opus-4-5": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.claude.com/docs/en/models/opus-4-5/overview",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 5,
+            "output": 25
+          }
+        ]
+      }
+    },
+    "claude-opus-4-5-20251101": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.claude.com/docs/en/models/opus-4-5/overview",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 5,
+            "output": 25
+          }
+        ]
+      }
+    },
+    "claude-sonnet-4-5": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.claude.com/docs/en/models/sonnet-4-5/overview",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 3,
+            "output": 15
+          }
+        ]
+      }
+    },
+    "claude-sonnet-4-5-20250929": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.claude.com/docs/en/models/sonnet-4-5/overview",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 3,
+            "output": 15
+          }
+        ]
+      }
+    },
+    "gpt-3.5-turbo": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/gpt-3.5-turbo",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.5,
+            "output": 1.5
+          }
+        ]
+      }
+    },
+    "gpt-4-turbo": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/gpt-4-turbo",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 10,
+            "output": 30
+          }
+        ]
+      }
+    },
+    "gpt-4.1": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/gpt-4.1",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 2,
+            "output": 8,
+            "cacheRead": 0.5
+          }
+        ]
+      }
+    },
+    "gpt-4.1-mini": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/gpt-4.1-mini",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.4,
+            "output": 1.6,
+            "cacheRead": 0.1
+          }
+        ]
+      }
+    },
+    "gpt-4.1-nano": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/gpt-4.1-nano",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.1,
+            "output": 0.4,
+            "cacheRead": 0.025
+          }
+        ]
+      }
+    },
+    "gpt-4o": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/gpt-4o",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 2.5,
+            "output": 10,
+            "cacheRead": 1.25
+          }
+        ]
+      }
+    },
+    "gpt-4o-2024-08-06": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/gpt-4o",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 2.5,
+            "output": 10,
+            "cacheRead": 1.25
+          }
+        ]
+      }
+    },
+    "gpt-4o-mini": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/gpt-4o-mini",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.15,
+            "output": 0.6,
+            "cacheRead": 0.075
+          }
+        ]
+      }
+    },
+    "gpt-5": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/gpt-5",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 1.25,
+            "output": 10,
+            "cacheRead": 0.125
+          }
+        ]
+      }
+    },
+    "gpt-5-mini": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/gpt-5-mini",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.25,
+            "output": 2,
+            "cacheRead": 0.025
+          }
+        ]
+      }
+    },
+    "gpt-5-nano": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/gpt-5-nano",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 0.05,
+            "output": 0.4,
+            "cacheRead": 0.005
+          }
+        ]
+      }
+    },
+    "gpt-5-pro": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/gpt-5-pro",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 15,
+            "output": 120
+          }
+        ]
+      }
+    },
+    "gpt-5.1": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/gpt-5.1",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 1.25,
+            "output": 10,
+            "cacheRead": 0.125
+          }
+        ]
+      }
+    },
+    "gpt-5.2": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/gpt-5.2",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 1.75,
+            "output": 14,
+            "cacheRead": 0.175
+          }
+        ]
+      }
+    },
+    "gpt-5.2-pro": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/gpt-5.2-pro",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 21,
+            "output": 168
+          }
+        ]
+      }
+    },
+    "gpt-5.3-codex": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/gpt-5.3-codex",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 1.75,
+            "output": 14,
+            "cacheRead": 0.175
+          }
+        ]
+      }
+    },
+    "gpt-5.4": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        272000
+      ],
+      "source": "https://platform.openai.com/docs/models/gpt-5.4",
+      "checkedAt": "2026-11-08",
+      "note": "原厂Standard，输入超过272,000时整次请求输入/缓存乘2、输出乘1.5；其他服务档、地区及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 272000,
+            "input": 2.5,
+            "output": 15,
+            "cacheRead": 0.25
+          },
+          {
+            "inputUpTo": null,
+            "input": 5.0,
+            "output": 22.5,
+            "cacheRead": 0.5
+          }
+        ]
+      }
+    },
+    "gpt-5.4-mini": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        272000
+      ],
+      "source": "https://platform.openai.com/docs/models/gpt-5.4-mini",
+      "checkedAt": "2026-11-08",
+      "note": "原厂Standard，输入超过272,000时整次请求输入/缓存乘2、输出乘1.5；其他服务档、地区及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 272000,
+            "input": 0.75,
+            "output": 4.5,
+            "cacheRead": 0.075
+          },
+          {
+            "inputUpTo": null,
+            "input": 1.5,
+            "output": 6.75,
+            "cacheRead": 0.15
+          }
+        ]
+      }
+    },
+    "gpt-5.4-nano": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        272000
+      ],
+      "source": "https://platform.openai.com/docs/models/gpt-5.4-nano",
+      "checkedAt": "2026-11-08",
+      "note": "原厂Standard，输入超过272,000时整次请求输入/缓存乘2、输出乘1.5；其他服务档、地区及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 272000,
+            "input": 0.2,
+            "output": 1.25,
+            "cacheRead": 0.02
+          },
+          {
+            "inputUpTo": null,
+            "input": 0.4,
+            "output": 1.875,
+            "cacheRead": 0.04
+          }
+        ]
+      }
+    },
+    "gpt-5.4-pro": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        272000
+      ],
+      "source": "https://platform.openai.com/docs/models/gpt-5.4-pro",
+      "checkedAt": "2026-11-08",
+      "note": "原厂Standard，输入超过272,000时整次请求输入/缓存乘2、输出乘1.5；其他服务档、地区及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 272000,
+            "input": 30,
+            "output": 180
+          },
+          {
+            "inputUpTo": null,
+            "input": 60,
+            "output": 270.0
+          }
+        ]
+      }
+    },
+    "gpt-5.5": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        272000
+      ],
+      "source": "https://platform.openai.com/docs/models/gpt-5.5",
+      "checkedAt": "2026-11-08",
+      "note": "原厂Standard，输入超过272,000时整次请求输入/缓存乘2、输出乘1.5；其他服务档、地区及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 272000,
+            "input": 5,
+            "output": 30,
+            "cacheRead": 0.5
+          },
+          {
+            "inputUpTo": null,
+            "input": 10,
+            "output": 45.0,
+            "cacheRead": 1.0
+          }
+        ]
+      }
+    },
+    "gpt-5.5-pro": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        272000
+      ],
+      "source": "https://platform.openai.com/docs/models/gpt-5.5-pro",
+      "checkedAt": "2026-11-08",
+      "note": "原厂Standard，输入超过272,000时整次请求输入/缓存乘2、输出乘1.5；其他服务档、地区及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 272000,
+            "input": 30,
+            "output": 180
+          },
+          {
+            "inputUpTo": null,
+            "input": 60,
+            "output": 270.0
+          }
+        ]
+      }
+    },
+    "gpt-5.6": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        272000
+      ],
+      "source": "https://platform.openai.com/docs/models/gpt-5.6-sol",
+      "checkedAt": "2026-11-08",
+      "note": "原厂Standard，输入超过272,000时整次请求输入/缓存乘2、输出乘1.5；其他服务档、地区及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 272000,
+            "input": 4,
+            "output": 20,
+            "cacheRead": 0.4
+          },
+          {
+            "inputUpTo": null,
+            "input": 8,
+            "output": 30.0,
+            "cacheRead": 0.8
+          }
+        ]
+      }
+    },
+    "gpt-daybreak-blue-latest": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/gpt-daybreak-blue-latest",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 4,
+            "output": 20,
+            "cacheRead": 0.4
+          }
+        ]
+      }
+    },
+    "o1": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/o1",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 15,
+            "output": 60,
+            "cacheRead": 7.5
+          }
+        ]
+      }
+    },
+    "o1-pro": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/o1-pro",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 150,
+            "output": 600
+          }
+        ]
+      }
+    },
+    "o3-mini": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/o3-mini",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 1.1,
+            "output": 4.4,
+            "cacheRead": 0.55
+          }
+        ]
+      }
+    },
+    "o3-pro": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/o3-pro",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 20,
+            "output": 80
+          }
+        ]
+      }
+    },
+    "o4-mini": {
+      "kind": "flat",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/o4-mini",
+      "checkedAt": "2026-11-08",
+      "note": "原厂模型页标准token价格；页内未声明按输入长度加价。其他服务档、订阅及代理价格另计。",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": null,
+            "input": 1.1,
+            "output": 4.4,
+            "cacheRead": 0.275
+          }
+        ]
+      }
+    },
+    "grok-4.20-0309-non-reasoning": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        199999
+      ],
+      "source": "https://docs.x.ai/developers/models/grok-4.20-0309-non-reasoning",
+      "checkedAt": "2026-11-08",
+      "note": "GAP FILLED (prior had no contextPricing). Requests reaching 200k prompt tokens billed at the higher rate for all tokens.",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 199999,
+            "input": 1.25,
+            "output": 2.5,
+            "cacheRead": 0.2
+          },
+          {
+            "inputUpTo": null,
+            "input": 2.5,
+            "output": 5,
+            "cacheRead": 0.4
+          }
+        ]
+      }
+    },
+    "grok-4.20-0309-reasoning": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        199999
+      ],
+      "source": "https://docs.x.ai/developers/models/grok-4.20-0309-reasoning",
+      "checkedAt": "2026-11-08",
+      "note": "GAP FILLED; same bands as the non-reasoning sibling.",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 199999,
+            "input": 1.25,
+            "output": 2.5,
+            "cacheRead": 0.2
+          },
+          {
+            "inputUpTo": null,
+            "input": 2.5,
+            "output": 5,
+            "cacheRead": 0.4
+          }
+        ]
+      }
+    },
+    "grok-4.20-multi-agent-0309": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        199999
+      ],
+      "source": "https://docs.x.ai/developers/models/grok-4.20-multi-agent-0309",
+      "checkedAt": "2026-11-08",
+      "note": "GAP FILLED; same bands as grok-4.3/grok-4.20-reasoning.",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 199999,
+            "input": 1.25,
+            "output": 2.5,
+            "cacheRead": 0.2
+          },
+          {
+            "inputUpTo": null,
+            "input": 2.5,
+            "output": 5,
+            "cacheRead": 0.4
+          }
+        ]
+      }
+    },
+    "grok-4.3": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        199999
+      ],
+      "source": "https://docs.x.ai/developers/models/grok-4.3",
+      "checkedAt": "2026-11-08",
+      "note": "MAJOR GAP FILLED (prior had no contextPricing at all).",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 199999,
+            "input": 1.25,
+            "output": 2.5,
+            "cacheRead": 0.2
+          },
+          {
+            "inputUpTo": null,
+            "input": 2.5,
+            "output": 5,
+            "cacheRead": 0.4
+          }
+        ]
+      }
+    },
+    "grok-build-0.1": {
+      "kind": "tiered",
+      "scope": "direct-api",
+      "thresholds": [
+        199999
+      ],
+      "source": "https://docs.x.ai/developers/models/grok-build-0.1",
+      "checkedAt": "2026-11-08",
+      "note": "GAP FILLED (prior explicitly flagged its own numbers as unverified).",
+      "rates": {
+        "currency": "USD",
+        "perTokens": 1000000,
+        "bands": [
+          {
+            "inputUpTo": 199999,
+            "input": 1,
+            "output": 2,
+            "cacheRead": 0.2
+          },
+          {
+            "inputUpTo": null,
+            "input": 2,
+            "output": 4,
+            "cacheRead": 0.4
+          }
+        ]
+      }
+    },
+    "qvq-max": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.aliyun.com/notice/118177",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen-deep-research": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/qwen-deep-research",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen-doc-turbo": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/data-mining-qwen-doc",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen-flash": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen-long": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen-math-plus": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen-math-turbo": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen-max": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen-mt-plus": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/machine-translation",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen-mt-turbo": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/machine-translation",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen-plus": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.modelstudio.console.alibabacloud.com/en/model-studio/deep-thinking",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen-plus-character": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen-plus-character-ja": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen-turbo": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.aliyun.com/notice/118177",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen-vl-max": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.aliyun.com/notice/118177",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen-vl-ocr": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/qwen-vl-ocr",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen-vl-plus": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.aliyun.com/notice/118177",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3-14b": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3-235b-a22b": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3-32b": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3-8b": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3-coder-30b-a3b-instruct": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3-coder-480b-a35b-instruct": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3-coder-flash": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3-coder-plus": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3-max": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3-next-80b-a3b-instruct": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3-next-80b-a3b-thinking": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3-vl-235b-a22b": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/vision",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3-vl-30b-a3b": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/vision",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3-vl-plus": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.modelstudio.console.alibabacloud.com/en/model-studio/qwen-api-via-openai-chat-completions",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3.5-122b-a10b": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.modelstudio.console.alibabacloud.com/en/model-studio/deep-thinking",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3.5-27b": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.modelstudio.console.alibabacloud.com/en/model-studio/deep-thinking",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3.5-35b-a3b": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3.5-397b-a17b": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3.5-flash": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3.5-plus": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3.6-27b": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3.6-35b-a3b": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3.6-flash": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.modelstudio.console.alibabacloud.com/en/model-studio/claude-code",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3.6-max-preview": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3.6-plus": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3.7-flash": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.alibabacloud.com/help/en/model-studio/text-generation-model",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3.7-max": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.modelstudio.console.alibabacloud.com/en/model-studio/deep-thinking",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3.7-plus": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.modelstudio.console.alibabacloud.com/en/model-studio/claude-code",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3.8-flash": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.modelstudio.console.alibabacloud.com/en/model-studio/deep-thinking",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3.8-max": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.modelstudio.console.alibabacloud.com/en/model-studio/deep-thinking",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwen3.8-omni-flash": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.modelstudio.console.alibabacloud.com/en/model-studio/deep-thinking",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "qwq-plus": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://www.aliyun.com/notice/118177",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前完整上下文分段、地区及币种未核实；不将零散价格或其他地区费率作为本预设的完整价格。"
+    },
+    "doubao-seed-1-6-251015": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.volcengine.com/docs/zh/ark/model-list.md",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "doubao-seed-1-6-flash-250828": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://models.dev/api.json",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "doubao-seed-1-6-vision-250815": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://models.dev/api.json",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "doubao-seed-1-8-251228": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.volcengine.com/docs/zh/ark/model-list.md",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "doubao-seed-2-0-code-preview-260215": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.volcengine.com/docs/zh/ark/model-list.md",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "doubao-seed-2-0-mini-260428": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.volcengine.com/docs/zh/ark/model-list.md",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "doubao-seed-2-0-pro-260215": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://docs.volcengine.com/docs/zh/ark/model-list.md",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "gemini-2.5-computer-use-preview-10-2025": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://aistudio.google.com/docs/deprecations",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "gemini-2.5-flash": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://aistudio.google.com/docs/deprecations",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "gemini-2.5-flash-lite": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://aistudio.google.com/docs/models/gemini-2.5-flash-lite",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "gemini-2.5-pro": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://aistudio.google.com/docs/models/gemini-2.5-pro",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "gemini-3.5-flash": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://aistudio.google.com/docs/deprecations",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "gemini-3.5-flash-lite": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://aistudio.google.com/docs/deprecations",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "gemini-3.6-flash": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://aistudio.google.com/docs/models/gemini-3.6-flash",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "gemini-3.7-flash": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://aistudio.google.com/docs/deprecations",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "gemini-flash-latest": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://aistudio.google.com/docs/models",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "gemini-flash-lite-latest": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://aistudio.google.com/docs/models",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "gemini-pro-latest": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://aistudio.google.com/docs/models",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "gemma-4-26b-a4b-it": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://ai.google.dev/gemma/docs/core/model_card_4",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "gemma-4-31b-it": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://ai.google.dev/gemma/docs/core/model_card_4",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "glm-5-turbo": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://models.dev/api.json",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "glm-5v-turbo": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://models.dev/api.json",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "gpt-4o-2024-05-13": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/gpt-4o",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "gpt-4o-2024-11-20": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/gpt-4o",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "gpt-5.3-codex-spark": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/gpt-5.3-codex-spark",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "gpt-daybreak-red-latest": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/gpt-daybreak-red-latest",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    },
+    "o3": {
+      "kind": "unknown",
+      "scope": "direct-api",
+      "thresholds": [],
+      "source": "https://platform.openai.com/docs/models/o3",
+      "checkedAt": "2026-11-08",
+      "note": "该精确ID的当前原厂分段计费资料不足；不能从同族型号推断。"
+    }
+  }
+}

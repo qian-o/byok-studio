@@ -1,0 +1,17 @@
+{
+  "chatCompletions": {
+    "effort": {},
+    "thinking-type": { "effortPath": null, "modePath": ["thinking", "type"], "enabledValue": "enabled", "disabledValue": "disabled", "disabledEfforts": ["none", "disabled"] },
+    "thinking-type-effort": { "modePath": ["thinking", "type"], "enabledValue": "enabled", "disabledValue": "disabled", "disabledEfforts": ["none", "disabled"], "effortValues": { "none": null, "disabled": null, "enabled": null } },
+    "enable-thinking": { "effortPath": null, "modePath": ["enable_thinking"], "enabledValue": true, "disabledValue": false, "disabledEfforts": ["none", "disabled"] },
+    "gemini-level": { "effortPath": ["extra_body", "google", "thinking_config", "thinking_level"], "toolCallMetadataPaths": [["extra_content", "google", "thought_signature"]] }
+  },
+  "messages": {
+    "effort": { "allowUnsignedThinking": true },
+    "adaptive": { "modePath": ["thinking", "type"], "enabledValue": "adaptive", "disabledValue": "disabled", "defaultMode": "adaptive", "disabledEfforts": ["none", "disabled"], "supportsForcedTools": false },
+    "adaptive-effort": { "modePath": ["thinking", "type"], "enabledValue": "adaptive", "disabledValue": "disabled", "defaultMode": "adaptive", "disabledEfforts": ["none", "disabled"], "supportsForcedTools": false },
+    "budget": { "effortPath": null, "modePath": ["thinking", "type"], "enabledValue": "enabled", "disabledValue": "disabled", "defaultMode": "enabled", "disabledEfforts": ["none", "disabled"], "budgetPath": ["thinking", "budget_tokens"], "budget": { "min": 1024, "max": 100000000, "default": 1024 }, "supportsForcedTools": false },
+    "enabled": { "effortPath": null, "modePath": ["thinking", "type"], "enabledValue": "enabled", "disabledValue": "disabled", "defaultMode": "enabled", "disabledEfforts": ["none", "disabled"], "allowUnsignedThinking": true },
+    "enabled-effort": { "modePath": ["thinking", "type"], "enabledValue": "enabled", "disabledValue": "disabled", "defaultMode": "enabled", "disabledEfforts": ["none", "disabled"], "allowUnsignedThinking": true }
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "name": "byok-studio",
+  "displayName": "BYOK Studio",
+  "description": "%extension.description%",
+  "version": "1.0.0",
+  "publisher": "byok-studio-local",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.145.0"
+  },
+  "categories": [
+    "AI",
+    "Chat"
+  ],
+  "keywords": [
+    "byok",
+    "language-models",
+    "openai",
+    "anthropic",
+    "copilot"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "extensionKind": [
+    "ui"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "byokStudio.manage",
+        "title": "%command.manage%",
+        "category": "BYOK Studio",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "byokStudio.openModels",
+        "title": "%command.openModels%",
+        "category": "BYOK Studio"
+      },
+      {
+        "command": "byokStudio.openOfficialConfiguration",
+        "title": "%command.openOfficialConfiguration%",
+        "category": "BYOK Studio"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "watch": "tsc -watch -p .",
+    "test": "npm run build && node --test test/*.test.cjs",
+    "test:host": "node scripts/test-host.cjs",
+    "vscode:prepublish": "npm run build",
+    "package": "vsce package --allow-missing-repository --no-rewrite-relative-links --out releases/",
+    "prebuild": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "dependencies": {
+    "jsonc-parser": "^3.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.116.0",
+    "@vscode/test-electron": "3.1.0",
+    "@vscode/vsce": "4.1.0",
+    "typescript": "7.0.2"
+  },
+  "extensionDependencies": [
+    "GitHub.copilot-chat"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/qian-o/byok-studio.git"
+  },
+  "homepage": "https://github.com/qian-o/byok-studio#readme",
+  "bugs": {
+    "url": "https://github.com/qian-o/byok-studio/issues"
+  }
+}

@@ -1,0 +1,3553 @@
+{
+  "additions": [
+    "doubao-seed-2-1-pro-260915"
+  ],
+  "replacements": [
+    {
+      "id": "GLM-5.3",
+      "before": {
+        "name": "GLM-5.3",
+        "contextWindow": 128000,
+        "maxOutputTokens": 16000,
+        "toolCalling": false,
+        "vision": false,
+        "thinking": false,
+        "supportsReasoningEffort": [],
+        "source": "User-requested exact ID; unverified initial defaults: context/output limits and capability flags are not provider-verified. Primary API examples use lowercase glm-5.3; case equivalence is not verified: https://docs.z.ai/guides/llm/glm-5.3",
+        "verifiedAt": null
+      },
+      "after": {
+        "name": "GLM-5.3",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 131072,
+        "toolCalling": true,
+        "vision": false,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "high",
+          "max"
+        ],
+        "source": "https://docs.z.ai/guides/llm/glm-5.3 ; https://docs.z.ai/api-reference/llm/chat-completion.md ; https://docs.z.ai/guides/overview/pricing ; GLM文本schema明确最大输出131072，Flash文档写128K，当前输出数值沿用目录。上下文仅标1M，数值1000000沿用目录作为预算，精确二进制/十进制边界未核实。 显式大小写代理预设来自glm-5.3，不改变请求ID，不宣称已验证代理映射。",
+        "verifiedAt": null,
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://docs.z.ai/guides/overview/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "Z.ai原厂直连标准token计费，不按输入长度分段；Coding Plan订阅及其他代理渠道另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 1.4,
+                "output": 4.4,
+                "cacheRead": 0.26
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "GLM-5.3系列必须启用思考，不能使用disabled；官方档位仅low/high/max。Chat为thinking.type=enabled加reasoning_effort，兼容协议由服务端归一化。",
+          "chatCompletions": "thinking-type-effort",
+          "messages": "enabled-effort"
+        },
+        "aliasOf": "glm-5.3",
+        "chatCompletionOptions": {
+          "maxTokensField": "max_tokens",
+          "includeUsage": false
+        }
+      }
+    },
+    {
+      "id": "GLM-5.3-Flash",
+      "before": {
+        "name": "GLM-5.3-Flash",
+        "contextWindow": 128000,
+        "maxOutputTokens": 16000,
+        "toolCalling": false,
+        "vision": false,
+        "thinking": false,
+        "supportsReasoningEffort": [],
+        "source": "User-requested exact ID; unverified initial defaults: context/output limits and capability flags are not provider-verified. Primary Model Code is lowercase glm-5.3-flash; case equivalence is not verified: https://docs.z.ai/guides/vlm/glm-5.3-flash",
+        "verifiedAt": null
+      },
+      "after": {
+        "name": "GLM-5.3-Flash",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 131072,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "high",
+          "max"
+        ],
+        "source": "https://docs.z.ai/guides/vlm/glm-5.3-flash ; https://docs.z.ai/api-reference/llm/chat-completion.md ; https://docs.z.ai/guides/overview/pricing ; GLM文本schema明确最大输出131072，Flash文档写128K，当前输出数值沿用目录。上下文仅标1M，数值1000000沿用目录作为预算，精确二进制/十进制边界未核实。 显式大小写代理预设来自glm-5.3-flash，不改变请求ID，不宣称已验证代理映射。",
+        "verifiedAt": null,
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://docs.z.ai/guides/overview/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "Z.ai原厂直连标准token计费，不按输入长度分段；Coding Plan订阅及其他代理渠道另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 0.15,
+                "output": 0.5,
+                "cacheRead": 0.03
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "GLM-5.3系列必须启用思考，不能使用disabled；官方档位仅low/high/max。Chat为thinking.type=enabled加reasoning_effort，兼容协议由服务端归一化。",
+          "chatCompletions": "thinking-type-effort",
+          "messages": "enabled-effort"
+        },
+        "aliasOf": "glm-5.3-flash",
+        "chatCompletionOptions": {
+          "maxTokensField": "max_tokens",
+          "includeUsage": false
+        }
+      }
+    },
+    {
+      "id": "claude-fable-5",
+      "before": {
+        "name": "Claude Fable 5",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: anthropic): https://models.dev/api.json; reasoning-effort values only checked 2026-11-07: https://platform.claude.com/docs/en/build-with-claude/effort",
+        "verifiedAt": null,
+        "releaseDate": "2026-06-07",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+          "checkedAt": "2026-11-08",
+          "note": "当前原厂标准价格未按输入长度分段加价；缓存写入/读取、快速模式或其他渠道仍可能采用不同费率。"
+        }
+      },
+      "after": {
+        "name": "Claude Fable 5",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/effort ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为20 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 10,
+                "output": 50,
+                "cacheRead": 1,
+                "cacheWrite": 12.5
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Messages 使用 thinking.type=adaptive，档位通过 output_config.effort 设置；是否能关闭思考取决于具体型号。",
+          "messages": "adaptive"
+        },
+        "releaseDate": "2026-06-07"
+      }
+    },
+    {
+      "id": "claude-fable-5-1",
+      "before": {
+        "name": "Claude Fable 5.1",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: anthropic): https://models.dev/api.json; reasoning-effort values only checked 2026-11-07: https://platform.claude.com/docs/en/build-with-claude/effort",
+        "verifiedAt": null,
+        "releaseDate": "2026-09-01",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+          "checkedAt": "2026-11-08",
+          "note": "当前原厂标准价格未按输入长度分段加价；缓存写入/读取、快速模式或其他渠道仍可能采用不同费率。"
+        }
+      },
+      "after": {
+        "name": "Claude Fable 5.1",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/effort ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为20 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 10,
+                "output": 50,
+                "cacheRead": 0.25,
+                "cacheWrite": 12.5
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Messages 使用 thinking.type=adaptive，档位通过 output_config.effort 设置；是否能关闭思考取决于具体型号。",
+          "messages": "adaptive"
+        },
+        "releaseDate": "2026-09-01"
+      }
+    },
+    {
+      "id": "claude-haiku-4-5-20251001",
+      "before": {
+        "name": "Claude Haiku 4.5",
+        "contextWindow": 200000,
+        "maxOutputTokens": 64000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [],
+        "source": "models.dev community catalog (first-party provider: anthropic): https://models.dev/api.json",
+        "verifiedAt": null,
+        "releaseDate": "2025-10-15",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+          "checkedAt": "2026-11-08",
+          "note": "当前原厂标准价格未按输入长度分段加价；缓存写入/读取、快速模式或其他渠道仍可能采用不同费率。"
+        }
+      },
+      "after": {
+        "name": "Claude Haiku 4.5",
+        "contextWindow": 200000,
+        "maxOutputTokens": 64000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [],
+        "source": "https://platform.claude.com/docs/en/models/haiku-4-5/overview ; https://platform.claude.com/docs/en/build-with-claude/thinking ; https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/extended-thinking (budget_tokens default check, 2026-11-08) ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为2 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 1,
+                "output": 5,
+                "cacheRead": 0.1,
+                "cacheWrite": 1.25
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "此模型使用 thinking.budget_tokens 或关闭思考，没有官方 effort 枚举；1024 tokens 是扩展在未设置预算时的起始设置。",
+          "messages": "budget"
+        },
+        "releaseDate": "2025-10-15"
+      }
+    },
+    {
+      "id": "claude-haiku-5-5",
+      "before": {
+        "name": "Claude Haiku 5.5",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: anthropic): https://models.dev/api.json; reasoning-effort values only checked 2026-11-07: https://platform.claude.com/docs/en/build-with-claude/effort",
+        "verifiedAt": null,
+        "releaseDate": "2026-10-07",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            100000
+          ],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+          "checkedAt": "2026-11-08",
+          "note": "输入超过 100,000 tokens 时，整次请求的输入、缓存写入/读取和输出费率提高为 5 倍；恰好 100,000 属于标准档。"
+        }
+      },
+      "after": {
+        "name": "Claude Haiku 5.5",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/effort ; https://platform.claude.com/docs/en/models/haiku-4-5/overview (comparison table) ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            100000
+          ],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "原厂直连 Standard：输入≤100,000为标准档；超过100,000，整次请求的输入、输出及缓存费率乘5。缓存写入表内为5分钟；1小时分别为0.20/1.00 USD/百万 tokens。Batch、地区费率及代理价格另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": 100000,
+                "input": 0.1,
+                "output": 0.5,
+                "cacheRead": 0.01,
+                "cacheWrite": 0.125
+              },
+              {
+                "inputUpTo": null,
+                "input": 0.5,
+                "output": 2.5,
+                "cacheRead": 0.05,
+                "cacheWrite": 0.625
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Messages 使用 thinking.type=adaptive，档位通过 output_config.effort 设置；是否能关闭思考取决于具体型号。",
+          "messages": "adaptive"
+        },
+        "releaseDate": "2026-10-07"
+      }
+    },
+    {
+      "id": "claude-opus-4-6",
+      "before": {
+        "name": "Claude Opus 4.6",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: anthropic): https://models.dev/api.json; reasoning-effort values only checked 2026-11-07: https://platform.claude.com/docs/en/build-with-claude/effort",
+        "verifiedAt": null,
+        "releaseDate": "2026-02-04",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+          "checkedAt": "2026-11-08",
+          "note": "当前原厂标准价格未按输入长度分段加价；缓存写入/读取、快速模式或其他渠道仍可能采用不同费率。"
+        }
+      },
+      "after": {
+        "name": "Claude Opus 4.6",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "max"
+        ],
+        "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/thinking ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为10 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 5,
+                "output": 25,
+                "cacheRead": 0.5,
+                "cacheWrite": 6.25
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Messages 使用 thinking.type=adaptive，档位通过 output_config.effort 设置；是否能关闭思考取决于具体型号。",
+          "messages": "adaptive"
+        },
+        "releaseDate": "2026-02-04"
+      }
+    },
+    {
+      "id": "claude-opus-4-7",
+      "before": {
+        "name": "Claude Opus 4.7",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: anthropic): https://models.dev/api.json; reasoning-effort values only checked 2026-11-07: https://platform.claude.com/docs/en/build-with-claude/effort",
+        "verifiedAt": null,
+        "releaseDate": "2026-04-14",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+          "checkedAt": "2026-11-08",
+          "note": "当前原厂标准价格未按输入长度分段加价；缓存写入/读取、快速模式或其他渠道仍可能采用不同费率。"
+        }
+      },
+      "after": {
+        "name": "Claude Opus 4.7",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/effort ; https://platform.claude.com/docs/en/build-with-claude/thinking ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为10 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 5,
+                "output": 25,
+                "cacheRead": 0.5,
+                "cacheWrite": 6.25
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Messages 使用 thinking.type=adaptive，档位通过 output_config.effort 设置；是否能关闭思考取决于具体型号。",
+          "messages": "adaptive"
+        },
+        "releaseDate": "2026-04-14"
+      }
+    },
+    {
+      "id": "claude-opus-4-8",
+      "before": {
+        "name": "Claude Opus 4.8",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: anthropic): https://models.dev/api.json; reasoning-effort values only checked 2026-11-07: https://platform.claude.com/docs/en/build-with-claude/effort",
+        "verifiedAt": null,
+        "releaseDate": "2026-05-28",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+          "checkedAt": "2026-11-08",
+          "note": "当前原厂标准价格未按输入长度分段加价；缓存写入/读取、快速模式或其他渠道仍可能采用不同费率。"
+        }
+      },
+      "after": {
+        "name": "Claude Opus 4.8",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/effort ; https://platform.claude.com/docs/en/build-with-claude/thinking ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为10 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 5,
+                "output": 25,
+                "cacheRead": 0.5,
+                "cacheWrite": 6.25
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Messages 使用 thinking.type=adaptive，档位通过 output_config.effort 设置；是否能关闭思考取决于具体型号。",
+          "messages": "adaptive"
+        },
+        "releaseDate": "2026-05-28"
+      }
+    },
+    {
+      "id": "claude-opus-5",
+      "before": {
+        "name": "Claude Opus 5",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: anthropic): https://models.dev/api.json; reasoning-effort values only checked 2026-11-07: https://platform.claude.com/docs/en/build-with-claude/effort",
+        "verifiedAt": null,
+        "releaseDate": "2026-07-24",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+          "checkedAt": "2026-11-08",
+          "note": "当前原厂标准价格未按输入长度分段加价；缓存写入/读取、快速模式或其他渠道仍可能采用不同费率。"
+        }
+      },
+      "after": {
+        "name": "Claude Opus 5",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/effort ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为10 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 5,
+                "output": 25,
+                "cacheRead": 0.5,
+                "cacheWrite": 6.25
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Messages 使用 thinking.type=adaptive，档位通过 output_config.effort 设置；是否能关闭思考取决于具体型号。",
+          "messages": "adaptive"
+        },
+        "releaseDate": "2026-07-24"
+      }
+    },
+    {
+      "id": "claude-opus-5-5",
+      "before": {
+        "name": "Claude Opus 5.5",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: anthropic): https://models.dev/api.json; reasoning-effort values only checked 2026-11-07: https://platform.claude.com/docs/en/build-with-claude/effort",
+        "verifiedAt": null,
+        "releaseDate": "2026-09-22",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+          "checkedAt": "2026-11-08",
+          "note": "当前原厂标准价格未按输入长度分段加价；缓存写入/读取、快速模式或其他渠道仍可能采用不同费率。"
+        }
+      },
+      "after": {
+        "name": "Claude Opus 5.5",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/effort ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为8 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。 cheaper per-token than Opus 5 despite being the newer model — verified, not an error",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 4,
+                "output": 20,
+                "cacheRead": 0.2,
+                "cacheWrite": 5
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Messages 使用 thinking.type=adaptive，档位通过 output_config.effort 设置；是否能关闭思考取决于具体型号。",
+          "messages": "adaptive"
+        },
+        "releaseDate": "2026-09-22"
+      }
+    },
+    {
+      "id": "claude-sonnet-4-6",
+      "before": {
+        "name": "Claude Sonnet 4.6",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: anthropic): https://models.dev/api.json; reasoning-effort values only checked 2026-11-07: https://platform.claude.com/docs/en/build-with-claude/effort",
+        "verifiedAt": null,
+        "releaseDate": "2026-02-17",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+          "checkedAt": "2026-11-08",
+          "note": "当前原厂标准价格未按输入长度分段加价；缓存写入/读取、快速模式或其他渠道仍可能采用不同费率。"
+        }
+      },
+      "after": {
+        "name": "Claude Sonnet 4.6",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "max"
+        ],
+        "source": "https://platform.claude.com/docs/en/models/sonnet-4-6/overview (verbatim: 'Input pricing: $3 / MTok · Output pricing: $15 / MTok') ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为6 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 3,
+                "output": 15,
+                "cacheRead": 0.3,
+                "cacheWrite": 3.75
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Messages 使用 thinking.type=adaptive，档位通过 output_config.effort 设置；是否能关闭思考取决于具体型号。",
+          "messages": "adaptive"
+        },
+        "releaseDate": "2026-02-17"
+      }
+    },
+    {
+      "id": "claude-sonnet-5",
+      "before": {
+        "name": "Claude Sonnet 5",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: anthropic): https://models.dev/api.json; reasoning-effort values only checked 2026-11-07: https://platform.claude.com/docs/en/build-with-claude/effort",
+        "verifiedAt": null,
+        "releaseDate": "2026-06-29",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+          "checkedAt": "2026-11-08",
+          "note": "当前原厂标准价格未按输入长度分段加价；缓存写入/读取、快速模式或其他渠道仍可能采用不同费率。"
+        }
+      },
+      "after": {
+        "name": "Claude Sonnet 5",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/effort ; https://platform.claude.com/docs/en/build-with-claude/thinking ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为4 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。 footnote: this $2/$10 rate was originally introductory but is now PERMANENT standard price; a previously planned 2026-09-01 increase to $3/$15 was CANCELLED",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 2,
+                "output": 10,
+                "cacheRead": 0.2,
+                "cacheWrite": 2.5
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Messages 使用 thinking.type=adaptive，档位通过 output_config.effort 设置；是否能关闭思考取决于具体型号。",
+          "messages": "adaptive"
+        },
+        "releaseDate": "2026-06-29"
+      }
+    },
+    {
+      "id": "claude-sonnet-5-5",
+      "before": {
+        "name": "Claude Sonnet 5.5",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: anthropic): https://models.dev/api.json; reasoning-effort values only checked 2026-11-07: https://platform.claude.com/docs/en/build-with-claude/effort",
+        "verifiedAt": null,
+        "releaseDate": "2026-09-28",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+          "checkedAt": "2026-11-08",
+          "note": "当前原厂标准价格未按输入长度分段加价；缓存写入/读取、快速模式或其他渠道仍可能采用不同费率。"
+        }
+      },
+      "after": {
+        "name": "Claude Sonnet 5.5",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "https://platform.claude.com/docs/en/about-claude/pricing ; https://platform.claude.com/docs/en/build-with-claude/effort ; https://platform.claude.com/docs/en/build-with-claude/thinking ; https://platform.claude.com/docs/en/build-with-claude/context-windows",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "原厂直连 Standard，不因输入长度另加价。缓存写入表内为5分钟；1小时为4 USD/百万 tokens。Batch、地区、快速模式与代理价格另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 2,
+                "output": 10,
+                "cacheRead": 0.1,
+                "cacheWrite": 2.5
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Messages 使用 thinking.type=adaptive，档位通过 output_config.effort 设置；是否能关闭思考取决于具体型号。",
+          "messages": "adaptive"
+        },
+        "releaseDate": "2026-09-28"
+      }
+    },
+    {
+      "id": "codex-auto-review",
+      "before": {
+        "name": "Codex Auto Review",
+        "contextWindow": 128000,
+        "maxOutputTokens": 16000,
+        "toolCalling": false,
+        "vision": false,
+        "thinking": false,
+        "supportsReasoningEffort": [],
+        "source": "用户提供的请求模型 ID；官方规格未核实，暂使用初始配置。端点是否支持此 ID 需由服务商确认。",
+        "verifiedAt": null
+      },
+      "after": {
+        "name": "Codex Auto Review",
+        "contextWindow": 128000,
+        "maxOutputTokens": 16000,
+        "toolCalling": false,
+        "vision": false,
+        "thinking": false,
+        "supportsReasoningEffort": [],
+        "source": "用户提供的请求模型 ID；官方规格未核实，暂使用初始配置。端点是否支持此 ID 需由服务商确认。",
+        "verifiedAt": null,
+        "contextPricing": {
+          "kind": "unknown",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://developers.openai.com/api/docs/pricing ; https://learn.chatgpt.com/docs/sandboxing/auto-review",
+          "checkedAt": "2026-11-08",
+          "note": "未找到此精确代理ID对应的公开模型规格和独立计费表；名称也用于Codex自动审核功能，不能据此推断代理的底层模型。需代理提供映射和计费。"
+        }
+      }
+    },
+    {
+      "id": "deepseek-flash",
+      "before": {
+        "name": "DeepSeek V4.1 Flash 1017",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 393216,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "high",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: deepseek): https://models.dev/api.json; reasoning-effort values only checked 2026-11-07: https://api-docs.deepseek.com/guides/thinking_mode/",
+        "verifiedAt": null,
+        "releaseDate": "2026-10-17"
+      },
+      "after": {
+        "name": "DeepSeek V4.1 Flash 1017",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 393216,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "low",
+          "high",
+          "max"
+        ],
+        "source": "https://api-docs.deepseek.com/quick_start/pricing ; https://api-docs.deepseek.com/api/create-chat-completion ; https://api-docs.deepseek.com/api/create-message ; 官方上下文1M与目录数值1,048,576一致；输出明确为384K(393216)。",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://api-docs.deepseek.com/quick_start/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "不按输入长度加价；表内为峰时价格，闲时全部费率为一半。峰时：UTC周一至周五01:00–04:00及06:00–10:00，中国法定节假日除外；其余为闲时。代理及火山方舟渠道另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 0.3,
+                "output": 1.2,
+                "cacheRead": 0.006
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方使用none/low/high/max，默认high；thinking.type显式值优先。budget_tokens在DeepSeek兼容端忽略。未指定输出时非思考8K、思考64K、max档128K；本预设单次输出预算64K，可调整。 Messages按create-message端点schema使用output_config.effort；thinking_mode概览表的列标签存在冲突，以端点定义为准。",
+          "chatCompletions": "thinking-type-effort",
+          "messages": "enabled-effort"
+        },
+        "chatCompletionOptions": {
+          "maxTokensField": "max_tokens",
+          "includeUsage": true
+        },
+        "releaseDate": "2026-10-17",
+        "defaultOutputTokens": 65536
+      }
+    },
+    {
+      "id": "deepseek-v4-pro",
+      "before": {
+        "name": "DeepSeek V4 Pro",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 393216,
+        "toolCalling": true,
+        "vision": false,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "high",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: deepseek): https://models.dev/api.json; reasoning-effort values only checked 2026-11-07: https://api-docs.deepseek.com/guides/thinking_mode/",
+        "verifiedAt": null,
+        "releaseDate": "2026-08-13"
+      },
+      "after": {
+        "name": "DeepSeek V4 Pro",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 393216,
+        "toolCalling": true,
+        "vision": false,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "low",
+          "high",
+          "max"
+        ],
+        "source": "https://api-docs.deepseek.com/quick_start/pricing ; https://api-docs.deepseek.com/api/create-chat-completion ; https://api-docs.deepseek.com/api/create-message ; 官方上下文1M与目录数值1,048,576一致；输出明确为384K(393216)。",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://api-docs.deepseek.com/quick_start/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "不按输入长度加价；表内为峰时价格，闲时全部费率为一半。峰时：UTC周一至周五01:00–04:00及06:00–10:00，中国法定节假日除外；其余为闲时。代理及火山方舟渠道另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 1.32,
+                "output": 3.96,
+                "cacheRead": 0.044
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方使用none/low/high/max，默认high；thinking.type显式值优先。budget_tokens在DeepSeek兼容端忽略。未指定输出时非思考8K、思考64K、max档128K；本预设单次输出预算64K，可调整。 Messages按create-message端点schema使用output_config.effort；thinking_mode概览表的列标签存在冲突，以端点定义为准。",
+          "chatCompletions": "thinking-type-effort",
+          "messages": "enabled-effort"
+        },
+        "chatCompletionOptions": {
+          "maxTokensField": "max_tokens",
+          "includeUsage": true
+        },
+        "releaseDate": "2026-08-13",
+        "defaultOutputTokens": 65536
+      }
+    },
+    {
+      "id": "deepseek-v4.1-flash",
+      "before": {
+        "name": "DeepSeek-V4.1-Flash",
+        "contextWindow": 128000,
+        "maxOutputTokens": 16000,
+        "toolCalling": false,
+        "vision": false,
+        "thinking": false,
+        "supportsReasoningEffort": [],
+        "source": "User-requested exact ID; unverified initial defaults: context/output limits and capability flags are not provider-verified. Primary docs name deepseek-flash; no exact proxy-ID mapping verified: https://api-docs.deepseek.com/quick_start/pricing/",
+        "verifiedAt": null
+      },
+      "after": {
+        "name": "DeepSeek-V4.1-Flash",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 393216,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "low",
+          "high",
+          "max"
+        ],
+        "source": "https://api-docs.deepseek.com/quick_start/pricing ; https://api-docs.deepseek.com/api/create-chat-completion ; https://api-docs.deepseek.com/api/create-message ; 官方上下文1M与目录数值1,048,576一致；输出明确为384K(393216)。 显式代理预设采用deepseek-flash所列DeepSeek-V4.1-Flash-1017规格；未验证代理实际映射，请求ID不变。",
+        "verifiedAt": null,
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://api-docs.deepseek.com/quick_start/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "不按输入长度加价；表内为峰时价格，闲时全部费率为一半。峰时：UTC周一至周五01:00–04:00及06:00–10:00，中国法定节假日除外；其余为闲时。代理及火山方舟渠道另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 0.3,
+                "output": 1.2,
+                "cacheRead": 0.006
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方使用none/low/high/max，默认high；thinking.type显式值优先。budget_tokens在DeepSeek兼容端忽略。未指定输出时非思考8K、思考64K、max档128K；本预设单次输出预算64K，可调整。 Messages按create-message端点schema使用output_config.effort；thinking_mode概览表的列标签存在冲突，以端点定义为准。",
+          "chatCompletions": "thinking-type-effort",
+          "messages": "enabled-effort"
+        },
+        "aliasOf": "deepseek-flash",
+        "chatCompletionOptions": {
+          "maxTokensField": "max_tokens",
+          "includeUsage": true
+        },
+        "defaultOutputTokens": 65536
+      }
+    },
+    {
+      "id": "deepseek-v4.1-flash-1017",
+      "before": {
+        "name": "DeepSeek-V4.1-Flash-1017",
+        "contextWindow": 128000,
+        "maxOutputTokens": 16000,
+        "toolCalling": false,
+        "vision": false,
+        "thinking": false,
+        "supportsReasoningEffort": [],
+        "source": "User-requested exact ID; unverified initial defaults: context/output limits and capability flags are not provider-verified. DeepSeek-V4.1-Flash-1017 is a model version, not a documented request ID; use deepseek-flash on the official endpoint: https://api-docs.deepseek.com/quick_start/pricing/",
+        "verifiedAt": null
+      },
+      "after": {
+        "name": "DeepSeek-V4.1-Flash-1017",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 393216,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "low",
+          "high",
+          "max"
+        ],
+        "source": "https://api-docs.deepseek.com/quick_start/pricing ; https://api-docs.deepseek.com/api/create-chat-completion ; https://api-docs.deepseek.com/api/create-message ; 官方上下文1M与目录数值1,048,576一致；输出明确为384K(393216)。 显式代理预设采用deepseek-flash所列DeepSeek-V4.1-Flash-1017规格；未验证代理实际映射，请求ID不变。",
+        "verifiedAt": null,
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://api-docs.deepseek.com/quick_start/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "不按输入长度加价；表内为峰时价格，闲时全部费率为一半。峰时：UTC周一至周五01:00–04:00及06:00–10:00，中国法定节假日除外；其余为闲时。代理及火山方舟渠道另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 0.3,
+                "output": 1.2,
+                "cacheRead": 0.006
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方使用none/low/high/max，默认high；thinking.type显式值优先。budget_tokens在DeepSeek兼容端忽略。未指定输出时非思考8K、思考64K、max档128K；本预设单次输出预算64K，可调整。 Messages按create-message端点schema使用output_config.effort；thinking_mode概览表的列标签存在冲突，以端点定义为准。",
+          "chatCompletions": "thinking-type-effort",
+          "messages": "enabled-effort"
+        },
+        "aliasOf": "deepseek-flash",
+        "chatCompletionOptions": {
+          "maxTokensField": "max_tokens",
+          "includeUsage": true
+        },
+        "defaultOutputTokens": 65536
+      }
+    },
+    {
+      "id": "doubao-seed-2-0-lite-260428",
+      "before": {
+        "name": "Seed 2.0 Lite",
+        "contextWindow": 256000,
+        "maxOutputTokens": 131072,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "minimal",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: volcengine): https://models.dev/api.json; reasoning-effort values only checked 2026-11-08: https://docs.volcengine.com/docs/zh/ark/deep-thinking.md",
+        "verifiedAt": null,
+        "releaseDate": "2026-02-14"
+      },
+      "after": {
+        "name": "Seed 2.0 Lite",
+        "contextWindow": 256000,
+        "maxOutputTokens": 131072,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "minimal",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: volcengine): https://models.dev/api.json; reasoning-effort values only checked 2026-11-08: https://docs.volcengine.com/docs/zh/ark/deep-thinking.md",
+        "verifiedAt": null,
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            32000,
+            128000
+          ],
+          "source": "https://docs.volcengine.com/docs/ark/model-pricing",
+          "checkedAt": "2026-11-08",
+          "note": "方舟标准在线2.0 Lite价格表，长度单位千token：≤32K、(32K,128K]、(128K,256K]；按整次输入长度选择输入/输出费率。Flex/低延迟/批量是另一服务维度，不是Context档位。",
+          "rates": {
+            "currency": "CNY",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": 32000,
+                "input": 0.3,
+                "output": 4.5,
+                "cacheRead": 0.12
+              },
+              {
+                "inputUpTo": 128000,
+                "input": 0.45,
+                "output": 6.75,
+                "cacheRead": 0.18
+              },
+              {
+                "inputUpTo": null,
+                "input": 0.9,
+                "output": 13.5,
+                "cacheRead": 0.36
+              }
+            ]
+          }
+        },
+        "releaseDate": "2026-02-14"
+      }
+    },
+    {
+      "id": "doubao-seed-2-1-pro",
+      "before": {
+        "name": "Doubao-Seed-2.1-Pro",
+        "contextWindow": 128000,
+        "maxOutputTokens": 16000,
+        "toolCalling": false,
+        "vision": false,
+        "thinking": false,
+        "supportsReasoningEffort": [],
+        "source": "User-requested exact ID; unverified initial defaults: context/output limits and capability flags are not provider-verified. Primary docs list versioned request IDs including doubao-seed-2-1-pro-260628 and -260915; no unsuffixed mapping verified: https://docs.volcengine.com/docs/zh/ark/model-list.md",
+        "verifiedAt": null
+      },
+      "after": {
+        "name": "Doubao-Seed-2.1-Pro",
+        "contextWindow": 1024000,
+        "maxOutputTokens": 256000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "minimal",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "https://docs.volcengine.com/docs/zh/ark/model-list.md ; https://docs.volcengine.com/docs/zh/ark/chat-api.md ; https://docs.volcengine.com/docs/zh/ark/messages-api.md ; https://docs.volcengine.com/docs/ark/model-pricing ; 官方标注上下文/输入1024k、输出256k；此处按千token十进制记数，精确二进制边界未核实。max_tokens默认4096为答案预算，区别于含思考的max_completion_tokens（接口上限65536）；本预设单次总输出预算65536。 无日期代理ID按doubao-seed-2-1-pro-260915作显式预设，实际快照未经代理文档确认；旧Pro260628只有256k窗口。 https://docs.volcengine.com/docs/zh/ark/deep-thinking.md",
+        "verifiedAt": null,
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://docs.volcengine.com/docs/ark/model-pricing",
+          "checkedAt": "2026-11-08",
+          "note": "火山方舟标准在线服务，按当前2.1家族价格表不分Context长度档。缓存存储另计0.017元/百万tokens/小时；Flex/Batch输入与输出约为标准一半，缓存读取另按服务档。Pro未列低延迟档。服务档不等于上下文长度档；代理价格另计。",
+          "rates": {
+            "currency": "CNY",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 6,
+                "output": 30,
+                "cacheRead": 1.2
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方深度思考表逐一列出2.1 Pro260915/260628与Turbo260628，默认high；7个值均接受，none/minimal关闭思考，xhigh/max由服务端映射到high，low/medium/high原样。https://docs.volcengine.com/docs/zh/ark/deep-thinking.md",
+          "chatCompletions": "thinking-type-effort",
+          "messages": "enabled-effort",
+          "disabledEfforts": [
+            "none",
+            "minimal"
+          ]
+        },
+        "aliasOf": "doubao-seed-2-1-pro-260915",
+        "chatCompletionOptions": {
+          "maxTokensField": "max_completion_tokens",
+          "includeUsage": true,
+          "maxOutputTokens": 65536
+        },
+        "maxInputTokens": 1024000,
+        "defaultOutputTokens": 65536
+      }
+    },
+    {
+      "id": "doubao-seed-2-1-pro-260628",
+      "before": {
+        "name": "Seed 2.1 Pro",
+        "contextWindow": 256000,
+        "maxOutputTokens": 16000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "minimal",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: volcengine): https://models.dev/api.json; reasoning-effort values only checked 2026-11-08: https://docs.volcengine.com/docs/zh/ark/deep-thinking.md; unverified initial output setting: maxOutputTokens=16000 is an editable request default, not the provider maximum; models.dev reports context=256000, output=256000, but a separate numeric input ceiling is not verified",
+        "verifiedAt": null,
+        "releaseDate": "2026-06-23"
+      },
+      "after": {
+        "name": "Seed 2.1 Pro",
+        "contextWindow": 256000,
+        "maxOutputTokens": 256000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "minimal",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "https://docs.volcengine.com/docs/zh/ark/model-list.md ; https://docs.volcengine.com/docs/zh/ark/chat-api.md ; https://docs.volcengine.com/docs/zh/ark/messages-api.md ; https://docs.volcengine.com/docs/ark/model-pricing ; 官方标注上下文/输入256k、输出256k；此处按千token十进制记数，精确二进制边界未核实。max_tokens默认4096为答案预算，区别于含思考的max_completion_tokens（接口上限65536）；本预设单次总输出预算65536。 https://docs.volcengine.com/docs/zh/ark/deep-thinking.md",
+        "verifiedAt": null,
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://docs.volcengine.com/docs/ark/model-pricing",
+          "checkedAt": "2026-11-08",
+          "note": "火山方舟标准在线服务，按当前2.1家族价格表不分Context长度档。缓存存储另计0.017元/百万tokens/小时；Flex/Batch输入与输出约为标准一半，缓存读取另按服务档。Pro未列低延迟档。服务档不等于上下文长度档；代理价格另计。",
+          "rates": {
+            "currency": "CNY",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 6,
+                "output": 30,
+                "cacheRead": 1.2
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方深度思考表逐一列出2.1 Pro260915/260628与Turbo260628，默认high；7个值均接受，none/minimal关闭思考，xhigh/max由服务端映射到high，low/medium/high原样。https://docs.volcengine.com/docs/zh/ark/deep-thinking.md",
+          "chatCompletions": "thinking-type-effort",
+          "messages": "enabled-effort",
+          "disabledEfforts": [
+            "none",
+            "minimal"
+          ]
+        },
+        "chatCompletionOptions": {
+          "maxTokensField": "max_completion_tokens",
+          "includeUsage": true,
+          "maxOutputTokens": 65536
+        },
+        "releaseDate": "2026-06-23",
+        "maxInputTokens": 256000,
+        "defaultOutputTokens": 65536
+      }
+    },
+    {
+      "id": "doubao-seed-2-1-turbo",
+      "before": {
+        "name": "Doubao-Seed-2.1-Turbo",
+        "contextWindow": 128000,
+        "maxOutputTokens": 16000,
+        "toolCalling": false,
+        "vision": false,
+        "thinking": false,
+        "supportsReasoningEffort": [],
+        "source": "User-requested exact ID; unverified initial defaults: context/output limits and capability flags are not provider-verified. Primary docs list doubao-seed-2-1-turbo-260628; no unsuffixed mapping verified: https://docs.volcengine.com/docs/zh/ark/model-list.md",
+        "verifiedAt": null
+      },
+      "after": {
+        "name": "Doubao-Seed-2.1-Turbo",
+        "contextWindow": 256000,
+        "maxOutputTokens": 256000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "minimal",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "https://docs.volcengine.com/docs/zh/ark/model-list.md ; https://docs.volcengine.com/docs/zh/ark/chat-api.md ; https://docs.volcengine.com/docs/zh/ark/messages-api.md ; https://docs.volcengine.com/docs/ark/model-pricing ; 官方标注上下文/输入256k、输出256k；此处按千token十进制记数，精确二进制边界未核实。max_tokens默认4096为答案预算，区别于含思考的max_completion_tokens（接口上限65536）；本预设单次总输出预算65536。 无日期代理ID按doubao-seed-2-1-turbo-260628作显式预设，实际快照未经代理文档确认；旧Pro260628只有256k窗口。 https://docs.volcengine.com/docs/zh/ark/deep-thinking.md",
+        "verifiedAt": null,
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://docs.volcengine.com/docs/ark/model-pricing",
+          "checkedAt": "2026-11-08",
+          "note": "火山方舟标准在线服务，按当前2.1家族价格表不分Context长度档。缓存存储另计0.017元/百万tokens/小时；Flex/Batch输入与输出约为标准一半，缓存读取另按服务档。Turbo低延迟档为6/1.2/30元（输入/缓存/输出）。服务档不等于上下文长度档；代理价格另计。",
+          "rates": {
+            "currency": "CNY",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 3,
+                "output": 15,
+                "cacheRead": 0.6
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方深度思考表逐一列出2.1 Pro260915/260628与Turbo260628，默认high；7个值均接受，none/minimal关闭思考，xhigh/max由服务端映射到high，low/medium/high原样。https://docs.volcengine.com/docs/zh/ark/deep-thinking.md",
+          "chatCompletions": "thinking-type-effort",
+          "messages": "enabled-effort",
+          "disabledEfforts": [
+            "none",
+            "minimal"
+          ]
+        },
+        "aliasOf": "doubao-seed-2-1-turbo-260628",
+        "chatCompletionOptions": {
+          "maxTokensField": "max_completion_tokens",
+          "includeUsage": true,
+          "maxOutputTokens": 65536
+        },
+        "maxInputTokens": 256000,
+        "defaultOutputTokens": 65536
+      }
+    },
+    {
+      "id": "doubao-seed-2-1-turbo-260628",
+      "before": {
+        "name": "Seed 2.1 Turbo",
+        "contextWindow": 256000,
+        "maxOutputTokens": 16000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "minimal",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: volcengine): https://models.dev/api.json; reasoning-effort values only checked 2026-11-08: https://docs.volcengine.com/docs/zh/ark/deep-thinking.md; unverified initial output setting: maxOutputTokens=16000 is an editable request default, not the provider maximum; models.dev reports context=256000, output=256000, but a separate numeric input ceiling is not verified",
+        "verifiedAt": null,
+        "releaseDate": "2026-06-23"
+      },
+      "after": {
+        "name": "Seed 2.1 Turbo",
+        "contextWindow": 256000,
+        "maxOutputTokens": 256000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "minimal",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "https://docs.volcengine.com/docs/zh/ark/model-list.md ; https://docs.volcengine.com/docs/zh/ark/chat-api.md ; https://docs.volcengine.com/docs/zh/ark/messages-api.md ; https://docs.volcengine.com/docs/ark/model-pricing ; 官方标注上下文/输入256k、输出256k；此处按千token十进制记数，精确二进制边界未核实。max_tokens默认4096为答案预算，区别于含思考的max_completion_tokens（接口上限65536）；本预设单次总输出预算65536。 https://docs.volcengine.com/docs/zh/ark/deep-thinking.md",
+        "verifiedAt": null,
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://docs.volcengine.com/docs/ark/model-pricing",
+          "checkedAt": "2026-11-08",
+          "note": "火山方舟标准在线服务，按当前2.1家族价格表不分Context长度档。缓存存储另计0.017元/百万tokens/小时；Flex/Batch输入与输出约为标准一半，缓存读取另按服务档。Turbo低延迟档为6/1.2/30元（输入/缓存/输出）。服务档不等于上下文长度档；代理价格另计。",
+          "rates": {
+            "currency": "CNY",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 3,
+                "output": 15,
+                "cacheRead": 0.6
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方深度思考表逐一列出2.1 Pro260915/260628与Turbo260628，默认high；7个值均接受，none/minimal关闭思考，xhigh/max由服务端映射到high，low/medium/high原样。https://docs.volcengine.com/docs/zh/ark/deep-thinking.md",
+          "chatCompletions": "thinking-type-effort",
+          "messages": "enabled-effort",
+          "disabledEfforts": [
+            "none",
+            "minimal"
+          ]
+        },
+        "chatCompletionOptions": {
+          "maxTokensField": "max_completion_tokens",
+          "includeUsage": true,
+          "maxOutputTokens": 65536
+        },
+        "releaseDate": "2026-06-23",
+        "maxInputTokens": 256000,
+        "defaultOutputTokens": 65536
+      }
+    },
+    {
+      "id": "gemini-3-flash-preview",
+      "before": {
+        "name": "Gemini 3 Flash Preview",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 65536,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "minimal",
+          "low",
+          "medium",
+          "high"
+        ],
+        "source": "models.dev community catalog (first-party provider: google): https://models.dev/api.json; reasoning-effort values only checked 2026-11-08: https://aistudio.google.com/docs/openai",
+        "verifiedAt": null,
+        "releaseDate": "2025-12-17",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://aistudio.google.com/docs/pricing#gemini-3-flash-preview",
+          "checkedAt": "2026-11-08",
+          "note": "当前 Standard 价格不按输入长度分段；输入模态、缓存、服务等级仍分别计价。"
+        }
+      },
+      "after": {
+        "name": "Gemini 3 Flash Preview",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 65536,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "minimal",
+          "low",
+          "medium",
+          "high"
+        ],
+        "source": "https://aistudio.google.com/docs/thinking#thinking-levels ; https://aistudio.google.com/docs/openai ; https://aistudio.google.com/docs/long-decode ; 同步输出上限65536；Argon的1M长输出仅适用于单独的Interactions长解码，不能套在当前三种同步接口。",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://aistudio.google.com/docs/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "原厂Standard，表内为文本/图像/视频输入价格；批量、音频及其他服务档另计。不按Context长度加价；音频输入及缓存读取为表内2倍，缓存存储另计1 USD/百万tokens/小时。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 0.5,
+                "output": 3,
+                "cacheRead": 0.05
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "OpenAI兼容reasoning_effort为minimal/low/medium/high；Argon的minimal映射为原生low。 Google没有官方Messages端点，Messages由代理转换。工具调用必须原样保留thought_signature。",
+          "chatCompletions": "effort"
+        },
+        "releaseDate": "2025-12-17"
+      }
+    },
+    {
+      "id": "gemini-3.1-flash-lite",
+      "before": {
+        "name": "Gemini 3.1 Flash Lite",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 65536,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "minimal",
+          "low",
+          "medium",
+          "high"
+        ],
+        "source": "models.dev community catalog (first-party provider: google): https://models.dev/api.json; reasoning-effort values only checked 2026-11-08: https://aistudio.google.com/docs/openai",
+        "verifiedAt": null,
+        "releaseDate": "2026-05-07"
+      },
+      "after": {
+        "name": "Gemini 3.1 Flash Lite",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 65536,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "minimal",
+          "low",
+          "medium",
+          "high"
+        ],
+        "source": "https://aistudio.google.com/docs/thinking#thinking-levels ; https://aistudio.google.com/docs/openai ; https://aistudio.google.com/docs/long-decode ; 同步输出上限65536；Argon的1M长输出仅适用于单独的Interactions长解码，不能套在当前三种同步接口。",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://aistudio.google.com/docs/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "原厂Standard，表内为文本/图像/视频输入价格；批量、音频及其他服务档另计。不按Context长度加价；音频输入及缓存读取为表内2倍，缓存存储另计1 USD/百万tokens/小时。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 0.25,
+                "output": 1.5,
+                "cacheRead": 0.025
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "OpenAI兼容reasoning_effort为minimal/low/medium/high；Argon的minimal映射为原生low。 Google没有官方Messages端点，Messages由代理转换。工具调用必须原样保留thought_signature。",
+          "chatCompletions": "effort"
+        },
+        "releaseDate": "2026-05-07"
+      }
+    },
+    {
+      "id": "gemini-3.1-flash-lite-preview",
+      "before": {
+        "name": "Gemini 3.1 Flash Lite Preview",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 65536,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "minimal",
+          "low",
+          "medium",
+          "high"
+        ],
+        "source": "models.dev community catalog (first-party provider: google): https://models.dev/api.json; reasoning-effort values only checked 2026-11-08: https://aistudio.google.com/docs/openai",
+        "verifiedAt": null,
+        "releaseDate": "2026-03-03",
+        "contextPricing": {
+          "kind": "unknown",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://aistudio.google.com/docs/models/gemini-3.1-flash-lite-preview",
+          "checkedAt": "2026-11-08",
+          "note": "官方文档标注此 preview 已于 2026-05-25 停用，没有可核实的当前直连价格；代理是否仍支持及如何计费需单独确认。"
+        }
+      },
+      "after": {
+        "name": "Gemini 3.1 Flash Lite Preview",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 65536,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "minimal",
+          "low",
+          "medium",
+          "high"
+        ],
+        "source": "https://aistudio.google.com/docs/models/gemini-3.1-flash-lite-preview ; 官方已于2026-05-25关闭此预览ID；历史上限及能力保留供代理使用，实际映射与当前可用档位需由代理确认。当前稳定模型为gemini-3.1-flash-lite。",
+        "verifiedAt": null,
+        "contextPricing": {
+          "kind": "unknown",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://aistudio.google.com/docs/models/gemini-3.1-flash-lite-preview",
+          "checkedAt": "2026-11-08",
+          "note": "原厂预览端点已退役，无当前计费表；代理是否映射为稳定版及其价格需要由代理确认。"
+        },
+        "reasoningControls": {
+          "note": "此预览ID已退役。所列档位是历史兼容预设，不代表原厂当前仍提供该ID；可选稳定版gemini-3.1-flash-lite。",
+          "chatCompletions": "effort"
+        },
+        "releaseDate": "2026-03-03"
+      }
+    },
+    {
+      "id": "gemini-3.1-pro-preview",
+      "before": {
+        "name": "Gemini 3.1 Pro Preview",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 65536,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [],
+        "source": "models.dev community catalog (first-party provider: google): https://models.dev/api.json",
+        "verifiedAt": null,
+        "releaseDate": "2026-02-19",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            200000
+          ],
+          "source": "https://aistudio.google.com/docs/pricing#gemini-3.1-pro-preview",
+          "checkedAt": "2026-11-08",
+          "note": "输入超过 200,000 tokens 时，整次请求的输入、缓存输入和输出使用长上下文费率；恰好 200,000 仍在标准档。"
+        }
+      },
+      "after": {
+        "name": "Gemini 3.1 Pro Preview",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 65536,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "source": "https://aistudio.google.com/docs/thinking#thinking-levels ; https://aistudio.google.com/docs/openai ; https://aistudio.google.com/docs/long-decode ; 同步输出上限65536；Argon的1M长输出仅适用于单独的Interactions长解码，不能套在当前三种同步接口。",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            200000
+          ],
+          "source": "https://aistudio.google.com/docs/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "原厂Standard，表内为文本/图像/视频输入价格；批量、音频及其他服务档另计。输入≤200000为标准档，超过200000整次请求输入及输出按长上下文费率。缓存存储另计4.50 USD/百万tokens/小时。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": 200000,
+                "input": 2,
+                "output": 12,
+                "cacheRead": 0.2
+              },
+              {
+                "inputUpTo": null,
+                "input": 4,
+                "output": 18,
+                "cacheRead": 0.4
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "原生thinking_level为low/medium/high；通过官方OpenAI兼容extra_body.google.thinking_config传递，不能同时发送reasoning_effort。 Google没有官方Messages端点，Messages由代理转换。工具调用必须原样保留thought_signature。",
+          "chatCompletions": "gemini-level"
+        },
+        "releaseDate": "2026-02-19"
+      }
+    },
+    {
+      "id": "gemini-3.1-pro-preview-customtools",
+      "before": {
+        "name": "Gemini 3.1 Pro Preview Custom Tools",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 65536,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [],
+        "source": "models.dev community catalog (first-party provider: google): https://models.dev/api.json",
+        "verifiedAt": null,
+        "releaseDate": "2026-02-19"
+      },
+      "after": {
+        "name": "Gemini 3.1 Pro Preview Custom Tools",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 65536,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [],
+        "source": "models.dev community catalog (first-party provider: google): https://models.dev/api.json",
+        "verifiedAt": null,
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            200000
+          ],
+          "source": "https://aistudio.google.com/docs/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "与Gemini3.1ProPreview共用官方价格卡；输入≤200000为标准档，超过时整次输入及输出采用长上下文档。缓存等附加收费见官方价格页。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": 200000,
+                "input": 2,
+                "output": 12
+              },
+              {
+                "inputUpTo": null,
+                "input": 4,
+                "output": 18
+              }
+            ]
+          }
+        },
+        "releaseDate": "2026-02-19"
+      }
+    },
+    {
+      "id": "gemini-3.8-flash",
+      "before": {
+        "name": "Gemini 3.8 Flash",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 65536,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low"
+        ],
+        "source": "models.dev community catalog (first-party provider: google): https://models.dev/api.json; reasoning-effort values only checked 2026-11-08: https://aistudio.google.com/docs/openai",
+        "verifiedAt": null,
+        "releaseDate": "2026-09-02",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://aistudio.google.com/docs/pricing#gemini-3.8-flash",
+          "checkedAt": "2026-11-08",
+          "note": "当前价格不按输入长度分段；限时价格在 2027-01-01 变化，服务等级也影响价格。"
+        }
+      },
+      "after": {
+        "name": "Gemini 3.8 Flash",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 65536,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "source": "https://aistudio.google.com/docs/thinking#thinking-levels ; https://aistudio.google.com/docs/openai ; https://aistudio.google.com/docs/long-decode ; 同步输出上限65536；Argon的1M长输出仅适用于单独的Interactions长解码，不能套在当前三种同步接口。",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://aistudio.google.com/docs/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "原厂Standard，表内为文本/图像/视频输入价格；批量、音频及其他服务档另计。当前优惠至2026-12-31；2027-01-01起输入1.5、输出7.5、缓存读取0.15 USD/百万tokens。缓存存储当前0.50、届时1.00 USD/百万tokens/小时。不按Context长度加价。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 0.75,
+                "output": 3.75,
+                "cacheRead": 0.075
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "原生thinking_level为low/medium/high；通过官方OpenAI兼容extra_body.google.thinking_config传递，不能同时发送reasoning_effort。 Google没有官方Messages端点，Messages由代理转换。工具调用必须原样保留thought_signature。",
+          "chatCompletions": "gemini-level"
+        },
+        "releaseDate": "2026-09-02"
+      }
+    },
+    {
+      "id": "gemini-4-argon",
+      "before": {
+        "name": "Gemini 4 Argon",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 65536,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "minimal",
+          "low",
+          "medium",
+          "high"
+        ],
+        "source": "Google official model documentation: https://aistudio.google.com/docs/models/gemini-4-argon (65536 is the synchronous output ceiling; 1048576 output requires long decode); OpenAI-compatible reasoning_effort: https://aistudio.google.com/docs/openai; release date only: models.dev community catalog (first-party provider: google): https://models.dev/api.json (not officially verified)",
+        "verifiedAt": "2026-11-08",
+        "releaseDate": "2026-10-13",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://aistudio.google.com/docs/pricing#gemini-4-argon",
+          "checkedAt": "2026-11-08",
+          "note": "当前价格不按输入长度分段；限时价格在 2026-12-01 变化，服务等级及渠道仍影响价格。"
+        }
+      },
+      "after": {
+        "name": "Gemini 4 Argon",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 65536,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "minimal",
+          "low",
+          "medium",
+          "high"
+        ],
+        "source": "https://aistudio.google.com/docs/thinking#thinking-levels ; https://aistudio.google.com/docs/openai ; https://aistudio.google.com/docs/long-decode ; 同步输出上限65536；Argon的1M长输出仅适用于单独的Interactions长解码，不能套在当前三种同步接口。",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://aistudio.google.com/docs/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "原厂Standard，表内为文本/图像/视频输入价格；批量、音频及其他服务档另计。当前优惠至2026-11-30；2026-12-01起输入4、输出20、缓存读取0.20 USD/百万tokens。不按Context长度加价。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 2,
+                "output": 10,
+                "cacheRead": 0.1
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "OpenAI兼容reasoning_effort为minimal/low/medium/high；Argon的minimal映射为原生low。 Google没有官方Messages端点，Messages由代理转换。工具调用必须原样保留thought_signature。",
+          "chatCompletions": "effort"
+        },
+        "releaseDate": "2026-10-13"
+      }
+    },
+    {
+      "id": "glm-5.3",
+      "before": {
+        "name": "GLM-5.3",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 131072,
+        "toolCalling": true,
+        "vision": false,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "high",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: zai): https://models.dev/api.json; reasoning-effort values only checked 2026-11-08: https://docs.z.ai/guides/llm/glm-5.3",
+        "verifiedAt": null,
+        "releaseDate": "2026-08-14"
+      },
+      "after": {
+        "name": "GLM-5.3",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 131072,
+        "toolCalling": true,
+        "vision": false,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "high",
+          "max"
+        ],
+        "source": "https://docs.z.ai/guides/llm/glm-5.3 ; https://docs.z.ai/api-reference/llm/chat-completion.md ; https://docs.z.ai/guides/overview/pricing ; GLM文本schema明确最大输出131072，Flash文档写128K，当前输出数值沿用目录。上下文仅标1M，数值1000000沿用目录作为预算，精确二进制/十进制边界未核实。",
+        "verifiedAt": null,
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://docs.z.ai/guides/overview/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "Z.ai原厂直连标准token计费，不按输入长度分段；Coding Plan订阅及其他代理渠道另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 1.4,
+                "output": 4.4,
+                "cacheRead": 0.26
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "GLM-5.3系列必须启用思考，不能使用disabled；官方档位仅low/high/max。Chat为thinking.type=enabled加reasoning_effort，兼容协议由服务端归一化。",
+          "chatCompletions": "thinking-type-effort",
+          "messages": "enabled-effort"
+        },
+        "chatCompletionOptions": {
+          "maxTokensField": "max_tokens",
+          "includeUsage": false
+        },
+        "releaseDate": "2026-08-14"
+      }
+    },
+    {
+      "id": "glm-5.3-flash",
+      "before": {
+        "name": "GLM-5.3-Flash",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 131072,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "high",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: zai): https://models.dev/api.json; reasoning-effort values only checked 2026-11-08: https://docs.z.ai/guides/vlm/glm-5.3-flash",
+        "verifiedAt": null,
+        "releaseDate": "2026-08-26"
+      },
+      "after": {
+        "name": "GLM-5.3-Flash",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 131072,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "high",
+          "max"
+        ],
+        "source": "https://docs.z.ai/guides/vlm/glm-5.3-flash ; https://docs.z.ai/api-reference/llm/chat-completion.md ; https://docs.z.ai/guides/overview/pricing ; GLM文本schema明确最大输出131072，Flash文档写128K，当前输出数值沿用目录。上下文仅标1M，数值1000000沿用目录作为预算，精确二进制/十进制边界未核实。",
+        "verifiedAt": null,
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://docs.z.ai/guides/overview/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "Z.ai原厂直连标准token计费，不按输入长度分段；Coding Plan订阅及其他代理渠道另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 0.15,
+                "output": 0.5,
+                "cacheRead": 0.03
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "GLM-5.3系列必须启用思考，不能使用disabled；官方档位仅low/high/max。Chat为thinking.type=enabled加reasoning_effort，兼容协议由服务端归一化。",
+          "chatCompletions": "thinking-type-effort",
+          "messages": "enabled-effort"
+        },
+        "chatCompletionOptions": {
+          "maxTokensField": "max_tokens",
+          "includeUsage": false
+        },
+        "releaseDate": "2026-08-26"
+      }
+    },
+    {
+      "id": "glm-5.3-flashx",
+      "before": {
+        "name": "GLM-5.3-FlashX",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 131072,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "high",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: zai): https://models.dev/api.json; reasoning-effort values only checked 2026-11-08: https://docs.z.ai/guides/vlm/glm-5.3-flash",
+        "verifiedAt": null,
+        "releaseDate": "2026-09-18"
+      },
+      "after": {
+        "name": "GLM-5.3-FlashX",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 131072,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "high",
+          "max"
+        ],
+        "source": "https://docs.z.ai/guides/vlm/glm-5.3-flash ; https://docs.z.ai/api-reference/llm/chat-completion.md ; https://docs.z.ai/guides/overview/pricing ; GLM文本schema明确最大输出131072，Flash文档写128K，当前输出数值沿用目录。上下文仅标1M，数值1000000沿用目录作为预算，精确二进制/十进制边界未核实。",
+        "verifiedAt": null,
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://docs.z.ai/guides/overview/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "Z.ai原厂直连标准token计费，不按输入长度分段；Coding Plan订阅及其他代理渠道另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 0.37,
+                "output": 1.25,
+                "cacheRead": 0.075
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "GLM-5.3系列必须启用思考，不能使用disabled；官方档位仅low/high/max。Chat为thinking.type=enabled加reasoning_effort，兼容协议由服务端归一化。",
+          "chatCompletions": "thinking-type-effort",
+          "messages": "enabled-effort"
+        },
+        "chatCompletionOptions": {
+          "maxTokensField": "max_tokens",
+          "includeUsage": false
+        },
+        "releaseDate": "2026-09-18"
+      }
+    },
+    {
+      "id": "gpt-5.6-luna",
+      "before": {
+        "name": "GPT-5.6 Luna",
+        "contextWindow": 1050000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: openai): https://models.dev/api.json; reasoning-effort values only checked 2026-11-07: https://developers.openai.com/api/docs/models/gpt-5.6-luna",
+        "verifiedAt": null,
+        "releaseDate": "2026-07-09",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            272000
+          ],
+          "source": "https://developers.openai.com/api/docs/models/gpt-5.6-luna ; https://developers.openai.com/api/docs/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "输入超过 272,000 tokens 时，整次请求按长上下文费率计价：输入/缓存费率为 2 倍、输出费率为 1.5 倍；恰好 272,000 属于标准档。"
+        }
+      },
+      "after": {
+        "name": "GPT-5.6 Luna",
+        "contextWindow": 1050000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "https://developers.openai.com/api/docs/models/gpt-5.6-luna ; https://developers.openai.com/api/docs/guides/reasoning",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            272000
+          ],
+          "source": "https://developers.openai.com/api/docs/pricing ; https://developers.openai.com/api/docs/models/gpt-5.6-luna",
+          "checkedAt": "2026-11-08",
+          "note": "Standard 原厂直连 API；输入超过272,000 tokens时整次请求进入高价档，恰好272,000仍为标准档。输入/缓存读取乘2，输出乘1.5。缓存写入另计：30分钟 0.25 / 12小时 0.5 USD/百万 tokens（标准区间）。 Batch/Flex/Fast/地区和订阅价格不属于此表；代理价格以实际规则为准。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": 272000,
+                "input": 0.2,
+                "output": 1.2,
+                "cacheRead": 0.02
+              },
+              {
+                "inputUpTo": null,
+                "input": 0.4,
+                "output": 1.7999999999999998,
+                "cacheRead": 0.04
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Responses 使用 reasoning.effort，Chat Completions 使用 reasoning_effort；Messages 是代理转换协议，支持情况取决于代理。",
+          "chatCompletions": "effort"
+        },
+        "releaseDate": "2026-07-09",
+        "maxInputTokens": 922000
+      }
+    },
+    {
+      "id": "gpt-5.6-sol",
+      "before": {
+        "name": "GPT-5.6 Sol",
+        "contextWindow": 1050000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: openai): https://models.dev/api.json; reasoning-effort values only checked 2026-11-07: https://developers.openai.com/api/docs/models/gpt-5.6-sol",
+        "verifiedAt": null,
+        "releaseDate": "2026-07-09",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            272000
+          ],
+          "source": "https://developers.openai.com/api/docs/models/gpt-5.6-sol ; https://developers.openai.com/api/docs/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "输入超过 272,000 tokens 时，整次请求按长上下文费率计价：输入/缓存费率为 2 倍、输出费率为 1.5 倍；恰好 272,000 属于标准档。"
+        }
+      },
+      "after": {
+        "name": "GPT-5.6 Sol",
+        "contextWindow": 1050000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "https://developers.openai.com/api/docs/models/gpt-5.6-sol ; https://developers.openai.com/api/docs/guides/reasoning",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            272000
+          ],
+          "source": "https://developers.openai.com/api/docs/pricing ; https://developers.openai.com/api/docs/models/gpt-5.6-sol",
+          "checkedAt": "2026-11-08",
+          "note": "Standard 原厂直连 API；输入超过272,000 tokens时整次请求进入高价档，恰好272,000仍为标准档。输入/缓存读取乘2，输出乘1.5。缓存写入另计：30分钟 5 / 12小时 10 USD/百万 tokens（标准区间）。 Batch/Flex/Fast/地区和订阅价格不属于此表；代理价格以实际规则为准。 promotional pricing stated to hold until 2026-11-30",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": 272000,
+                "input": 4,
+                "output": 20,
+                "cacheRead": 0.4
+              },
+              {
+                "inputUpTo": null,
+                "input": 8,
+                "output": 30,
+                "cacheRead": 0.8
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Responses 使用 reasoning.effort，Chat Completions 使用 reasoning_effort；Messages 是代理转换协议，支持情况取决于代理。",
+          "chatCompletions": "effort"
+        },
+        "releaseDate": "2026-07-09",
+        "maxInputTokens": 922000
+      }
+    },
+    {
+      "id": "gpt-5.6-terra",
+      "before": {
+        "name": "GPT-5.6 Terra",
+        "contextWindow": 1050000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: openai): https://models.dev/api.json; reasoning-effort values only checked 2026-11-07: https://developers.openai.com/api/docs/models/gpt-5.6-terra",
+        "verifiedAt": null,
+        "releaseDate": "2026-07-09",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            272000
+          ],
+          "source": "https://developers.openai.com/api/docs/models/gpt-5.6-terra ; https://developers.openai.com/api/docs/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "输入超过 272,000 tokens 时，整次请求按长上下文费率计价：输入/缓存费率为 2 倍、输出费率为 1.5 倍；恰好 272,000 属于标准档。"
+        }
+      },
+      "after": {
+        "name": "GPT-5.6 Terra",
+        "contextWindow": 1050000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "https://developers.openai.com/api/docs/models/gpt-5.6-terra ; https://developers.openai.com/api/docs/guides/reasoning",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            272000
+          ],
+          "source": "https://developers.openai.com/api/docs/pricing ; https://developers.openai.com/api/docs/models/gpt-5.6-terra",
+          "checkedAt": "2026-11-08",
+          "note": "Standard 原厂直连 API；输入超过272,000 tokens时整次请求进入高价档，恰好272,000仍为标准档。输入/缓存读取乘2，输出乘1.5。缓存写入另计：30分钟 2.5 / 12小时 5 USD/百万 tokens（标准区间）。 Batch/Flex/Fast/地区和订阅价格不属于此表；代理价格以实际规则为准。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": 272000,
+                "input": 2,
+                "output": 12,
+                "cacheRead": 0.2
+              },
+              {
+                "inputUpTo": null,
+                "input": 4,
+                "output": 18,
+                "cacheRead": 0.4
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Responses 使用 reasoning.effort，Chat Completions 使用 reasoning_effort；Messages 是代理转换协议，支持情况取决于代理。",
+          "chatCompletions": "effort"
+        },
+        "releaseDate": "2026-07-09",
+        "maxInputTokens": 922000
+      }
+    },
+    {
+      "id": "gpt-6-astra",
+      "before": {
+        "name": "GPT-6 Astra",
+        "contextWindow": 1050000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "OpenAI official model documentation: https://developers.openai.com/api/docs/models/gpt-6-astra; release date only: models.dev community catalog (first-party provider: openai): https://models.dev/api.json (not officially verified)",
+        "verifiedAt": "2026-11-07",
+        "releaseDate": "2026-09-04",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            272000
+          ],
+          "source": "https://developers.openai.com/api/docs/models/gpt-6-astra ; https://developers.openai.com/api/docs/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "输入超过 272,000 tokens 时，整次请求按长上下文费率计价：输入/缓存费率为 2 倍、输出费率为 1.5 倍；恰好 272,000 属于标准档。"
+        }
+      },
+      "after": {
+        "name": "GPT-6 Astra",
+        "contextWindow": 1050000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "https://developers.openai.com/api/docs/models/gpt-6-astra ; https://developers.openai.com/api/docs/guides/reasoning ; https://developers.openai.com/api/docs/guides/reasoning",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            272000
+          ],
+          "source": "https://developers.openai.com/api/docs/pricing ; https://developers.openai.com/api/docs/models/gpt-6-astra ; https://developers.openai.com/api/docs/guides/reasoning",
+          "checkedAt": "2026-11-08",
+          "note": "Standard 原厂直连 API；输入超过272,000 tokens时整次请求进入高价档，恰好272,000仍为标准档。输入/缓存读取乘2，输出乘1.5。缓存写入另计：30分钟 12.5 / 12小时 25 USD/百万 tokens（标准区间）。 Batch/Flex/Fast/地区和订阅价格不属于此表；代理价格以实际规则为准。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": 272000,
+                "input": 10,
+                "output": 50,
+                "cacheRead": 1
+              },
+              {
+                "inputUpTo": null,
+                "input": 20,
+                "output": 75,
+                "cacheRead": 2
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Responses 使用 reasoning.effort，Chat Completions 使用 reasoning_effort；Messages 是代理转换协议，支持情况取决于代理。 此模型官方 Chat Completions 不支持工具调用，请使用 Responses。",
+          "chatCompletions": "effort"
+        },
+        "releaseDate": "2026-09-04",
+        "maxInputTokens": 922000
+      }
+    },
+    {
+      "id": "gpt-6-luna",
+      "before": {
+        "name": "GPT-6 Luna",
+        "contextWindow": 1050000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [],
+        "source": "models.dev community catalog (first-party provider: openai): https://models.dev/api.json",
+        "verifiedAt": null,
+        "releaseDate": "2026-09-22"
+      },
+      "after": {
+        "name": "GPT-6 Luna",
+        "contextWindow": 1050000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "https://developers.openai.com/api/docs/models/gpt-6-luna ; https://developers.openai.com/api/docs/guides/reasoning",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            272000
+          ],
+          "source": "https://developers.openai.com/api/docs/pricing ; https://developers.openai.com/api/docs/models/gpt-6-luna",
+          "checkedAt": "2026-11-08",
+          "note": "Standard 原厂直连 API；输入超过272,000 tokens时整次请求进入高价档，恰好272,000仍为标准档。输入/缓存读取乘2，输出乘1.5。缓存写入另计：30分钟 0.125 / 12小时 未列 USD/百万 tokens（标准区间）。 Batch/Flex/Fast/地区和订阅价格不属于此表；代理价格以实际规则为准。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": 272000,
+                "input": 0.1,
+                "output": 0.5,
+                "cacheRead": 0.01
+              },
+              {
+                "inputUpTo": null,
+                "input": 0.2,
+                "output": 0.75,
+                "cacheRead": 0.02
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Responses 使用 reasoning.effort，Chat Completions 使用 reasoning_effort；Messages 是代理转换协议，支持情况取决于代理。 此模型的 Chat Completions 工具调用只在 none 档位受支持，建议使用 Responses。",
+          "chatCompletions": "effort"
+        },
+        "releaseDate": "2026-09-22",
+        "maxInputTokens": 922000
+      }
+    },
+    {
+      "id": "gpt-6-sol",
+      "before": {
+        "name": "GPT-6 Sol",
+        "contextWindow": 1050000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: openai): https://models.dev/api.json; reasoning-effort values only checked 2026-11-07: https://developers.openai.com/api/docs/models/gpt-6-sol",
+        "verifiedAt": null,
+        "releaseDate": "2026-09-22",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            272000
+          ],
+          "source": "https://developers.openai.com/api/docs/models/gpt-6-sol ; https://developers.openai.com/api/docs/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "输入超过 272,000 tokens 时，整次请求按长上下文费率计价：输入/缓存费率为 2 倍、输出费率为 1.5 倍；恰好 272,000 属于标准档。"
+        }
+      },
+      "after": {
+        "name": "GPT-6 Sol",
+        "contextWindow": 1050000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "https://developers.openai.com/api/docs/models/gpt-6-sol ; https://developers.openai.com/api/docs/guides/reasoning",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            272000
+          ],
+          "source": "https://developers.openai.com/api/docs/pricing ; https://developers.openai.com/api/docs/models/gpt-6-sol",
+          "checkedAt": "2026-11-08",
+          "note": "Standard 原厂直连 API；输入超过272,000 tokens时整次请求进入高价档，恰好272,000仍为标准档。输入/缓存读取乘2，输出乘1.5。缓存写入另计：30分钟 2.5 / 12小时 5 USD/百万 tokens（标准区间）。 Batch/Flex/Fast/地区和订阅价格不属于此表；代理价格以实际规则为准。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": 272000,
+                "input": 2,
+                "output": 10,
+                "cacheRead": 0.2
+              },
+              {
+                "inputUpTo": null,
+                "input": 4,
+                "output": 15,
+                "cacheRead": 0.4
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Responses 使用 reasoning.effort，Chat Completions 使用 reasoning_effort；Messages 是代理转换协议，支持情况取决于代理。 此模型的 Chat Completions 工具调用只在 none 档位受支持，建议使用 Responses。",
+          "chatCompletions": "effort"
+        },
+        "releaseDate": "2026-09-22",
+        "maxInputTokens": 922000
+      }
+    },
+    {
+      "id": "gpt-6.1-sol",
+      "before": {
+        "name": "GPT-6.1 Sol",
+        "contextWindow": 1050000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: openai): https://models.dev/api.json; reasoning-effort values only checked 2026-11-07: https://developers.openai.com/api/docs/models/gpt-6.1-sol",
+        "verifiedAt": null,
+        "releaseDate": "2026-09-29",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            272000
+          ],
+          "source": "https://developers.openai.com/api/docs/models/gpt-6.1-sol ; https://developers.openai.com/api/docs/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "输入超过 272,000 tokens 时，整次请求按长上下文费率计价：输入/缓存费率为 2 倍、输出费率为 1.5 倍；恰好 272,000 属于标准档。 Codex/ChatGPT Work 订阅用量有不同规则，本条只适用于直连 API Standard 价格。"
+        }
+      },
+      "after": {
+        "name": "GPT-6.1 Sol",
+        "contextWindow": 1050000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "https://developers.openai.com/api/docs/models/gpt-6.1-sol ; https://developers.openai.com/api/docs/guides/reasoning",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            272000
+          ],
+          "source": "https://developers.openai.com/api/docs/pricing ; https://developers.openai.com/api/docs/models/gpt-6.1-sol",
+          "checkedAt": "2026-11-08",
+          "note": "Standard 原厂直连 API；输入超过272,000 tokens时整次请求进入高价档，恰好272,000仍为标准档。输入/缓存读取乘2，输出乘1.5。缓存写入另计：30分钟 2.5 / 12小时 5 USD/百万 tokens（标准区间）。 Batch/Flex/Fast/地区和订阅价格不属于此表；代理价格以实际规则为准。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": 272000,
+                "input": 2,
+                "output": 10,
+                "cacheRead": 0.1
+              },
+              {
+                "inputUpTo": null,
+                "input": 4,
+                "output": 15,
+                "cacheRead": 0.2
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Responses 使用 reasoning.effort，Chat Completions 使用 reasoning_effort；Messages 是代理转换协议，支持情况取决于代理。 此模型官方 Chat Completions 不支持工具调用，请使用 Responses。",
+          "chatCompletions": "effort"
+        },
+        "releaseDate": "2026-09-29",
+        "maxInputTokens": 922000
+      }
+    },
+    {
+      "id": "gpt-6.1-terra",
+      "before": {
+        "name": "GPT-6.1 Terra",
+        "contextWindow": 1050000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: openai): https://models.dev/api.json; reasoning-effort values only checked 2026-11-07: https://developers.openai.com/api/docs/models/gpt-6.1-terra",
+        "verifiedAt": null,
+        "releaseDate": "2026-10-26",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            272000
+          ],
+          "source": "https://developers.openai.com/api/docs/models/gpt-6.1-terra ; https://developers.openai.com/api/docs/pricing",
+          "checkedAt": "2026-11-08",
+          "note": "输入超过 272,000 tokens 时，整次请求按长上下文费率计价：输入/缓存费率为 2 倍、输出费率为 1.5 倍；恰好 272,000 属于标准档。"
+        }
+      },
+      "after": {
+        "name": "GPT-6.1 Terra",
+        "contextWindow": 1050000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "source": "https://developers.openai.com/api/docs/models/gpt-6.1-terra ; https://developers.openai.com/api/docs/guides/reasoning",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            272000
+          ],
+          "source": "https://developers.openai.com/api/docs/pricing ; https://developers.openai.com/api/docs/models/gpt-6.1-terra",
+          "checkedAt": "2026-11-08",
+          "note": "Standard 原厂直连 API；输入超过272,000 tokens时整次请求进入高价档，恰好272,000仍为标准档。输入/缓存读取乘2，输出乘1.5。缓存写入另计：30分钟 1.25 / 12小时 2.5 USD/百万 tokens（标准区间）。 Batch/Flex/Fast/地区和订阅价格不属于此表；代理价格以实际规则为准。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": 272000,
+                "input": 1,
+                "output": 5,
+                "cacheRead": 0.05
+              },
+              {
+                "inputUpTo": null,
+                "input": 2,
+                "output": 7.5,
+                "cacheRead": 0.1
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Responses 使用 reasoning.effort，Chat Completions 使用 reasoning_effort；Messages 是代理转换协议，支持情况取决于代理。",
+          "chatCompletions": "effort"
+        },
+        "releaseDate": "2026-10-26",
+        "maxInputTokens": 922000
+      }
+    },
+    {
+      "id": "grok-4.5",
+      "before": {
+        "name": "Grok 4.5",
+        "contextWindow": 500000,
+        "maxOutputTokens": 16000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "source": "models.dev community catalog (first-party provider: xai): https://models.dev/api.json; reasoning-effort values only checked 2026-11-08: https://docs.x.ai/developers/model-capabilities/text/reasoning; unverified initial output setting: maxOutputTokens=16000 is an editable request default, not the provider maximum; models.dev reports context=500000, output=500000, but a separate numeric input ceiling is not verified",
+        "verifiedAt": null,
+        "releaseDate": "2026-07-08",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            199999
+          ],
+          "source": "https://docs.x.ai/developers/models/grok-4.5",
+          "checkedAt": "2026-11-08",
+          "note": "输入达到 200,000 tokens 时，整次请求的输入、缓存输入及输出按更高费率计费；标准预算设为 199,999。"
+        }
+      },
+      "after": {
+        "name": "Grok 4.5",
+        "contextWindow": 500000,
+        "maxOutputTokens": 16000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "source": "https://docs.x.ai/docs/models/grok-4.5 ; https://docs.x.ai/docs/model-capabilities/text/reasoning ; 官方核实500,000上下文、工具/视觉/思考及档位；官方资料未公布独立最大输出，16,000是可编辑的本地输出上限，不能当作官方最大值。",
+        "verifiedAt": null,
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            199999
+          ],
+          "source": "https://docs.x.ai/docs/models/grok-4.5",
+          "checkedAt": "2026-11-08",
+          "note": "原厂直连 Standard：输入<200,000为标准档，达到200,000即进入高价档（低价档最后一个输入token为199,999）；整次请求按该档费率计价。Batch优惠、工具费用和代理价格另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": 199999,
+                "input": 2,
+                "output": 6,
+                "cacheRead": 0.3
+              },
+              {
+                "inputUpTo": null,
+                "input": 4,
+                "output": 12,
+                "cacheRead": 0.6
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Responses/Chat 接口支持努力档位，不支持关闭推理；Messages 由代理转换，不应据 max/xhigh 猜测为 Claude adaptive。",
+          "chatCompletions": "effort"
+        },
+        "releaseDate": "2026-07-08",
+        "defaultOutputTokens": 16000
+      }
+    },
+    {
+      "id": "grok-4.6",
+      "before": {
+        "name": "Grok 4.6",
+        "contextWindow": 500000,
+        "maxOutputTokens": 16000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh"
+        ],
+        "source": "models.dev community catalog (first-party provider: xai): https://models.dev/api.json; reasoning-effort values only checked 2026-11-08: https://docs.x.ai/developers/model-capabilities/text/reasoning; unverified initial output setting: maxOutputTokens=16000 is an editable request default, not the provider maximum; models.dev reports context=500000, output=500000, but a separate numeric input ceiling is not verified",
+        "verifiedAt": null,
+        "releaseDate": "2026-08-12",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            199999
+          ],
+          "source": "https://docs.x.ai/developers/models/grok-4.6",
+          "checkedAt": "2026-11-08",
+          "note": "输入达到 200,000 tokens 时，整次请求的输入、缓存输入及输出按更高费率计费；标准预算设为 199,999。"
+        }
+      },
+      "after": {
+        "name": "Grok 4.6",
+        "contextWindow": 500000,
+        "maxOutputTokens": 16000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh"
+        ],
+        "source": "https://docs.x.ai/docs/models/grok-4.6 ; https://docs.x.ai/docs/model-capabilities/text/reasoning ; 官方核实500,000上下文、工具/视觉/思考及档位；官方资料未公布独立最大输出，16,000是可编辑的本地输出上限，不能当作官方最大值。",
+        "verifiedAt": null,
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            199999
+          ],
+          "source": "https://docs.x.ai/docs/models/grok-4.6",
+          "checkedAt": "2026-11-08",
+          "note": "原厂直连 Standard：输入<200,000为标准档，达到200,000即进入高价档（低价档最后一个输入token为199,999）；整次请求按该档费率计价。Batch优惠、工具费用和代理价格另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": 199999,
+                "input": 2,
+                "output": 6,
+                "cacheRead": 0.5
+              },
+              {
+                "inputUpTo": null,
+                "input": 4,
+                "output": 12,
+                "cacheRead": 1
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Responses/Chat 接口支持努力档位，不支持关闭推理；Messages 由代理转换，不应据 max/xhigh 猜测为 Claude adaptive。",
+          "chatCompletions": "effort"
+        },
+        "releaseDate": "2026-08-12",
+        "defaultOutputTokens": 16000
+      }
+    },
+    {
+      "id": "grok-4.7",
+      "before": {
+        "name": "Grok 4.7",
+        "contextWindow": 500000,
+        "maxOutputTokens": 16000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh"
+        ],
+        "source": "models.dev community catalog (first-party provider: xai): https://models.dev/api.json; reasoning-effort values only checked 2026-11-08: https://docs.x.ai/developers/model-capabilities/text/reasoning; unverified initial output setting: maxOutputTokens=16000 is an editable request default, not the provider maximum; models.dev reports context=500000, output=500000, but a separate numeric input ceiling is not verified",
+        "verifiedAt": null,
+        "releaseDate": "2026-09-21",
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            199999
+          ],
+          "source": "https://docs.x.ai/developers/models/grok-4.7",
+          "checkedAt": "2026-11-08",
+          "note": "输入达到 200,000 tokens 时，整次请求的输入、缓存输入及输出按更高费率计费；标准预算设为 199,999。"
+        }
+      },
+      "after": {
+        "name": "Grok 4.7",
+        "contextWindow": 500000,
+        "maxOutputTokens": 16000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh"
+        ],
+        "source": "https://docs.x.ai/docs/models/grok-4.7 ; https://docs.x.ai/docs/model-capabilities/text/reasoning ; 官方核实500,000上下文、工具/视觉/思考及档位；官方资料未公布独立最大输出，16,000是可编辑的本地输出上限，不能当作官方最大值。",
+        "verifiedAt": null,
+        "contextPricing": {
+          "kind": "tiered",
+          "scope": "direct-api",
+          "thresholds": [
+            199999
+          ],
+          "source": "https://docs.x.ai/docs/models/grok-4.7",
+          "checkedAt": "2026-11-08",
+          "note": "原厂直连 Standard：输入<200,000为标准档，达到200,000即进入高价档（低价档最后一个输入token为199,999）；整次请求按该档费率计价。Batch优惠、工具费用和代理价格另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": 199999,
+                "input": 2,
+                "output": 6,
+                "cacheRead": 0.5
+              },
+              {
+                "inputUpTo": null,
+                "input": 4,
+                "output": 12,
+                "cacheRead": 1
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "官方 Responses/Chat 接口支持努力档位，不支持关闭推理；Messages 由代理转换，不应据 max/xhigh 猜测为 Claude adaptive。",
+          "chatCompletions": "effort"
+        },
+        "releaseDate": "2026-09-21",
+        "defaultOutputTokens": 16000
+      }
+    },
+    {
+      "id": "kimi-k2.6",
+      "before": {
+        "name": "Kimi K2.6",
+        "contextWindow": 262144,
+        "maxOutputTokens": 262144,
+        "maxInputTokens": 262143,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [],
+        "source": "models.dev community catalog (first-party provider: moonshotai): https://models.dev/api.json; input ceiling only checked 2026-11-08: https://platform.kimi.ai/docs/api/chat.md; exact context: https://platform.kimi.ai/docs/pricing/chat.md; The input token count itself must be less than the model context window size. K2 context is 262144; the inclusive integer input ceiling is therefore 262143.",
+        "verifiedAt": null,
+        "releaseDate": "2026-04-20"
+      },
+      "after": {
+        "name": "Kimi K2.6",
+        "contextWindow": 262144,
+        "maxOutputTokens": 262144,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "enabled",
+          "disabled"
+        ],
+        "source": "https://platform.kimi.ai/docs/api/chat.md ; https://platform.kimi.ai/docs/api/responses.md ; https://platform.kimi.ai/docs/pricing/chat ; 输入必须严格小于上下文窗口，输出按剩余空间缩小。K2默认输出未公开，视觉及输出能力沿用原目录；2026年10月31日起不向新用户开放，预计12月底退役。",
+        "verifiedAt": null,
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.kimi.ai/docs/pricing/chat",
+          "checkedAt": "2026-11-08",
+          "note": "原厂直连Standard按token计费，不按上下文长度分段。Batch/订阅和代理费率另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 0.95,
+                "output": 4,
+                "cacheRead": 0.16
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "K2采用thinking.type开关，不接收reasoning_effort；K2.7-code始终开启。官方Messages的模型枚举仅包含K3系列。",
+          "chatCompletions": "thinking-type"
+        },
+        "chatCompletionOptions": {
+          "maxTokensField": "max_completion_tokens",
+          "includeUsage": true
+        },
+        "releaseDate": "2026-04-20",
+        "maxInputTokens": 262143
+      }
+    },
+    {
+      "id": "kimi-k2.7-code",
+      "before": {
+        "name": "Kimi K2.7 Code",
+        "contextWindow": 262144,
+        "maxOutputTokens": 262144,
+        "maxInputTokens": 262143,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [],
+        "source": "models.dev community catalog (first-party provider: moonshotai): https://models.dev/api.json; input ceiling only checked 2026-11-08: https://platform.kimi.ai/docs/api/chat.md; exact context: https://platform.kimi.ai/docs/pricing/chat.md; The input token count itself must be less than the model context window size. K2 context is 262144; the inclusive integer input ceiling is therefore 262143.",
+        "verifiedAt": null,
+        "releaseDate": "2026-06-12"
+      },
+      "after": {
+        "name": "Kimi K2.7 Code",
+        "contextWindow": 262144,
+        "maxOutputTokens": 262144,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [],
+        "source": "https://platform.kimi.ai/docs/api/chat.md ; https://platform.kimi.ai/docs/api/responses.md ; https://platform.kimi.ai/docs/pricing/chat ; 输入必须严格小于上下文窗口，输出按剩余空间缩小。K2默认输出未公开，视觉及输出能力沿用原目录；2026年10月31日起不向新用户开放，预计12月底退役。",
+        "verifiedAt": null,
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.kimi.ai/docs/pricing/chat",
+          "checkedAt": "2026-11-08",
+          "note": "原厂直连Standard按token计费，不按上下文长度分段。Batch/订阅和代理费率另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 0.95,
+                "output": 4,
+                "cacheRead": 0.19
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "K2采用thinking.type开关，不接收reasoning_effort；K2.7-code始终开启。官方Messages的模型枚举仅包含K3系列。",
+          "chatCompletions": "thinking-type"
+        },
+        "chatCompletionOptions": {
+          "maxTokensField": "max_completion_tokens",
+          "includeUsage": true
+        },
+        "releaseDate": "2026-06-12",
+        "maxInputTokens": 262143
+      }
+    },
+    {
+      "id": "kimi-k2.7-code-highspeed",
+      "before": {
+        "name": "Kimi K2.7 Code HighSpeed",
+        "contextWindow": 262144,
+        "maxOutputTokens": 262144,
+        "maxInputTokens": 262143,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [],
+        "source": "models.dev community catalog (first-party provider: moonshotai): https://models.dev/api.json; input ceiling only checked 2026-11-08: https://platform.kimi.ai/docs/api/chat.md; exact context: https://platform.kimi.ai/docs/pricing/chat.md; The input token count itself must be less than the model context window size. K2 context is 262144; the inclusive integer input ceiling is therefore 262143.",
+        "verifiedAt": null,
+        "releaseDate": "2026-06-12"
+      },
+      "after": {
+        "name": "Kimi K2.7 Code HighSpeed",
+        "contextWindow": 262144,
+        "maxOutputTokens": 262144,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [],
+        "source": "https://platform.kimi.ai/docs/api/chat.md ; https://platform.kimi.ai/docs/api/responses.md ; https://platform.kimi.ai/docs/pricing/chat ; 输入必须严格小于上下文窗口，输出按剩余空间缩小。K2默认输出未公开，视觉及输出能力沿用原目录；2026年10月31日起不向新用户开放，预计12月底退役。",
+        "verifiedAt": null,
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.kimi.ai/docs/pricing/chat",
+          "checkedAt": "2026-11-08",
+          "note": "原厂直连Standard按token计费，不按上下文长度分段。Batch/订阅和代理费率另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 1.9,
+                "output": 8,
+                "cacheRead": 0.38
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "K2采用thinking.type开关，不接收reasoning_effort；K2.7-code始终开启。官方Messages的模型枚举仅包含K3系列。",
+          "chatCompletions": "thinking-type"
+        },
+        "chatCompletionOptions": {
+          "maxTokensField": "max_completion_tokens",
+          "includeUsage": true
+        },
+        "releaseDate": "2026-06-12",
+        "maxInputTokens": 262143
+      }
+    },
+    {
+      "id": "kimi-k3",
+      "before": {
+        "name": "Kimi K3",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 1048576,
+        "maxInputTokens": 1048575,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "high",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: moonshotai): https://models.dev/api.json; reasoning-effort values only checked 2026-11-08: https://platform.kimi.ai/docs/api/models-overview.md; input ceiling only checked 2026-11-08: https://platform.kimi.ai/docs/api/chat.md; exact context: https://platform.kimi.ai/docs/pricing/chat.md; The input token count itself must be less than the model context window size. K3 context is 1048576; the inclusive integer input ceiling is therefore 1048575. The API reduces generation to remaining context.",
+        "verifiedAt": null,
+        "releaseDate": "2026-07-16"
+      },
+      "after": {
+        "name": "Kimi K3",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 1048576,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "high",
+          "max"
+        ],
+        "source": "https://platform.kimi.ai/docs/api/chat.md ; https://platform.kimi.ai/docs/api/responses.md ; https://platform.kimi.ai/docs/pricing/chat ; 输入必须严格小于上下文窗口，输出按剩余空间缩小。K3明确默认131072、可设置到1048576，不能把最大值当作宿主输出预留。",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.kimi.ai/docs/pricing/chat",
+          "checkedAt": "2026-11-08",
+          "note": "原厂直连Standard按token计费，不按上下文长度分段。缓存写入表内为5分钟；1小时为6.0 USD/百万tokens。Batch/订阅和代理费率另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 3,
+                "output": 15,
+                "cacheRead": 0.3,
+                "cacheWrite": 3
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "K3思考始终开启，默认max；Chat使用reasoning_effort，官方Messages只使用output_config.effort，不接收thinking/budget_tokens。",
+          "chatCompletions": "effort",
+          "messages": "effort"
+        },
+        "chatCompletionOptions": {
+          "maxTokensField": "max_completion_tokens",
+          "includeUsage": true
+        },
+        "releaseDate": "2026-07-16",
+        "maxInputTokens": 1048575,
+        "defaultOutputTokens": 131072
+      }
+    },
+    {
+      "id": "kimi-k3.1-pro",
+      "before": {
+        "name": "Kimi K3.1 Pro",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 1048576,
+        "maxInputTokens": 1048575,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "high",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: moonshotai): https://models.dev/api.json; reasoning-effort values only checked 2026-11-08: https://platform.kimi.ai/docs/api/models-overview.md; input ceiling only checked 2026-11-08: https://platform.kimi.ai/docs/api/chat.md; exact context: https://platform.kimi.ai/docs/pricing/chat.md; The input token count itself must be less than the model context window size. K3 context is 1048576; the inclusive integer input ceiling is therefore 1048575. The API reduces generation to remaining context.",
+        "verifiedAt": null,
+        "releaseDate": "2026-10-23"
+      },
+      "after": {
+        "name": "Kimi K3.1 Pro",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 1048576,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "high",
+          "max"
+        ],
+        "source": "https://platform.kimi.ai/docs/api/chat.md ; https://platform.kimi.ai/docs/api/responses.md ; https://platform.kimi.ai/docs/pricing/chat ; 输入必须严格小于上下文窗口，输出按剩余空间缩小。K3明确默认131072、可设置到1048576，不能把最大值当作宿主输出预留。",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.kimi.ai/docs/pricing/chat",
+          "checkedAt": "2026-11-08",
+          "note": "原厂直连Standard按token计费，不按上下文长度分段。缓存写入表内为5分钟；1小时为4.0 USD/百万tokens。Batch/订阅和代理费率另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 2,
+                "output": 10,
+                "cacheRead": 0.2,
+                "cacheWrite": 2
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "K3思考始终开启，默认max；Chat使用reasoning_effort，官方Messages只使用output_config.effort，不接收thinking/budget_tokens。",
+          "chatCompletions": "effort",
+          "messages": "effort"
+        },
+        "chatCompletionOptions": {
+          "maxTokensField": "max_completion_tokens",
+          "includeUsage": true
+        },
+        "releaseDate": "2026-10-23",
+        "maxInputTokens": 1048575,
+        "defaultOutputTokens": 131072
+      }
+    },
+    {
+      "id": "kimi-k3.1-pro-highspeed",
+      "before": {
+        "name": "Kimi K3.1 Pro Highspeed",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 1048576,
+        "maxInputTokens": 1048575,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "high",
+          "max"
+        ],
+        "source": "models.dev community catalog (first-party provider: moonshotai): https://models.dev/api.json; reasoning-effort values only checked 2026-11-08: https://platform.kimi.ai/docs/api/models-overview.md; input ceiling only checked 2026-11-08: https://platform.kimi.ai/docs/api/chat.md; exact context: https://platform.kimi.ai/docs/pricing/chat.md; The input token count itself must be less than the model context window size. K3 context is 1048576; the inclusive integer input ceiling is therefore 1048575. The API reduces generation to remaining context.",
+        "verifiedAt": null,
+        "releaseDate": "2026-10-23"
+      },
+      "after": {
+        "name": "Kimi K3.1 Pro Highspeed",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 1048576,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "high",
+          "max"
+        ],
+        "source": "https://platform.kimi.ai/docs/api/chat.md ; https://platform.kimi.ai/docs/api/responses.md ; https://platform.kimi.ai/docs/pricing/chat ; 输入必须严格小于上下文窗口，输出按剩余空间缩小。K3明确默认131072、可设置到1048576，不能把最大值当作宿主输出预留。",
+        "verifiedAt": "2026-11-08",
+        "contextPricing": {
+          "kind": "flat",
+          "scope": "direct-api",
+          "thresholds": [],
+          "source": "https://platform.kimi.ai/docs/pricing/chat",
+          "checkedAt": "2026-11-08",
+          "note": "原厂直连Standard按token计费，不按上下文长度分段。缓存写入表内为5分钟；1小时为8.0 USD/百万tokens。Batch/订阅和代理费率另计。",
+          "rates": {
+            "currency": "USD",
+            "perTokens": 1000000,
+            "bands": [
+              {
+                "inputUpTo": null,
+                "input": 4,
+                "output": 20,
+                "cacheRead": 0.2,
+                "cacheWrite": 4
+              }
+            ]
+          }
+        },
+        "reasoningControls": {
+          "note": "K3思考始终开启，默认max；Chat使用reasoning_effort，官方Messages只使用output_config.effort，不接收thinking/budget_tokens。",
+          "chatCompletions": "effort",
+          "messages": "effort"
+        },
+        "chatCompletionOptions": {
+          "maxTokensField": "max_completion_tokens",
+          "includeUsage": true
+        },
+        "releaseDate": "2026-10-23",
+        "maxInputTokens": 1048575,
+        "defaultOutputTokens": 131072
+      }
+    }
+  ]
+}

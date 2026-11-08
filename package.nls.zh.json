@@ -1,0 +1,6 @@
+{
+  "extension.description": "以简洁界面管理 Copilot Custom Endpoint 供应商与模型预设。",
+  "command.manage": "管理模型",
+  "command.openModels": "打开聊天模型选择器",
+  "command.openOfficialConfiguration": "打开官方模型配置"
+}

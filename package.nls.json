@@ -1,0 +1,6 @@
+{
+  "extension.description": "Manage Copilot Custom Endpoint providers and model presets in a compact interface.",
+  "command.manage": "Manage Models",
+  "command.openModels": "Open Chat Models",
+  "command.openOfficialConfiguration": "Open Official Model Configuration"
+}
