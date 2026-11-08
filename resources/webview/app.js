@@ -358,6 +358,31 @@
     }
   }
 
+  let cardFramePending = false;
+  function updateCardFrames() {
+    cardFramePending = false;
+    const scroller = $('model-list');
+    const viewport = scroller.getBoundingClientRect();
+    const top = viewport.top + scroller.clientTop + 2;
+    const bottom = viewport.top + scroller.clientTop + scroller.clientHeight - 2;
+    const frames = [...scroller.querySelectorAll('.protocol-column')].map(column => {
+      const bounds = column.getBoundingClientRect();
+      return { column, top: Math.max(0, Math.min(bounds.height, top - bounds.top)), bottom: Math.max(0, Math.min(bounds.height, bounds.bottom - bottom)) };
+    });
+    // Round the visible portion of each card while all columns share one native scroller.
+    for (const frame of frames) {
+      frame.column.style.setProperty('--card-clip-top', `${frame.top}px`);
+      frame.column.style.setProperty('--card-clip-bottom', `${frame.bottom}px`);
+    }
+  }
+  function scheduleCardFrames() {
+    if (cardFramePending) return;
+    cardFramePending = true;
+    requestAnimationFrame(updateCardFrames);
+  }
+  const cardResizeObserver = new ResizeObserver(scheduleCardFrames);
+  $('model-list').addEventListener('scroll', scheduleCardFrames, { passive: true });
+
   function renderModels() {
     const draft = currentDraft();
     if (!draft) return;
@@ -421,6 +446,10 @@
     }
     $('model-list').replaceChildren(content);
     syncSelections();
+    cardResizeObserver.disconnect();
+    cardResizeObserver.observe($('model-list'));
+    for (const column of $('model-list').querySelectorAll('.protocol-column')) cardResizeObserver.observe(column);
+    scheduleCardFrames();
   }
 
   function renderRouting() {

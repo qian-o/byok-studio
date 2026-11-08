@@ -64,6 +64,7 @@ async function webview(providers, modelDatabase = database, options = {}) {
     const handlers=new Map();let value='';
     const item={
       id,tagName:tag.toUpperCase(),checked:false,hidden:false,disabled:false,open:false,dataset:{},children:[],attributes:new Map(),isConnected:true,className:'',textContent:'',
+      clientTop:0,clientHeight:400,style:{values:new Map(),setProperty(name,value){this.values.set(name,value);},getPropertyValue(name){return this.values.get(name)||'';}},getBoundingClientRect(){return{top:0,bottom:400,height:400};},
       get value(){return value;},set value(next){value=String(next);},
       addEventListener(type,callback){handlers.set(type,callback);},
       dispatch(type,event){return handlers.get(type)?.(event);},
@@ -121,7 +122,7 @@ async function webview(providers, modelDatabase = database, options = {}) {
       }catch(error){listeners.get('message')({data:{id:message.id,ok:false,error:error.message}});}
     });
   }};
-  vm.runInNewContext(script,{ByokModelPolicy:localeContext.ByokModelPolicy,ByokI18n:localeContext.ByokI18n,ByokModelVendors:vendorContext.ByokModelVendors,document,window:{addEventListener:(type,callback)=>listeners.set(type,callback)},acquireVsCodeApi:()=>bridge,crypto:{randomUUID},URL,setTimeout:()=>1,clearTimeout(){}},{filename:'resources/webview/app.js'});
+  vm.runInNewContext(script,{ByokModelPolicy:localeContext.ByokModelPolicy,ByokI18n:localeContext.ByokI18n,ByokModelVendors:vendorContext.ByokModelVendors,document,window:{addEventListener:(type,callback)=>listeners.set(type,callback)},acquireVsCodeApi:()=>bridge,crypto:{randomUUID},URL,requestAnimationFrame:callback=>queueMicrotask(callback),ResizeObserver:class {observe(){}disconnect(){}},setTimeout:()=>1,clearTimeout(){}},{filename:'resources/webview/app.js'});
   const flush=()=>new Promise(resolve=>setImmediate(resolve));
   await flush();
   assert.equal(elements.get('load-error').hidden,true,elements.get('load-error-message').textContent);
@@ -203,6 +204,24 @@ test('desktop model viewport is shared by protocol columns and narrow screens us
   assert.match(rule('dialog'),/padding: 8px/);
   assert.match(rule('.dialog-scroll'),/max-height: calc\(100dvh - 50px\); overflow: auto/);
   for(const dialog of html.matchAll(/<dialog\b[^>]*>\s*<([^>]+)>/g))assert.match(dialog[1],/class="dialog-scroll"/);
+});
+test('shared scrolling retains each card frame at the visible viewport edges',async()=>{
+  const ui=await webview([{...splitProvider(),models:['gpt-one','claude-one','custom-one'].map(model)}]);
+  const scroller=ui.get('model-list');
+  scroller.clientHeight=300;
+  scroller.getBoundingClientRect=()=>({top:100,bottom:400,height:300});
+  const columns=scroller.querySelectorAll('.protocol-column');
+  let offset=0;
+  for(const column of columns)column.getBoundingClientRect=()=>({top:102-offset,bottom:902-offset,height:800});
+  for(offset of [0,252,504]){
+    await ui.emit('model-list','scroll');
+    for(const column of columns){
+      const bounds=column.getBoundingClientRect();
+      assert.equal(bounds.top+parseFloat(column.style.getPropertyValue('--card-clip-top')),102);
+      assert.equal(bounds.bottom-parseFloat(column.style.getPropertyValue('--card-clip-bottom')),398);
+    }
+  }
+  assert.deepEqual((await ui.saved()).models.map(item=>item.id),['gpt-one','claude-one','custom-one']);
 });
 test('supplier navigation and model rows show only names without saved or enabled status markers',async()=>{
   assert.doesNotMatch(html,/id="save-status"|id="provider-enabled"|enabled-badge|class="sidebar"/);
