@@ -350,7 +350,8 @@
       target.setAttribute('aria-label', label);
       target.title = label;
       unavailable(target, !incoming);
-      target.closest('[data-protocol]').classList.toggle('transfer-target', incoming > 0);
+      target.closest('.protocol-controls').classList.toggle('transfer-target', incoming > 0);
+      $(`protocol-card-${apiType}`).classList.toggle('transfer-target', incoming > 0);
     }
     for (const checkbox of $('model-list').querySelectorAll('[data-select-model]')) {
       checkbox.checked = draft.selectedModels.has(checkbox.dataset.selectModel);
@@ -362,16 +363,24 @@
     const draft = currentDraft();
     if (!draft) return;
     const content = document.createDocumentFragment();
+    const scroller = node('div', 'model-scroll');
+    scroller.id = 'model-scroll';
+    scroller.tabIndex = 0;
+    scroller.setAttribute('role', 'region');
+    scroller.setAttribute('aria-labelledby', 'models-heading');
     const split = draft.provider.routingMode === 'split';
     $('model-list').classList.toggle('split-models', split);
     const total = draft.provider.models.length;
     $('model-total').textContent = `${total}`;
     $('model-total').setAttribute('aria-label', t('共 {0} 个模型', total));
     if (split) {
+      const cards = node('div', 'protocol-cards');
+      cards.setAttribute('aria-hidden', 'true');
+      const headers = node('div', 'protocol-headers');
       for (const { apiType, models } of vendors.protocolLists(draft.provider)) {
-        const section = node('section', 'protocol-column');
-        section.dataset.protocol = apiType;
-        section.setAttribute('aria-labelledby', `protocol-heading-${apiType}`);
+        const card = node('div', 'protocol-card');
+        card.id = `protocol-card-${apiType}`;
+        cards.append(card);
         const header = node('header', 'model-group-header');
         const heading = node('h4', '', PROTOCOL_NAMES[apiType]);
         heading.id = `protocol-heading-${apiType}`;
@@ -406,19 +415,23 @@
         input.value = draft.provider.endpoints[apiType];
         input.setAttribute('aria-label', `${PROTOCOL_NAMES[apiType]} Base URL`);
         endpoint.append(label, input);
-        const list = node('div', 'protocol-models');
+        const list = node('section', 'protocol-models');
+        list.dataset.protocol = apiType;
+        list.setAttribute('aria-labelledby', `protocol-heading-${apiType}`);
         for (const model of models) list.append(modelRow(model, true));
         if (!models.length) list.append(node('p', 'empty-models', t('暂无模型')));
         const controls = node('div', 'protocol-controls');
         controls.append(header, endpoint, move);
-        section.append(controls, list);
-        content.append(section);
+        headers.append(controls);
+        scroller.append(list);
       }
+      content.append(cards, headers);
     } else {
       const models = draft.provider.models.filter(model => !vendors.excludedKind(model.id));
-      for (const model of models) content.append(modelRow(model));
-      if (!models.length) content.append(node('p', 'empty-models', t('暂无模型')));
+      for (const model of models) scroller.append(modelRow(model));
+      if (!models.length) scroller.append(node('p', 'empty-models', t('暂无模型')));
     }
+    content.append(scroller);
     $('model-list').replaceChildren(content);
     syncSelections();
   }
@@ -785,7 +798,9 @@
     if (!draft || busy) return;
     draft.selectedModels.clear();
     syncSelections();
-    $('model-list').focus();
+    const scroller = $('model-scroll');
+    scroller.focus();
+    if (document.activeElement !== scroller) $('model-list').focus();
   });
   $('provider-form').addEventListener('submit', event => {
     event.preventDefault();

@@ -174,7 +174,7 @@ test('compact main panel removes help, duplicate headings and secondary footer a
   assert.match(main,/class="provider-options"/);
   assert.match(main,/id="open-database" class="database-entry"/);
   assert.match(main,/id="request-status" class="visually-hidden" role="status"/);
-  assert.match(main,/id="model-list" class="model-list" role="region" aria-labelledby="models-heading" tabindex="0"/);
+  assert.match(main,/id="model-list" class="model-list" role="region" aria-labelledby="models-heading" tabindex="-1"/);
   assert.doesNotMatch(script,/clearKey|refreshStatus|\btoast\(/);
   const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(match=>match[1]);
   assert.equal(new Set(ids).size,ids.length,'Static controls must have unique IDs');
@@ -192,13 +192,17 @@ test('desktop model viewport is shared by protocol columns and narrow screens us
     assert.match(rule(selector),/flex: 1/);
     assert.match(rule(selector),/min-height: 0/);
   }
-  assert.match(rule('.model-list'),/overflow-y: auto/);
-  assert.match(rule('.model-list.split-models'),/repeat\(3, minmax\(0, 1fr\)\)/);
-  for(const selector of ['.model-list.split-models','.protocol-column','.protocol-models'])assert.doesNotMatch(rule(selector),/overflow|max-height/);
-  assert.match(rule('.protocol-controls'),/position: sticky/);
+  assert.match(rule('.model-scroll'),/overflow-y: auto/);
+  assert.match(rule('.split-models .model-scroll'),/repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(rule('.protocol-models'),/overflow|max-height/);
+  assert.doesNotMatch(rule('.protocol-controls'),/position: sticky|clip-path/);
+  assert.match(rule('.protocol-cards'),/position: absolute/);
+  assert.match(rule('.protocol-card'),/border-radius: 6px/);
+  assert.doesNotMatch(css,/position: sticky|container-type|100cqh|card-clip|protocol-column/);
+  assert.doesNotMatch(script,/card-clip|updateCardFrames|requestAnimationFrame|ResizeObserver/);
   assert.match(rule('.panel-footer'),/flex-shrink: 0/);
   assert.match(css,/@media \(max-width: 420px\), \(max-height: 480px\)\s*\{[\s\S]*?html \{[^}]*overflow-y: auto/);
-  assert.match(css,/\.model-list \{ flex: none; overflow: visible; scrollbar-gutter: auto; \}/);
+  assert.match(css,/\.model-list, \.model-list\.split-models, \.model-scroll \{ flex: none; overflow: visible; scrollbar-gutter: auto; \}/);
   assert.match(rule('dialog'),/max-height: calc\(100dvh - 32px\); overflow: hidden/);
   assert.match(rule('dialog'),/padding: 8px/);
   assert.match(rule('.dialog-scroll'),/max-height: calc\(100dvh - 50px\); overflow: auto/);
@@ -813,18 +817,20 @@ test('fifty models share one viewport and repeated mode changes do not duplicate
   const ui=await webview([{...provider(),models}]);
   for(let repeat=0;repeat<3;repeat++){
     assert.equal(shownModels(ui).length,50);
-    assert.equal(ui.get('model-list').children.length,50);
+    assert.equal(ui.get('model-scroll').children.length,50);
     await ui.mode('split');
-    assert.equal(ui.get('model-list').children.length,3);
+    assert.equal(ui.get('model-scroll').children.length,3);
     assert.equal(ui.get('model-list').querySelectorAll('.protocol-models').length,3);
     assert.equal(shownModels(ui).length,50);
     assert.equal(new Set(shownModels(ui)).size,50);
     const controls=ui.get('model-list').querySelectorAll('input,select,button,h4').filter(item=>item.id);
     assert.equal(new Set(controls.map(item=>item.id)).size,controls.length);
-    for(const column of ui.get('model-list').children){
-      assert.equal(column.children[0].className,'protocol-controls');
-      assert.equal(column.children[1].className,'protocol-models');
-      assert.equal(column.querySelectorAll('[data-endpoint]').length,1);
+    assert.equal(ui.get('model-list').querySelectorAll('.protocol-card').length,3);
+    assert.equal(ui.get('model-list').querySelectorAll('.protocol-controls').length,3);
+    assert.equal(ui.get('model-scroll').querySelectorAll('[data-endpoint]').length,0,'Protocol controls must be outside the model-row scroll viewport');
+    for(const controls of ui.get('model-list').querySelectorAll('.protocol-controls')){
+      assert.equal(controls.querySelectorAll('[data-endpoint]').length,1);
+      assert.equal(ui.get('model-scroll').contains(controls),false);
     }
     await ui.mode('unified');
     assert.equal(ui.get('model-list').querySelectorAll('[data-endpoint]').length,0);
@@ -941,7 +947,7 @@ test('column select-all stays scoped and explicit clearing restores focus withou
   assert.equal(ui.get('model-selection').hidden,true);
   assert.equal(ui.get('model-selection-status').textContent,'已选 0 个模型');
   assert.equal(ui.get('model-list').querySelectorAll('input:checked').length,0);
-  assert.equal(ui.activeElement,ui.get('model-list'));
+  assert.equal(ui.activeElement,ui.get('model-scroll'));
   for(const apiType of vendors.apiTypes)assert.equal(ui.get(`move-to-${apiType}`).hidden,true);
   const saved=await ui.saved();
   assert.equal(saved.modelProtocols['gpt-one'],'responses');
