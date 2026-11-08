@@ -5,21 +5,21 @@ const path=require('node:path');
 const vm=require('node:vm');
 const {randomUUID}=require('node:crypto');
 const {validateProvider,validateDatabase}=require('../dist/core/configuration');
-const vendors=require('../media/model-vendors.js');
-const modelRules=require('../data/model-rules.json');
-const vendorScript=fs.readFileSync(path.join(__dirname,'..','media','model-vendors.js'),'utf8');
-const i18n=require('../media/i18n.js');
+const vendors=require('../resources/shared/routing.js');
+const modelRules=require('../resources/catalog/rules.json');
+const vendorScript=fs.readFileSync(path.join(__dirname,'..','resources','shared','routing.js'),'utf8');
+const i18n=require('../resources/shared/i18n.js');
 i18n.setLocale('zh-CN');
-const contextPolicy=require('../media/context-policy.js');
+const contextPolicy=require('../resources/shared/model-policy.js');
 const database={
   schemaVersion:1,
   defaults:{name:'',contextWindow:128000,maxOutputTokens:8192,toolCalling:true,vision:false,thinking:false,supportsReasoningEffort:[],source:'Panel test fixture',verifiedAt:null},
   models:{}
 };
-const htmlTemplate=fs.readFileSync(path.join(__dirname,'..','media','index.html'),'utf8');
+const htmlTemplate=fs.readFileSync(path.join(__dirname,'..','resources','webview','index.html'),'utf8');
 const html=i18n.renderHtml(htmlTemplate);
-const script=fs.readFileSync(path.join(__dirname,'..','media','app.js'),'utf8');
-const css=fs.readFileSync(path.join(__dirname,'..','media','style.css'),'utf8');
+const script=fs.readFileSync(path.join(__dirname,'..','resources','webview','app.js'),'utf8');
+const css=fs.readFileSync(path.join(__dirname,'..','resources','webview','style.css'),'utf8');
 const model=id=>({id,name:'',discoveredName:'',overrides:{}});
 const provider=(id='gateway')=>({id,name:'Gateway',routingMode:'unified',unified:{apiType:'chatCompletions',url:'https://chat.example.com/v1'},endpoints:{responses:'https://responses.example.com/v1',chatCompletions:'https://chat.example.com/v1',messages:'https://messages.example.com/v1'},modelProtocols:{},enabled:true,zeroDataRetentionEnabled:false,models:[model('unknown-id'),model('another-id')]});
 const splitProvider=(id='gateway')=>({...provider(id),routingMode:'split'});
@@ -37,10 +37,10 @@ function pricingDatabase(policy,parameters={}){
 async function webview(providers, modelDatabase = database, options = {}) {
   const vendorContext={};
   vm.runInNewContext(vendorScript,vendorContext);
-  const localeContext={ByokEnglishMessages:require('../media/i18n-en.js'),ByokErrorMessages:require('../media/i18n-errors.js')};
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'..','media','i18n.js'),'utf8'),localeContext);
+  const localeContext={ByokEnglishMessages:require('../resources/shared/messages.en.js')};
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'..','resources','shared','i18n.js'),'utf8'),localeContext);
   localeContext.ByokI18n.setLocale(options.language || 'zh-CN');
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'..','media','context-policy.js'),'utf8'),localeContext);
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'..','resources','shared','model-policy.js'),'utf8'),localeContext);
   let state={providers:structuredClone(providers.map(item=>({hasKey:false,...item}))),database:structuredClone(modelDatabase),modelRules:structuredClone(options.modelRules||modelRules),revision:0};
   const elements=new Map(),listeners=new Map(),messages=[];
   const descendants=item=>item.children.flatMap(child=>[child,...descendants(child)]);
@@ -121,7 +121,7 @@ async function webview(providers, modelDatabase = database, options = {}) {
       }catch(error){listeners.get('message')({data:{id:message.id,ok:false,error:error.message}});}
     });
   }};
-  vm.runInNewContext(script,{ByokOfficialEffort:require('../media/official-effort.js'),ByokI18n:localeContext.ByokI18n,ByokModelVendors:vendorContext.ByokModelVendors,ByokModelOrder:require('../media/model-order.js'),ByokContextPolicy:localeContext.ByokContextPolicy,document,window:{addEventListener:(type,callback)=>listeners.set(type,callback)},acquireVsCodeApi:()=>bridge,crypto:{randomUUID},URL,setTimeout:()=>1,clearTimeout(){}},{filename:'media/app.js'});
+  vm.runInNewContext(script,{ByokModelPolicy:localeContext.ByokModelPolicy,ByokI18n:localeContext.ByokI18n,ByokModelVendors:vendorContext.ByokModelVendors,document,window:{addEventListener:(type,callback)=>listeners.set(type,callback)},acquireVsCodeApi:()=>bridge,crypto:{randomUUID},URL,setTimeout:()=>1,clearTimeout(){}},{filename:'resources/webview/app.js'});
   const flush=()=>new Promise(resolve=>setImmediate(resolve));
   await flush();
   assert.equal(elements.get('load-error').hidden,true,elements.get('load-error-message').textContent);
@@ -1249,12 +1249,10 @@ test('production webview only loads local script and stylesheet with a restricti
   assert.match(html,/nonce-\{\{NONCE\}\}/);
   assert.ok(!/on(?:click|load|error|input|change)\s*=/.test(html));
   assert.ok(!/https?:\/\/[^\s"<>]+\.(?:js|css)/.test(html));
-  assert.match(html,/\{\{SCRIPT_URI\}\}/);
-  assert.match(html,/\{\{STYLE_URI\}\}/);
-  assert.match(html,/<script nonce="\{\{NONCE\}\}" src="\{\{VENDORS_URI\}\}"><\/script>/);
-  assert.ok(html.indexOf('{{VENDORS_URI}}')<html.indexOf('{{SCRIPT_URI}}'));
-  assert.match(html,/<script nonce="\{\{NONCE\}\}" src="\{\{CONTEXT_POLICY_URI\}\}"><\/script>/);
-  assert.ok(html.indexOf('{{CONTEXT_POLICY_URI}}')<html.indexOf('{{SCRIPT_URI}}'));
+  const resources=[...html.matchAll(/\{\{resource:([^}]+)\}\}/g)].map(match=>match[1]);
+  assert.deepEqual(resources,['webview/style.css','shared/messages.en.js','shared/i18n.js','shared/routing.js','shared/model-policy.js','webview/app.js']);
+  for(const resource of resources)assert.ok(fs.existsSync(path.join(__dirname,'..','resources',resource)),resource);
+  for(const resource of resources.slice(1))assert.ok(html.includes(`<script nonce="{{NONCE}}" src="{{resource:${resource}}}"></script>`));
   assert.doesNotMatch(script,/272000|32768|272K|32K/);
   assert.doesNotMatch(script,/\blocalStorage\b|\bsessionStorage\b|\bfetch\s*\(|\bXMLHttpRequest\b/);
 });

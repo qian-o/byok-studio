@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const shared = require('../media/context-policy');
+const shared = require('../resources/shared/model-policy');
 const { validateParameters, validateContextPricing } = require('../dist/core/configuration');
 const { StudioStore } = require('../dist/core/store');
 const { compileOfficialModel } = require('../dist/core/officialConfig');

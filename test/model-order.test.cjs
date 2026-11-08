@@ -1,6 +1,6 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {validDate}=require('../media/model-order.js');
+const {validDate}=require('../resources/shared/model-policy.js');
 const {validateDatabase,validateProvider}=require('../dist/core/configuration');
 const {StudioStore}=require('../dist/core/store');
 const parameters={name:'',contextWindow:128000,maxOutputTokens:16000,toolCalling:false,vision:false,thinking:false,supportsReasoningEffort:[],source:'test',verifiedAt:null};

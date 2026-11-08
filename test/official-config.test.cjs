@@ -1,12 +1,12 @@
-require('../media/i18n').setLocale('zh-CN');
+require('../resources/shared/i18n').setLocale('zh-CN');
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { compileOfficialGroup, compileOfficialModel, officialProtocol, unsupportedFields } = require('../dist/core/officialConfig');
 const { effectiveParameters, requestParametersForApi } = require('../dist/core/configuration');
-const { inputCeiling } = require('../media/context-policy');
-const { projectEfforts } = require('../media/official-effort');
-const catalog = require('../data/model-parameters.json');
+const { inputCeiling } = require('../resources/shared/model-policy');
+const { projectEfforts } = require('../resources/shared/model-policy');
+const catalog = require('../resources/catalog/models.json');
 
 const protocols = ['chatCompletions', 'responses', 'messages'];
 const nativeProtocols = ['chat-completions', 'responses', 'messages'];

@@ -1,9 +1,8 @@
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory(require('./i18n-en.js'), require('./i18n-errors.js'));
-  else root.ByokI18n = factory(root.ByokEnglishMessages, root.ByokErrorMessages);
-})(globalThis, function (ui, errors) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./messages.en.js'));
+  else root.ByokI18n = factory(root.ByokEnglishMessages);
+})(globalThis, function (english) {
   'use strict';
-  const english = { ...ui, ...errors };
   let locale = 'en';
   function setLocale(language) { locale = /^zh(?:[-_]|$)/i.test(language || '') ? 'zh-CN' : 'en'; }
   function getLocale() { return locale; }

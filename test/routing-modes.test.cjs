@@ -1,7 +1,7 @@
-require('../media/i18n').setLocale('zh-CN');
+require('../resources/shared/i18n').setLocale('zh-CN');
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const vendors=require('../media/model-vendors');
+const vendors=require('../resources/shared/routing');
 const {validateProvider}=require('../dist/core/configuration');
 const {StudioStore}=require('../dist/core/store');
 const database={schemaVersion:1,defaults:{name:'',contextWindow:128000,maxOutputTokens:16000,toolCalling:false,vision:false,thinking:false,supportsReasoningEffort:[],source:'test',verifiedAt:null},models:{}};

@@ -1,6 +1,6 @@
 import type { ApiType, ProviderConnection, DiscoveredModel } from './types';
 import { resolveEndpoint } from './endpoints';
-import { t } from '../../media/i18n.js';
+import { t } from '../../resources/shared/i18n.js';
 
 type Json = Record<string, unknown>;
 const MODELS_TIMEOUT_MS = 30_000;

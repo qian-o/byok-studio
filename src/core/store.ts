@@ -1,8 +1,8 @@
 import { effectiveParameters, object, text, validateContextPricing, validateDatabase, validateParameters, validateProvider } from './configuration';
 import type { ModelDatabase, ProviderConfig, StudioState } from './types';
-import { validDate } from '../../media/model-order.js';
-import { t } from '../../media/i18n.js';
-import { modelRules, type ModelRules } from '../../media/model-vendors.js';
+import { validDate } from '../../resources/shared/model-policy.js';
+import { t } from '../../resources/shared/i18n.js';
+import { modelRules, type ModelRules } from '../../resources/shared/routing.js';
 
 export interface StateStorage {
   get<T>(key: string): T | undefined;

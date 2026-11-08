@@ -3,23 +3,18 @@ import { validateDatabase } from './core/configuration';
 import { StudioStore } from './core/store';
 import { SettingsPanel } from './panel';
 import { OfficialConfigurationManager } from './officialManager';
-import { setLocale, t } from '../media/i18n.js';
+import { setLocale, t } from '../resources/shared/i18n.js';
 
 export interface ExtensionApi { openSettings(): Promise<void> }
 export interface ExtensionTestApi extends ExtensionApi { store: StudioStore; manager: OfficialConfigurationManager }
 export async function activate(context: vscode.ExtensionContext): Promise<ExtensionApi> {
   setLocale(vscode.env.language);
-  const seed = validateDatabase(JSON.parse(Buffer.from(await vscode.workspace.fs.readFile(vscode.Uri.joinPath(context.extensionUri, 'data', 'model-parameters.json'))).toString('utf8')));
+  const seed = validateDatabase(JSON.parse(Buffer.from(await vscode.workspace.fs.readFile(vscode.Uri.joinPath(context.extensionUri, 'resources', 'catalog', 'models.json'))).toString('utf8')));
   const changed = new vscode.EventEmitter<void>();
   const store = new StudioStore(context.globalState, context.secrets, seed, () => changed.fire());
-  const migrations = JSON.parse(Buffer.from(await vscode.workspace.fs.readFile(vscode.Uri.joinPath(context.extensionUri, 'data', 'catalog-migrations.json'))).toString('utf8')) as Array<{kind: string; id: string; file?: string; field?: string; ids?: string[]}>;
-  for (const migration of migrations) {
-    let payload: unknown = migration.ids;
-    if (migration.file) {
-      if (!/^[a-z0-9.-]+\.json$/i.test(migration.file)) throw new Error(t('内置目录迁移文件名无效。'));
-      const loaded = JSON.parse(Buffer.from(await vscode.workspace.fs.readFile(vscode.Uri.joinPath(context.extensionUri, 'data', migration.file))).toString('utf8'));
-      payload = migration.field ? loaded[migration.field] : loaded;
-    }
+  const migrations = JSON.parse(Buffer.from(await vscode.workspace.fs.readFile(vscode.Uri.joinPath(context.extensionUri, 'resources', 'catalog', 'migrations.json'))).toString('utf8')) as { updates: Array<{kind: string; id: string; payload?: unknown}> };
+  for (const migration of migrations.updates) {
+    const payload = migration.payload;
     switch (migration.kind) {
       case 'add': await store.applyCatalogUpdate(migration.id, seed, payload as string[]); break;
       case 'replace': await store.applyCatalogReplacements(migration.id, payload as Array<{id:string;before:unknown;after:unknown}>); break;

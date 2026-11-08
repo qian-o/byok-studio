@@ -1,11 +1,10 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const fs=require('node:fs');
-const path=require('node:path');
-const catalog=require('../data/model-parameters.json');
-const audit=require('../data/catalog-audit.json');
-const rules=require('../data/model-rules.json');
-const {recommendedProtocol}=require('../media/model-vendors');
+const catalog=require('../resources/catalog/models.json');
+const audit=require('../docs/catalog-audit.json');
+const rules=require('../resources/catalog/rules.json');
+const migrations=require('../resources/catalog/migrations.json').updates;
+const {recommendedProtocol}=require('../resources/shared/routing');
 const {validateDatabase}=require('../dist/core/configuration');
 
 test('the audit accounts for every bundled exact model ID with traceable evidence and limitations',()=>{
@@ -22,12 +21,12 @@ test('the audit accounts for every bundled exact model ID with traceable evidenc
   assert.deepEqual(validateDatabase(catalog),catalog,'All extended metadata survives store validation');
 });
 
-test('migration manifest references complete bundled data and contains no missing or duplicate updates',()=>{
-  const migrations=require('../data/catalog-migrations.json');
+test('migrations contain complete inline payloads and no missing or duplicate updates',()=>{
   assert.equal(new Set(migrations.map(m=>m.id)).size,migrations.length);
   for(const m of migrations){
     assert.ok(['add','replace','revision','fields','dates','names','pricing'].includes(m.kind),m.id);
-    if(m.file){const data=JSON.parse(fs.readFileSync(path.join(__dirname,'..','data',m.file),'utf8'));if(m.field)assert.ok(Object.hasOwn(data,m.field),m.id);}
+    assert.equal(Object.hasOwn(m,'payload'),!['dates','pricing'].includes(m.kind),m.id);
+    if(m.kind==='add')for(const id of m.payload)assert.ok(Object.hasOwn(catalog.models,id),m.id+': '+id);
   }
   assert.ok(rules.vendors.every(v=>['responses','chatCompletions','messages'].includes(v.protocol)));
 });

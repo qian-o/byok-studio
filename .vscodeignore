@@ -1,12 +1,15 @@
 .vscode/**
 .vscode-test/**
 src/**
-media/*.d.ts
+resources/**/*.d.ts
 dist/hostTest.*
 test/**
 scripts/**
 releases/**
+docs/*.md
+docs/*.json
 tsconfig.json
 **/*.map
 .gitignore
+.gitattributes
 package-lock.json

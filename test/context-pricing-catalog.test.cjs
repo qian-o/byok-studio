@@ -1,10 +1,10 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const policies=require('../data/context-pricing.json');
-const catalog=require('../data/model-parameters.json');
-const context=require('../media/context-policy');
+const policies=require('../scripts/catalog/pricing.json');
+const catalog=require('../resources/catalog/models.json');
+const context=require('../resources/shared/model-policy');
 const {validateContextPricing}=require('../dist/core/configuration');
-const {validate}=require('../scripts/update-catalog.cjs');
+const {validate}=require('../scripts/catalog/update.cjs');
 
 test('checked pricing is keyed by exact model ID with independent provenance',()=>{
   assert.equal(Object.keys(policies.models).length,182);

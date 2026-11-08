@@ -6,7 +6,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src {{CSP_SOURCE}} data:; style-src {{CSP_SOURCE}}; script-src 'nonce-{{NONCE}}'; font-src {{CSP_SOURCE}};">
   <meta name="color-scheme" content="light dark">
   <title>{{t:模型设置 · BYOK Studio}}</title>
-  <link rel="stylesheet" href="{{STYLE_URI}}">
+  <link rel="stylesheet" href="{{resource:webview/style.css}}">
 </head>
 <body>
   <svg class="defs" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs>
@@ -143,13 +143,10 @@
         </div>
       </dialog>
   <div id="toast" class="toast error-toast" role="alert" aria-live="assertive" aria-atomic="true" hidden></div>
-  <script nonce="{{NONCE}}" src="{{I18N_EN_URI}}"></script>
-  <script nonce="{{NONCE}}" src="{{I18N_ERRORS_URI}}"></script>
-  <script nonce="{{NONCE}}" src="{{I18N_URI}}"></script>
-  <script nonce="{{NONCE}}" src="{{ORDER_URI}}"></script>
-  <script nonce="{{NONCE}}" src="{{VENDORS_URI}}"></script>
-  <script nonce="{{NONCE}}" src="{{CONTEXT_POLICY_URI}}"></script>
-  <script nonce="{{NONCE}}" src="{{OFFICIAL_EFFORT_URI}}"></script>
-  <script nonce="{{NONCE}}" src="{{SCRIPT_URI}}"></script>
+  <script nonce="{{NONCE}}" src="{{resource:shared/messages.en.js}}"></script>
+  <script nonce="{{NONCE}}" src="{{resource:shared/i18n.js}}"></script>
+  <script nonce="{{NONCE}}" src="{{resource:shared/routing.js}}"></script>
+  <script nonce="{{NONCE}}" src="{{resource:shared/model-policy.js}}"></script>
+  <script nonce="{{NONCE}}" src="{{resource:webview/app.js}}"></script>
 </body>
 </html>

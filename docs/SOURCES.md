@@ -15,7 +15,7 @@ The [official parameter reference](https://platform.kimi.ai/docs/api/models-over
 
 For VS Code commit `c4453f8ea430795f941c1b2ff6c9321135a74a02`, [services.ts](https://github.com/microsoft/vscode/blob/c4453f8ea430795f941c1b2ff6c9321135a74a02/extensions/copilot/src/extension/extension/vscode/services.ts#L127) defaults to `topP: 1`, and [OpenAIEndpoint](https://github.com/microsoft/vscode/blob/c4453f8ea430795f941c1b2ff6c9321135a74a02/extensions/copilot/src/extension/byok/node/openAIEndpoint.ts#L293) forwards it for Custom Endpoint Chat Completions. Its `modelOptions` override fixes this to `0.95`; its thinking-model interceptor omits `temperature`. Responses and Messages builders do not inject these sampling defaults, so their profiles need no sampling override. This was verified from pinned source and configuration tests, without a paid inference call.
 
-[The 0.7.1 migration](catalog-updates-0.7.1.json) updates unmodified K3 profiles while retaining user-maintained profile fields.
+[The 0.7.1 migration](../resources/catalog/migrations.json) (`0.7.1-k3-sampling`) updates unmodified K3 profiles while retaining user-maintained profile fields.
 
 ## Context capacity and pricing — 2026-11-08
 
@@ -25,7 +25,7 @@ The configuration manager uses the full available input allocation after reservi
 
 ## Declarative configuration
 
-[official-model-overrides.json](official-model-overrides.json) holds checked model facts; [model-rules.json](model-rules.json) holds routing recommendations and non-chat exclusions; [catalog-generation.json](catalog-generation.json) holds source-selection and historical evidence. Runtime code interprets protocol configuration without recognizing model IDs or manufacturers.
+[overrides.json](../scripts/catalog/overrides.json) holds checked model facts; [rules.json](../resources/catalog/rules.json) holds routing recommendations and non-chat exclusions; [generation.json](../scripts/catalog/generation.json) holds source-selection and historical evidence. Runtime code interprets protocol configuration without recognizing model IDs or manufacturers.
 
 Physical output capacity is distinct from the default generation budget. Native input and output reservations must fit together, even for models whose independently documented output capacity equals the whole window. Unknown physical limits remain labeled rather than inferred from a model name.
 
@@ -216,7 +216,7 @@ Physical output capacity is distinct from the default generation budget. Native 
 
 ## Context pricing
 
-[context-pricing.json](context-pricing.json) contains input ceilings inclusive of the lower price band, optional output-dependent bands, currency, rates per million tokens, sources and dates. Null is an open-ended last band. Service tiers, time-of-day tariffs, promotions, cache duration and region are separate from context-length tiers and are described in each policy. Unknown is never treated as flat. Original API prices need not match a proxy's prices.
+[pricing.json](../scripts/catalog/pricing.json) contains input ceilings inclusive of the lower price band, optional output-dependent bands, currency, rates per million tokens, sources and dates. Null is an open-ended last band. Service tiers, time-of-day tariffs, promotions, cache duration and region are separate from context-length tiers and are described in each policy. Unknown is never treated as flat. Original API prices need not match a proxy's prices.
 
 ## Source selection
 
@@ -270,4 +270,6 @@ Historical source conflicts remain explicit in the generation rules:
 
 ## Maintenance
 
-Run `node scripts/update-catalog.cjs --check` after a catalog change. Generation never changes the user's stored database. Installed upgrades use declarative migration records and preserve manual model settings. Dates are recorded only when explicitly present; unknown/future dates are not invented from IDs.
+Run `node scripts/catalog/update.cjs --check` after a catalog change. Generation never changes the user's stored database. Installed upgrades use declarative migration records and preserve manual model settings. Dates are recorded only when explicitly present; unknown/future dates are not invented from IDs.
+
+Runtime data lives in [models.json](../resources/catalog/models.json), [rules.json](../resources/catalog/rules.json) and [migrations.json](../resources/catalog/migrations.json). The migration document is a plain JSON object: `legacyProfiles` retains the protocol defaults needed to validate pre-0.6 configurations, and `updates` is an ordered array of records with unchanged `id` and `kind` values and an inline `payload` when needed. Date and pricing migrations use the current model seed. The names migration also supplies the generator's display-name map. [release-dates.json](../scripts/catalog/release-dates.json) is historical authoring evidence, not a runtime migration input. Authoring evidence in `scripts/catalog/` and the source and audit documents in `docs/` are not runtime resources. Historical model `source` strings are retained verbatim, including old paths.

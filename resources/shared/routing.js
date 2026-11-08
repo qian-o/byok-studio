@@ -1,5 +1,5 @@
 (function (root, factory) {
-  const api = factory(typeof module === 'object' && module.exports ? require('../data/model-rules.json') : undefined);
+  const api = factory(typeof module === 'object' && module.exports ? require('../catalog/rules.json') : undefined);
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.ByokModelVendors = api;
 })(globalThis, function (initialRules) {

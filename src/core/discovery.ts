@@ -1,5 +1,5 @@
-import { t } from '../../media/i18n.js';
-import { excludedKind, normalizeRouting } from '../../media/model-vendors.js';
+import { t } from '../../resources/shared/i18n.js';
+import { excludedKind, normalizeRouting } from '../../resources/shared/routing.js';
 import { discoverModels } from './discoveryTransport';
 import { resolveEndpoint } from './endpoints';
 import type { ApiType, DiscoveredModel, ProviderConfig } from './types';

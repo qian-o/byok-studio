@@ -4,7 +4,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { StudioStore } from './core/store';
 import { compileOfficialGroup } from './core/officialConfig';
 import { listGroups, updateOwnedGroup, removeLegacyGroups } from './core/officialJson';
-import { t } from '../media/i18n.js';
+import { t } from '../resources/shared/i18n.js';
 
 const BINDINGS_KEY = 'byokStudio.officialBindings.v1';
 const ADD_GROUP = 'lm.addLanguageModelsProviderGroup';

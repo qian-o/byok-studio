@@ -1,5 +1,5 @@
 import type { ApiType } from './types';
-import { t } from '../../media/i18n.js';
+import { t } from '../../resources/shared/i18n.js';
 
 /** Accept an origin, a prefixed API root, or an existing API operation URL. */
 export function resolveEndpoint(baseUrl: string, apiType: ApiType, operation: 'chat' | 'models'): string {

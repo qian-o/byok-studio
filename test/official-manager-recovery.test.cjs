@@ -7,7 +7,7 @@ const { createRequire } = require('node:module');
 const vm = require('node:vm');
 const { StudioStore } = require('../dist/core/store');
 const { listGroups } = require('../dist/core/officialJson');
-const { setLocale } = require('../media/i18n.js');
+const { setLocale } = require('../resources/shared/i18n.js');
 
 const BINDINGS_KEY = 'byokStudio.officialBindings.v1';
 const ADD_GROUP = 'lm.addLanguageModelsProviderGroup';

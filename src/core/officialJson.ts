@@ -1,5 +1,5 @@
 import { createScanner, getNodeValue, parseTree, SyntaxKind, type Node, type ParseError } from 'jsonc-parser';
-import { t } from '../../media/i18n.js';
+import { t } from '../../resources/shared/i18n.js';
 
 export interface ParsedNativeGroups {
   groups: Record<string, unknown>[];

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import assert from 'node:assert/strict';
 import type { ExtensionTestApi } from './extension';
 import type { ProviderConfig } from './core/types';
-import { normalizeRouting } from '../media/model-vendors.js';
+import { normalizeRouting } from '../resources/shared/routing.js';
 import { listGroups, parseNativeGroups, updateOwnedGroup } from './core/officialJson';
 import { OfficialConfigurationManager } from './officialManager';
 

@@ -13,9 +13,8 @@
   const API_TYPES = vendors.apiTypes;
   const ENDPOINT_FIELDS = { responses: 'responses-url', chatCompletions: 'chat-completions-url', messages: 'messages-url' };
   const PROTOCOL_NAMES = { responses: 'Responses', chatCompletions: 'Chat Completions', messages: 'Messages' };
-  const ordering = globalThis.ByokModelOrder;
-  const contextPolicy = globalThis.ByokContextPolicy;
-  const { inputCeiling } = contextPolicy;
+  const modelPolicy = globalThis.ByokModelPolicy;
+  const { inputCeiling } = modelPolicy;
   const pendingRequests = new Map();
   const drafts = new Map();
   const dialogFocus = new WeakMap();
@@ -320,7 +319,7 @@
     open.setAttribute('aria-label', t('设置模型 {0}', name));
     open.append(node('span', 'model-label', name));
     const date = own(state.database.models, model.id) ? state.database.models[model.id].releaseDate : undefined;
-    open.title = `${name}\n${model.id}\n${ordering.validDate(date) ? t('发布日期：{0}', date) : t('发布日期未知')}`;
+    open.title = `${name}\n${model.id}\n${modelPolicy.validDate(date) ? t('发布日期：{0}', date) : t('发布日期未知')}`;
     const actions = node('span', 'model-actions');
     actions.append(iconButton('edit', t('编辑模型 {0}', name), 'edit-model'), iconButton('trash', t('移除模型 {0}', name), 'remove-model'));
     row.append(open, actions);
@@ -525,7 +524,7 @@
     if (!modelSession) return;
     const parameters = baseParameters($('model-id').value.trim(), modelSession.database);
     const pricing = parameters.contextPricing;
-    $('context-pricing-note').textContent = contextPolicy.pricingNote(parameters);
+    $('context-pricing-note').textContent = modelPolicy.pricingNote(parameters);
     $('context-pricing-details').hidden = !pricing;
     $('context-pricing-summary').textContent = t('计费资料 · {0}', pricing?.checkedAt ? t('核验于 {0}', pricing.checkedAt) : t('尚未核验'));
     $('context-pricing-source').textContent = [pricing?.source || t('未填写来源'), pricingRatesText(pricing)].filter(Boolean).join('\n');
@@ -830,7 +829,7 @@
     const parameters = { ...baseParameters(id, modelSession.database), thinking: $('cap-thinking').checked, supportsReasoningEffort: declared };
     const provider = drafts.get(modelSession.providerId).provider;
     const apiType = vendors.routeForModel(provider, modelSession.editingId || id).apiType;
-    const projection = globalThis.ByokOfficialEffort.projectEfforts(parameters, apiType);
+    const projection = modelPolicy.projectEfforts(parameters, apiType);
     const values = projection.levels;
     const content = document.createDocumentFragment();
     const automatic = node('option', '', t('默认（不指定）'));
@@ -1173,7 +1172,7 @@
       const invalidEfforts = effortError(record.supportsReasoningEffort);
       if (invalidEfforts) return invalidEfforts;
       if (record.verifiedAt !== null && !validDate(record.verifiedAt)) return t('核验日期格式应为 YYYY-MM-DD。');
-      if (record.releaseDate != null && !ordering.validDate(record.releaseDate)) return t('模型发布日期必须是有效的 YYYY-MM-DD 日期。');
+      if (record.releaseDate != null && !modelPolicy.validDate(record.releaseDate)) return t('模型发布日期必须是有效的 YYYY-MM-DD 日期。');
       const pricingProblem = contextPricingProblem(record.contextPricing);
       if (pricingProblem) return t('{0}：{1}', id === null ? t('初始配置') : recordName(record, id), pricingProblem.text);
     }
@@ -1244,7 +1243,7 @@
     if (invalidEfforts) { formError('database-editor-error', invalidEfforts, 'database-extra-efforts'); return; }
     if (record.source.length > 4000) { formError('database-editor-error', t('参数来源最多 4000 个字符。'), 'database-source'); return; }
     if (record.verifiedAt && !validDate(record.verifiedAt)) { formError('database-editor-error', t('请填写有效的核验日期。'), 'database-verified'); return; }
-    if (record.releaseDate && !ordering.validDate(record.releaseDate)) { formError('database-editor-error', t('请填写有效的模型发布日期。'), 'database-release'); return; }
+    if (record.releaseDate && !modelPolicy.validDate(record.releaseDate)) { formError('database-editor-error', t('请填写有效的模型发布日期。'), 'database-release'); return; }
     if (mode === 'defaults') databaseSession.database.defaults = record;
     else {
       if (mode === 'model' && oldId !== id) delete databaseSession.database.models[oldId];
