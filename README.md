@@ -4,6 +4,10 @@ English | [简体中文](README.zh-CN.md)
 
 BYOK Studio is a visual editor for the **Custom Endpoint** entries in VS Code's `chatLanguageModels.json`. It saves provider and model settings to that file. Official GitHub Copilot handles chat requests.
 
+![Configuration page with example endpoints and real model names](docs/images/configuration-en.png)
+
+*Demo data: placeholder endpoint URLs, no API key.*
+
 ## Configuration
 
 - Provider names, endpoint URLs, and API keys.
@@ -22,6 +26,44 @@ Requires **VS Code 1.145 or later** with **GitHub Copilot Chat** enabled. After 
 4. Click **Save provider** to write the configuration. Select the corresponding **Custom Endpoint** model in Copilot Chat.
 
 The extension updates only the entries it manages and stores API keys through VS Code's secret storage. Leaving an existing provider's key blank keeps the saved key. Model availability and request behavior depend on the provider and official Copilot.
+
+<details>
+<summary>Generated configuration (one-model excerpt)</summary>
+
+The following entry is generated from the example above; the other models are omitted.
+
+```json
+[
+  {
+    "name": "Example Gateway",
+    "vendor": "customendpoint",
+    "byokStudioId": "demo-provider",
+    "models": [
+      {
+        "id": "kimi-k3",
+        "name": "Kimi K3",
+        "url": "https://chat.example.com/v1/chat/completions",
+        "apiType": "chat-completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 917504,
+        "maxOutputTokens": 131072,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "high",
+          "max"
+        ],
+        "modelOptions": {
+          "top_p": 0.95
+        }
+      }
+    ]
+  }
+]
+```
+
+</details>
 
 ## Development
 

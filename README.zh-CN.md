@@ -4,6 +4,10 @@
 
 BYOK Studio 是 VS Code 的 `chatLanguageModels.json` 中 **Custom Endpoint** 配置项的可视化编辑器。它将供应商和模型设置保存到该文件，聊天请求由官方 GitHub Copilot 处理。
 
+![使用占位地址和真实模型名称的配置页面](docs/images/configuration-zh-CN.png)
+
+*演示数据：地址均为占位地址，未填写 API Key。*
+
 ## 配置内容
 
 - 供应商名称、端点地址和 API Key。
@@ -22,6 +26,44 @@ BYOK Studio 是 VS Code 的 `chatLanguageModels.json` 中 **Custom Endpoint** �
 4. 点击 **保存供应商** 写入配置，然后在 Copilot Chat 中选择对应的 **Custom Endpoint** 模型。
 
 扩展只更新自己管理的配置项，API Key 通过 VS Code 的密钥存储保存。编辑已有供应商时，Key 留空会保留已存密钥。模型是否可用及请求行为取决于供应商和官方 Copilot。
+
+<details>
+<summary>生成的配置结果（单个模型节选）</summary>
+
+以下配置由上方演示数据生成，其余模型已省略。
+
+```json
+[
+  {
+    "name": "Example Gateway",
+    "vendor": "customendpoint",
+    "byokStudioId": "demo-provider",
+    "models": [
+      {
+        "id": "kimi-k3",
+        "name": "Kimi K3",
+        "url": "https://chat.example.com/v1/chat/completions",
+        "apiType": "chat-completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 917504,
+        "maxOutputTokens": 131072,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "high",
+          "max"
+        ],
+        "modelOptions": {
+          "top_p": 0.95
+        }
+      }
+    ]
+  }
+]
+```
+
+</details>
 
 ## 开发
 
