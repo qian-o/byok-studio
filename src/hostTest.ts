@@ -7,7 +7,7 @@ import { listGroups, parseNativeGroups, updateOwnedGroup } from './core/official
 import { OfficialConfigurationManager } from './officialManager';
 
 export async function run(): Promise<void> {
-  const extension = vscode.extensions.getExtension<ExtensionTestApi>('byok-studio-local.byok-studio');
+  const extension = vscode.extensions.getExtension<ExtensionTestApi>('qian-o.byok-studio');
   assert.ok(extension);
   const api = await extension.activate();
   const official = vscode.extensions.getExtension('GitHub.copilot-chat');
