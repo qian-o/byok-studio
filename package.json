@@ -5,6 +5,7 @@
   "version": "1.0.0",
   "publisher": "byok-studio-local",
   "license": "MIT",
+  "icon": "resources/icon.png",
   "engines": {
     "vscode": "^1.145.0"
   },
