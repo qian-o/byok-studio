@@ -2,38 +2,26 @@
 
 English | [简体中文](README.zh-CN.md)
 
-Use your own API keys and model endpoints in GitHub Copilot Chat. BYOK Studio visually manages VS Code's official **Custom Endpoint** configuration. Official Copilot handles chat requests; the extension has no chat runtime of its own.
+BYOK Studio is a visual editor for the **Custom Endpoint** entries in VS Code's `chatLanguageModels.json`. It saves provider and model settings to that file. Official GitHub Copilot handles chat requests.
 
-## Features
+## Configuration
 
-- Manage providers, API keys, endpoint URLs, and editable model capabilities in one place.
-- Use **Chat Completions**, **Responses**, or **Messages**, with one protocol for all models or separate protocols per model.
-- Discover models, add or edit them manually, and move selected models between protocol columns.
-- The interface follows VS Code's display language: Chinese for `zh` locales, English otherwise. Model IDs, custom labels, and URLs remain unchanged.
+- Provider names, endpoint URLs, and API keys.
+- **Chat Completions**, **Responses**, or **Messages** protocol settings, shared by all models or assigned per model.
+- Model lists, display names, token limits, capability declarations, and reasoning defaults.
 
-## Get started
+Model presets supply editable reference values. See [parameter sources](data/SOURCES.md) for their sources and known gaps. Declaring a capability does not add it to a model or to Copilot.
 
-You need **VS Code 1.145 or later**, the official **GitHub Copilot Chat** extension enabled, and your provider's API key and endpoint URL.
+## Usage
 
-1. Download the `.vsix` package from [Releases](https://github.com/qian-o/byok-studio/releases/latest). Run **Extensions: Install from VSIX…** in the Command Palette, select the package, then run **Developer: Reload Window**.
-2. Run **BYOK Studio: Manage Models** and add a provider.
-3. Enter the provider name and API key. Choose a unified protocol or split protocols, then enter the corresponding URLs. Split protocols share the provider's key.
-4. Discover models or add and edit them manually. **Discovery replaces the current model list.** In split mode, select models and move them to the target protocol column.
-5. Save the provider to apply the configuration. You can save even without changes; leaving an existing provider's key blank preserves its stored key.
-6. Open Copilot Chat and select the provider's **Custom Endpoint** model in the model picker.
+Requires **VS Code 1.145 or later** with **GitHub Copilot Chat** enabled. After installing BYOK Studio:
 
-## Presets and context
+1. Run **BYOK Studio: Manage Models** from the Command Palette.
+2. Add a provider and enter its URL, API key, and protocol settings.
+3. Refresh or manually add models, then adjust their settings as needed. Refreshing replaces the draft model list while retaining settings for matching IDs.
+4. Click **Save provider** to write the configuration. Select the corresponding **Custom Endpoint** model in Copilot Chat.
 
-Built-in presets cover **182 exact model IDs** and provide editable parameter references. A preset does not guarantee that a model is available or that every endpoint supports its capabilities. See [parameter sources](data/SOURCES.md) for evidence and known gaps.
-
-Each model uses its configured maximum context as a single budget, reserving output space when input and output share a window. There is currently no native context-size picker. Official Copilot handles input processing, compaction, and usage display; pricing information is a reference, with actual charges set by your provider.
-
-## Privacy and compatibility
-
-- API keys use VS Code's encrypted secret storage. Exported presets do not contain keys. Configuration updates and deletions affect only entries managed by BYOK Studio.
-- Chat networking is handled by official Copilot. Model and endpoint support depends on the provider and Copilot's protocol adapters. Reasoning levels are offered only when the official configuration can express them.
-- The zero data retention (ZDR) setting cannot enforce a provider's data retention policy.
-- External JSON includes and arbitrary request-body JSON are unsupported.
+The extension updates only the entries it manages and stores API keys through VS Code's secret storage. Leaving an existing provider's key blank keeps the saved key. Model availability and request behavior depend on the provider and official Copilot.
 
 ## Development
 
