@@ -316,7 +316,6 @@ dialog::backdrop { background: #16162060; }
 .database-footer { justify-content: space-between; flex-wrap: wrap; }
 .database-footer > .source-note { width: 100%; margin: 0; }
 .database-file-actions, .database-save-actions { display: flex; gap: 8px; }
-.database-notice { margin-top: 9px; }
 .database-editor .advanced { margin-top: 0; }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 5px 25px var(--shadow); padding: 11px 16px; font-size: 12px; width: max-content; max-width: min(560px, calc(100vw - 32px)); overflow-wrap: anywhere; z-index: 100; pointer-events: none; }
 .toast.error-toast { border-color: var(--error); color: var(--error); }

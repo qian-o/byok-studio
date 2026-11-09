@@ -1049,7 +1049,7 @@
     else button.dataset.entryId = id;
     const name = defaults ? t('初始配置') : recordName(record, id);
     button.setAttribute('aria-label', t('编辑{0}', name));
-    const detail = defaults ? t('未知 ID 使用 · {0} 上下文 / {1} 输出\n{2}', record.contextWindow.toLocaleString(), record.maxOutputTokens.toLocaleString(), sourceNote(record)) : sourceNote(record);
+    const detail = defaults ? t('未知 ID 使用 · {0} 上下文 / {1} 输出', record.contextWindow.toLocaleString(), record.maxOutputTokens.toLocaleString()) : id;
     button.append(node('strong', '', name), node('small', '', detail));
     const edit = iconButton('edit', t('编辑{0}', name));
     edit.dataset.databaseAction = 'edit';
@@ -1155,6 +1155,7 @@
     $('database-thinking').checked = record.thinking;
     renderEfforts('database-efforts', record.supportsReasoningEffort);
     $('database-extra-efforts').value = '';
+    $('database-provenance').open = false;
     $('database-source').value = mode === 'new' ? t('用户维护，未核验。') : record.source;
     $('database-verified').value = mode === 'new' ? '' : record.verifiedAt || '';
     $('database-release-field').hidden = mode === 'defaults';

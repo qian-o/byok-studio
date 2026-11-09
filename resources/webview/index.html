@@ -100,7 +100,6 @@
     <p id="database-update" class="notice compact-notice" role="status" hidden>{{t:参数库已在其他位置更新，当前草稿已保留。保存将覆盖参数库，或取消后重新打开。}}</p>
     <div class="database-toolbar"><input id="database-search" type="search" placeholder="{{t:搜索模型名称}}" aria-label="{{t:搜索参数库}}" autocomplete="off"><button id="database-refresh" class="button secondary" type="button" title="{{t:从 models.dev 更新，保留手动修改。}}"><svg aria-hidden="true"><use href="#i-refresh"/></svg>{{t:更新参数库}}</button><button id="database-add" class="button primary" type="button">{{t:新增条目}}</button></div>
     <div id="database-list" class="database-list"></div>
-    <p class="source-note database-notice">{{t:条目保留参数来源与核验日期；未核验的参数请按服务商文档调整。}}</p>
     <p id="database-error" class="dialog-error" role="alert" hidden></p>
     <footer class="dialog-footer database-footer"><span id="database-count" class="source-note" role="status"></span><div class="database-file-actions"><button id="database-import" class="button secondary small" type="button">{{t:导入 JSON}}</button><button id="database-export" class="button secondary small" type="button">{{t:导出 JSON}}</button></div><div class="database-save-actions"><button class="button secondary" type="button" data-close="database-dialog">{{t:取消}}</button><button id="database-save" class="button primary" type="button">{{t:保存参数库}}</button></div></footer>
         </div>
@@ -126,9 +125,11 @@
         </div></details>
         <fieldset class="plain-fieldset"><legend>{{t:模型能力}}</legend><div class="capabilities"><label class="checkbox"><input id="database-tools" type="checkbox">{{t:工具调用}}</label><label class="checkbox"><input id="database-vision" type="checkbox">{{t:视觉}}</label><label class="checkbox"><input id="database-thinking" type="checkbox">{{t:思考}}</label></div></fieldset>
         <fieldset class="plain-fieldset"><legend>{{t:可用推理档位}}</legend><div id="database-efforts" class="efforts"></div><div class="field extra-efforts"><label for="database-extra-efforts">{{t:其他档位（逗号分隔，可选）}}</label><input id="database-extra-efforts" placeholder="{{t:填写服务商支持的档位}}" autocomplete="off" spellcheck="false"></div></fieldset>
-        <div class="field"><label for="database-source">{{t:参数来源 / 备注}}</label><textarea id="database-source" maxlength="4000" rows="2" placeholder="{{t:官方文档地址或维护说明}}"></textarea></div>
-        <div class="field" id="database-release-field"><label for="database-release">{{t:模型发布日期（可选）}}</label><input id="database-release" type="date"><p class="source-note">{{t:模型发布日期；未知时留空。}}</p></div>
-        <div class="field"><label for="database-verified">{{t:核验日期（可选）}}</label><input id="database-verified" type="date"><p class="source-note">{{t:留空表示尚未核验。}}</p></div>
+        <details id="database-provenance" class="advanced"><summary><svg aria-hidden="true"><use href="#i-chevron"/></svg>{{t:参数来源 / 备注}}</summary><div class="advanced-body">
+          <div class="field"><textarea id="database-source" aria-label="{{t:参数来源 / 备注}}" maxlength="4000" rows="3" placeholder="{{t:官方文档地址或维护说明}}"></textarea></div>
+          <div class="field" id="database-release-field"><label for="database-release">{{t:模型发布日期（可选）}}</label><input id="database-release" type="date"></div>
+          <div class="field"><label for="database-verified">{{t:核验日期（可选）}}</label><input id="database-verified" type="date"></div>
+        </div></details>
       </div>
       <p id="database-editor-error" class="dialog-error" role="alert" hidden></p>
       <footer class="dialog-footer"><button class="button secondary" type="button" data-close="database-editor">{{t:取消}}</button><button class="button primary" type="submit">{{t:应用到草稿}}</button></footer>
