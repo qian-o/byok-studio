@@ -96,9 +96,9 @@
   <dialog id="database-dialog" class="database-dialog" aria-labelledby="database-title">
     <div class="dialog-scroll">
     <header class="dialog-header"><h2 id="database-title">{{t:模型参数库}}</h2><button class="icon-button" type="button" data-close="database-dialog" aria-label="{{t:关闭参数库}}"><svg aria-hidden="true"><use href="#i-close"/></svg></button></header>
-    <p class="database-copy">{{t:按请求 ID 精确匹配参数。未知模型使用初始配置，供应商中的手动调整优先。}}</p>
+    <p class="database-copy">{{t:从 models.dev 获取模型参数，手动修改优先。}}</p>
     <p id="database-update" class="notice compact-notice" role="status" hidden>{{t:参数库已在其他位置更新，当前草稿已保留。保存将覆盖参数库，或取消后重新打开。}}</p>
-    <div class="database-toolbar"><input id="database-search" type="search" placeholder="{{t:搜索模型名称}}" aria-label="{{t:搜索参数库}}" autocomplete="off"><button id="database-add" class="button primary" type="button">{{t:新增条目}}</button></div>
+    <div class="database-toolbar"><input id="database-search" type="search" placeholder="{{t:搜索模型名称}}" aria-label="{{t:搜索参数库}}" autocomplete="off"><button id="database-refresh" class="button secondary" type="button" title="{{t:从 models.dev 更新，保留手动修改。}}"><svg aria-hidden="true"><use href="#i-refresh"/></svg>{{t:更新参数库}}</button><button id="database-add" class="button primary" type="button">{{t:新增条目}}</button></div>
     <div id="database-list" class="database-list"></div>
     <p class="source-note database-notice">{{t:条目保留参数来源与核验日期；未核验的参数请按服务商文档调整。}}</p>
     <p id="database-error" class="dialog-error" role="alert" hidden></p>

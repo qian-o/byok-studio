@@ -86,6 +86,12 @@ export interface ModelDatabase {
   models: Record<string, ModelParameters>;
 }
 
+export interface CatalogSnapshot {
+  source: 'models.dev';
+  updatedAt: string;
+  database: ModelDatabase;
+}
+
 export type ParameterOverrides = Partial<Pick<ModelParameters, 'contextWindow' | 'maxInputTokens' | 'maxOutputTokens' | 'defaultOutputTokens' | 'toolCalling' | 'vision' | 'thinking' | 'supportsReasoningEffort'>>;
 
 export interface ModelConfig {
@@ -112,6 +118,7 @@ export interface StudioState {
   version: 1;
   providers: ProviderConfig[];
   database: ModelDatabase;
+  catalog?: CatalogSnapshot;
   appliedCatalogUpdates?: string[];
 }
 

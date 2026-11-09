@@ -216,7 +216,8 @@ export function validateParameters(value: unknown): ModelParameters {
   if (v.maxInputTokens !== undefined && v.maxInputTokens !== null && v.maxInputTokens !== '') result.maxInputTokens = positiveInt(v.maxInputTokens, t('最大输入'));
   if (v.defaultOutputTokens !== undefined && v.defaultOutputTokens !== null && v.defaultOutputTokens !== '') result.defaultOutputTokens = positiveInt(v.defaultOutputTokens, t('默认输出预算'));
   if ((result.contextWindowMode !== 'input' && result.maxOutputTokens > result.contextWindow) || (result.maxInputTokens !== undefined && result.maxInputTokens > result.contextWindow)) throw new Error(t('输入或输出上限不能超过上下文窗口。'));
-  if (result.contextWindowMode !== 'input' && result.maxInputTokens === undefined && result.maxOutputTokens >= result.contextWindow) throw new Error(t('最大输出必须小于上下文窗口，或填写已核实的独立输入上限。'));
+  if (result.contextWindowMode !== 'input' && result.maxInputTokens === undefined && result.maxOutputTokens >= result.contextWindow
+    && !(result.defaultOutputTokens !== undefined && result.defaultOutputTokens < result.contextWindow)) throw new Error(t('最大输出必须小于上下文窗口，或设置较小的单次输出预算或有效输入上限。'));
   if (result.verifiedAt && !/^\d{4}-\d{2}-\d{2}$/.test(result.verifiedAt)) throw new Error(t('核验日期格式应为 YYYY-MM-DD。'));
   return result;
 }

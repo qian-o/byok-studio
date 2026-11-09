@@ -6,7 +6,7 @@ const { compileOfficialGroup, compileOfficialModel, officialProtocol, unsupporte
 const { effectiveParameters, requestParametersForApi } = require('../dist/core/configuration');
 const { inputCeiling } = require('../resources/shared/model-policy');
 const { projectEfforts } = require('../resources/shared/model-policy');
-const catalog = require('../resources/catalog/models.json');
+const catalog = require('../resources/catalog/models.json').database;
 
 const protocols = ['chatCompletions', 'responses', 'messages'];
 const nativeProtocols = ['chat-completions', 'responses', 'messages'];

@@ -10,6 +10,7 @@ export async function run(): Promise<void> {
   const extension = vscode.extensions.getExtension<ExtensionTestApi>('qian-o.byok-studio');
   assert.ok(extension);
   const api = await extension.activate();
+  assert.equal(api.store.snapshot().catalog?.source, 'models.dev', 'Activation starts from the offline upstream snapshot');
   const official = vscode.extensions.getExtension('GitHub.copilot-chat');
   assert.ok(official, 'The test explicitly loads the installed official provider extension');
   await official.activate();

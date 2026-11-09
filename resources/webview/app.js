@@ -512,7 +512,8 @@
     if (parameters.maxInputTokens !== undefined && (!Number.isSafeInteger(parameters.maxInputTokens) || parameters.maxInputTokens <= 0 || parameters.maxInputTokens > 100000000)) return t('最大输入必须是 1–100000000 的整数，或留空自动计算。');
     if (parameters.defaultOutputTokens !== undefined && (!Number.isSafeInteger(parameters.defaultOutputTokens) || parameters.defaultOutputTokens <= 0 || parameters.defaultOutputTokens > 100000000)) return t('单次输出预算必须是 1–100000000 的整数，或留空使用默认值。');
     if ((parameters.contextWindowMode !== 'input' && parameters.maxOutputTokens > parameters.contextWindow) || (parameters.maxInputTokens !== undefined && parameters.maxInputTokens > parameters.contextWindow)) return t('最大输入和最大输出不能超过上下文窗口。');
-    if (parameters.contextWindowMode !== 'input' && parameters.maxInputTokens === undefined && parameters.maxOutputTokens >= parameters.contextWindow) return t('最大输出必须小于上下文窗口，或填写有效的独立最大输入。');
+    if (parameters.contextWindowMode !== 'input' && parameters.maxInputTokens === undefined && parameters.maxOutputTokens >= parameters.contextWindow
+      && !(parameters.defaultOutputTokens !== undefined && parameters.defaultOutputTokens < parameters.contextWindow)) return t('最大输出必须小于上下文窗口，或设置较小的单次输出预算或有效输入上限。');
     return null;
   }
 
@@ -1036,6 +1037,7 @@
     $('database-count').textContent = t('{0} 个模型 · {1}{2}', count, databaseDirty() ? t('未保存的草稿') : t('已保存'), databaseSession.conflict ? t(' · 有外部更新') : '');
     $('database-update').hidden = !databaseSession.conflict;
     unavailable($('database-save'), !databaseDirty() && !databaseSession.conflict);
+    $('database-refresh').title = t('从 models.dev 更新，保留手动修改。') + (state.catalog?.updatedAt ? ` ${t('上次更新：{0}', new Date(state.catalog.updatedAt).toLocaleString())}` : '');
   }
 
   function databaseRow(id, record, defaults = false) {
@@ -1291,6 +1293,17 @@
     }, 'database-error');
   }
 
+  $('database-refresh').addEventListener('click', () => {
+    if (!databaseSession || busy) return;
+    if (databaseDirty() || databaseSession.conflict) {
+      message('database-error', t('请先保存参数库草稿，再更新。'));
+      return;
+    }
+    void runAction(t('正在更新参数库…'), async () => {
+      const next = await request('updateCatalog');
+      applyState(next, { database: true });
+    }, 'database-error');
+  });
   $('database-save').addEventListener('click', () => {
     if (!databaseSession) return;
     if (databaseSession.conflict) confirmAction(t('覆盖参数库更新'), t('参数库已在其他位置修改。是否使用当前参数草稿覆盖已保存的参数库？'), () => saveDatabase());

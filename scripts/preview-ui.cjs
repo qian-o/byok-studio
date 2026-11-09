@@ -10,7 +10,7 @@ const {setLocale,renderHtml} = require('../resources/shared/i18n');
 setLocale(process.env.BYOK_PREVIEW_LANGUAGE || 'en');
 const root = path.resolve(__dirname,'..');
 const data = new Map(), keys = new Map();
-const store = new StudioStore({get:key=>data.get(key),update:async(key,value)=>{data.set(key,value);}}, {get:async key=>keys.get(key),store:async(key,value)=>{keys.set(key,value);},delete:async key=>{keys.delete(key);}},require('../resources/catalog/models.json'),()=>{});
+const store = new StudioStore({get:key=>data.get(key),update:async(key,value)=>{data.set(key,value);}}, {get:async key=>keys.get(key),store:async(key,value)=>{keys.set(key,value);},delete:async key=>{keys.delete(key);}},require('../resources/catalog/models.json').database,()=>{});
 const template=fs.readFileSync(path.join(root,'resources','webview','index.html'),'utf8');
 const resourcePattern=/\{\{resource:((?:webview|shared)\/[a-z0-9.-]+)\}\}/g;
 const allowedResources=new Set([...template.matchAll(resourcePattern)].map(match=>'/resources/'+match[1]));
@@ -40,6 +40,7 @@ const server = http.createServer(async(req,res)=>{
         else if(m.command==='saveProvider'){await store.saveProvider(p.provider,p.apiKey,p.clearKey);output=await store.uiState();}
         else if(m.command==='deleteProvider'){await store.deleteProvider(p.id);output=await store.uiState();}
         else if(m.command==='saveDatabase'){await store.saveDatabase(p.database);output=await store.uiState();}
+        else if(m.command==='updateCatalog'){await store.updateCatalog(require('../resources/catalog/models.json'));output=await store.uiState();}
         else if(m.command==='discoverModels'){const provider=validateProvider(p.provider,store.snapshot().database,true);if((provider.routingMode==='unified'?[provider.unified.url]:Object.values(provider.endpoints)).some(url=>url&&!url.startsWith(`http://127.0.0.1:${server.address().port}/`)))throw Error('Preview harness only allows its local mock endpoint.');output=await discoverProviderModels(provider,p.apiKey||await store.key(provider.id)||'',AbortSignal.timeout(5000));}
         else if(['openModels','exportConfig','exportDatabase'].includes(m.command))output=null;
         else throw Error('Preview operation unavailable');

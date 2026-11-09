@@ -12,7 +12,7 @@
 - **Chat Completions**、**Responses** 或 **Messages** 协议配置，可统一设置或按模型分配。
 - 模型列表、显示名称、Token 限制、能力声明和默认推理档位。
 
-[参数来源](docs/SOURCES.md)
+模型预设来自 [models.dev](https://models.dev)，可在参数库中点击 **更新参数库**，保留手动修改。[参数来源](docs/SOURCES.md)。
 
 ## 使用
 

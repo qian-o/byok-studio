@@ -12,7 +12,7 @@ A visual editor for Copilot's **Custom Endpoint** configuration in `chatLanguage
 - **Chat Completions**, **Responses**, or **Messages** protocol settings, shared by all models or assigned per model.
 - Model lists, display names, token limits, capability declarations, and reasoning defaults.
 
-[Parameter sources](docs/SOURCES.md)
+Model presets come from [models.dev](https://models.dev). Use **Update presets** in the model library; local edits are retained. [Parameter sources](docs/SOURCES.md).
 
 ## Usage
 

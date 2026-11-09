@@ -110,6 +110,11 @@ async function webview(providers, modelDatabase = database, options = {}) {
         }else if(message.command==='discoverModels'){
           if(options.discoveryError)throw new Error(options.discoveryError);
           data=options.discover?await options.discover(message):options.discovery||{models:[{id:'discovered-id',name:'Discovered Model'}]};
+        }else if(message.command==='updateCatalog'){
+          if(options.catalogError)throw new Error(options.catalogError);
+          if(options.updatedCatalog)state.database=validateDatabase(options.updatedCatalog);
+          state.catalog={source:'models.dev',updatedAt:'2026-11-09T00:00:00.000Z'};
+          state.revision++;data=state;
         }else if(message.command==='saveDatabase'){
           state.database=validateDatabase(message.payload.database);state.revision++;data=state;
         }else if(message.command==='importDatabase'){
@@ -1247,6 +1252,41 @@ test('English UI supports editing, validation and protocol transfer without tran
   assert.equal(saved.models[0].name,custom.name);
   assert.equal(saved.models[0].id,'custom-id');
   assert.equal(saved.modelProtocols['custom-id'],'responses');
+});
+
+test('catalog updates use the extension bridge, refresh the open library and send no provider credentials',async()=>{
+  const updated=structuredClone(database);updated.models['new-model']={...updated.defaults,name:'New model'};
+  const ui=await webview([provider()],database,{language:'en',updatedCatalog:updated});
+  await ui.emit('api-key','input',{value:'draft-secret-must-stay-local'});
+  await ui.emit('open-database','click');
+  await ui.emit('database-refresh','click');
+  const request=ui.messages.find(message=>message.command==='updateCatalog');
+  assert.ok(request);
+  assert.equal(JSON.stringify(request).includes('draft-secret'),false);
+  assert.equal(Object.keys(request.payload||{}).length,0);
+  assert.equal(ui.get('database-dialog').open,true);
+  assert.equal(ui.get('database-error').hidden,true);
+  assert.match(ui.get('database-refresh').title,/Last updated:/);
+  assert.ok(ui.state.database.models['new-model']);
+  assert.equal(ui.get('api-key').value,'draft-secret-must-stay-local');
+});
+test('catalog refresh protects unsaved library drafts and leaves data intact on network failure',async()=>{
+  const ui=await webview([provider()],database,{catalogError:'models.dev unavailable'});
+  await ui.emit('open-database','click');
+  await ui.emit('database-add','click');
+  await ui.emit('database-id','input',{value:'custom-preset'});
+  await ui.emit('database-name','input',{value:'Custom preset'});
+  await ui.emit('database-form','submit');
+  await ui.emit('database-refresh','click');
+  assert.equal(ui.messages.some(message=>message.command==='updateCatalog'),false);
+  assert.match(ui.get('database-error').textContent,/请先保存/);
+  const clean=await webview([provider()],database,{catalogError:'models.dev unavailable'});
+  await clean.emit('open-database','click');
+  const before=clean.state;
+  await clean.emit('database-refresh','click');
+  assert.deepEqual(clean.state,before);
+  assert.equal(clean.get('database-dialog').open,true);
+  assert.match(clean.get('database-error').textContent,/models.dev unavailable/);
 });
 
 test('production webview only loads local script and stylesheet with a restrictive CSP',()=>{

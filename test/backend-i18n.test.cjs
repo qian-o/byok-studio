@@ -175,12 +175,12 @@ test('activation selects the VS Code language before reading or validating store
       env: { language }, Uri: { joinPath: () => 'bundled-database' },
       workspace: { fs: { readFile: async () => {
         localeAtRead = getLocale();
-        return Buffer.from('{"schemaVersion":2}');
+        return Buffer.from('{"source":"models.dev","updatedAt":"2026-11-09T00:00:00.000Z","database":{"schemaVersion":2}}');
       } } }
     };
     vm.runInNewContext(code, { exports, Buffer, require: name => {
       if (name === 'vscode') return vscode;
-      if (name === './panel' || name === './officialManager') return {};
+      if (name === './panel' || name === './officialManager' || name === './stateStorage') return {};
       return require(path.resolve(__dirname, '../dist', name));
     } });
     await assert.rejects(exports.activate({ extensionUri: 'fixture' }), { message });

@@ -1,8 +1,10 @@
+import { isDeepStrictEqual } from 'node:util';
 import { effectiveParameters, object, text, validateContextPricing, validateDatabase, validateParameters, validateProvider } from './configuration';
-import type { ModelDatabase, ProviderConfig, StudioState } from './types';
-import { validDate } from '../../resources/shared/model-policy.js';
+import { compileOfficialModel } from './officialConfig';
+import type { ApiType, CatalogSnapshot, ModelConfig, ModelDatabase, ModelParameters, ProviderConfig, StudioState } from './types';
+import { projectEfforts, validDate } from '../../resources/shared/model-policy.js';
 import { t } from '../../resources/shared/i18n.js';
-import { modelRules, type ModelRules } from '../../resources/shared/routing.js';
+import { modelRules, normalizeRouting, routeForModel, type ModelRules } from '../../resources/shared/routing.js';
 
 export interface StateStorage {
   get<T>(key: string): T | undefined;
@@ -13,24 +15,58 @@ export interface SecretStorage {
   store(key: string, value: string): Thenable<void> | Promise<void>;
   delete(key: string): Thenable<void> | Promise<void>;
 }
-export interface UiState { providers: Array<ProviderConfig & { hasKey: boolean }>; database: ModelDatabase; revision: number; modelRules: ModelRules }
+export interface UiState { providers: Array<ProviderConfig & { hasKey: boolean }>; database: ModelDatabase; catalog?: Pick<CatalogSnapshot, 'source' | 'updatedAt'>; revision: number; modelRules: ModelRules }
 const STATE_KEY = 'byokStudio.state.v1';
 const secretKey = (id: string) => `byokStudio.provider.${id}`;
 
+export function validateCatalogSnapshot(value: unknown): CatalogSnapshot {
+  const raw = object(value);
+  if (raw.source !== 'models.dev') throw new Error(t('模型目录来源必须是 models.dev。'));
+  const timestamp = raw.updatedAt;
+  if (typeof timestamp !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(timestamp)
+    || !Number.isFinite(Date.parse(timestamp))
+    || new Date(timestamp).toISOString() !== timestamp.replace(/(?:\.(\d{1,3}))?Z$/, (_, fraction: string | undefined) => `.${(fraction ?? '').padEnd(3, '0')}Z`)) {
+    throw new Error(t('模型目录更新时间必须是有效的 UTC ISO 8601 时间戳。'));
+  }
+  return { source: 'models.dev', updatedAt: timestamp, database: validateDatabase(raw.database) };
+}
+
+function mergeCatalogParameters(current: ModelParameters, baseline: ModelParameters, incoming: ModelParameters): ModelParameters {
+  const merged = { ...current } as unknown as Record<string, unknown>;
+  const previous = baseline as unknown as Record<string, unknown>;
+  const updated = incoming as unknown as Record<string, unknown>;
+  // Nested profiles and policies are indivisible fields, so a manual nested edit is preserved in full.
+  for (const field of new Set([...Object.keys(previous), ...Object.keys(updated)])) {
+    if (Object.hasOwn(merged, field) !== Object.hasOwn(previous, field) || !isDeepStrictEqual(merged[field], previous[field])) continue;
+    if (Object.hasOwn(updated, field)) merged[field] = updated[field];
+    else delete merged[field];
+  }
+  return validateParameters(merged);
+}
+
 export class StudioStore {
+  /** Whether persisted state existed at construction; stays fixed for this store instance. */
+  readonly hasSavedState: boolean;
+  private readonly seedBaseline?: ModelDatabase;
   private state: StudioState;
   private revision = 0;
   private migrationPending = false;
   private queue: Promise<unknown> = Promise.resolve();
   constructor(private readonly storage: StateStorage, private readonly secrets: SecretStorage, seed: ModelDatabase, private readonly changed: () => void) {
     const saved = storage.get<unknown>(STATE_KEY);
-    if (saved === undefined) { this.state = { version: 1, providers: [], database: validateDatabase(seed) }; return; }
+    this.hasSavedState = saved !== undefined;
+    if (saved === undefined) {
+      this.seedBaseline = validateDatabase(seed);
+      this.state = { version: 1, providers: [], database: structuredClone(this.seedBaseline) };
+      return;
+    }
     const raw = object(saved, t('已保存配置'));
     if (raw.version !== 1 || !Array.isArray(raw.providers)) throw new Error(t('保存的 BYOK 配置版本不受支持；原始数据未修改。'));
     const database = validateDatabase(raw.database);
     const updates = raw.appliedCatalogUpdates;
     if (updates !== undefined && (!Array.isArray(updates) || updates.some(value => typeof value !== 'string'))) throw new Error(t('保存的参数库更新记录无效；原始数据未修改。'));
-    this.state = { version: 1, database, providers: raw.providers.map(p => validateProvider(p, database)), appliedCatalogUpdates: updates as string[] | undefined };
+    const catalog = raw.catalog === undefined ? undefined : validateCatalogSnapshot(raw.catalog);
+    this.state = { version: 1, database, providers: raw.providers.map(p => validateProvider(p, database)), ...(catalog ? { catalog } : {}), appliedCatalogUpdates: updates as string[] | undefined };
     this.migrationPending = JSON.stringify(raw.providers) !== JSON.stringify(this.state.providers);
   }
   snapshot(): StudioState { return structuredClone(this.state); }
@@ -38,13 +74,13 @@ export class StudioStore {
     await this.serialize(async () => undefined);
     const snapshot = this.snapshot();
     const revision = this.revision;
-    return { providers: await Promise.all(snapshot.providers.map(async p => ({ ...p, hasKey: Boolean(await this.key(p.id)) }))), database: snapshot.database, revision, modelRules: modelRules() };
+    return { providers: await Promise.all(snapshot.providers.map(async p => ({ ...p, hasKey: Boolean(await this.key(p.id)) }))), database: snapshot.database, ...(snapshot.catalog ? { catalog: { source: snapshot.catalog.source, updatedAt: snapshot.catalog.updatedAt } } : {}), revision, modelRules: modelRules() };
   }
   key(id: string): Promise<string | undefined> { return Promise.resolve(this.secrets.get(secretKey(id))); }
-  private serialize<T>(work: () => Promise<T>): Promise<T> {
+  private serialize<T>(work: () => Promise<T>, persistMigration = true): Promise<T> {
     const result = this.queue.then(async () => {
-      // Persist migration before other writes; a failed write stays pending for retry.
-      if (this.migrationPending) {
+      // Catalog updates fold a pending migration into their single atomic commit.
+      if (persistMigration && this.migrationPending) {
         await this.storage.update(STATE_KEY, this.snapshot());
         this.migrationPending = false;
       }
@@ -56,6 +92,7 @@ export class StudioStore {
   private async commit(next: StudioState): Promise<void> {
     await this.storage.update(STATE_KEY, next);
     this.state = next;
+    this.migrationPending = false;
     this.revision++;
     this.changed();
   }
@@ -91,6 +128,62 @@ export class StudioStore {
       try { await this.commit(next); }
       catch (error) { if (key !== undefined) await this.secrets.store(secretKey(id), key); throw error; }
     });
+  }
+  updateCatalog(snapshot: CatalogSnapshot, initialBaseline?: ModelDatabase): Promise<void> {
+    return this.serialize(async () => {
+      const catalog = validateCatalogSnapshot(snapshot);
+      if (!this.state.catalog && this.hasSavedState && initialBaseline === undefined) throw new Error(t('更新旧参数库需要提供初始目录基线。'));
+      const baseline = this.state.catalog?.database ?? this.seedBaseline ?? validateDatabase(initialBaseline);
+      const next = this.snapshot();
+      type Reference = { model: ModelConfig; apiType: ApiType; validEffort: boolean; projectedEffort: boolean; checkCompilation?: (database: ModelDatabase) => void };
+      const references = new Map<string, Reference[]>();
+      for (const provider of next.providers) {
+        const routing = normalizeRouting(provider);
+        for (const model of provider.models) {
+          const parameters = effectiveParameters(next.database, model);
+          const apiType = routeForModel(provider, model.id, routing).apiType;
+          const validEffort = Boolean(model.reasoningEffort && parameters.thinking && parameters.supportsReasoningEffort.includes(model.reasoningEffort));
+          const projectedEffort = validEffort && projectEfforts(parameters, apiType).levels.includes(model.reasoningEffort!);
+          let checkCompilation: Reference['checkCompilation'];
+          try {
+            compileOfficialModel(provider, next.database, model, routing);
+            checkCompilation = database => { compileOfficialModel(provider, database, model, routing); };
+          } catch { /* Existing compilation failures must not block unrelated catalog repairs. */ }
+          const entries = references.get(model.id) ?? [];
+          entries.push({ model, apiType, validEffort, projectedEffort, checkCompilation });
+          references.set(model.id, entries);
+        }
+      }
+      const compatible = (database: ModelDatabase, entries: Reference[]): boolean => entries.every(({ model, apiType, validEffort, projectedEffort, checkCompilation }) => {
+        const parameters = effectiveParameters(database, model);
+        if (validEffort && (!parameters.thinking || !parameters.supportsReasoningEffort.includes(model.reasoningEffort!))) return false;
+        if (projectedEffort && !projectEfforts(parameters, apiType).levels.includes(model.reasoningEffort!)) return false;
+        checkCompilation?.(database);
+        return true;
+      });
+      const defaultReferences = [...references].filter(([id]) => !Object.hasOwn(next.database.models, id)).flatMap(([, entries]) => entries);
+      try {
+        const defaults = mergeCatalogParameters(next.database.defaults, baseline.defaults, catalog.database.defaults);
+        if (compatible({ ...next.database, defaults }, defaultReferences)) next.database.defaults = defaults;
+      } catch { /* Keep a working record when coupled manual fields or overrides conflict. */ }
+      for (const [id, incoming] of Object.entries(catalog.database.models)) {
+        const current = Object.hasOwn(next.database.models, id) ? next.database.models[id] : undefined;
+        const previous = Object.hasOwn(baseline.models, id) ? baseline.models[id] : undefined;
+        // Missing current entries are user removals; untracked current entries are custom records.
+        if (Boolean(current) !== Boolean(previous)) continue;
+        try {
+          next.database.models[id] = current && previous ? mergeCatalogParameters(current, previous, incoming) : incoming;
+          if (compatible(next.database, references.get(id) ?? [])) continue;
+        } catch { /* Roll back only this record, leaving provider settings untouched. */ }
+        if (current) next.database.models[id] = current;
+        else delete next.database.models[id];
+      }
+      validateDatabase(next.database);
+      // Cache the upstream baseline, never the merged database containing manual edits.
+      next.catalog = catalog;
+      if (isDeepStrictEqual(next, this.state) && !this.migrationPending) return;
+      await this.commit(next);
+    }, false);
   }
   applyCatalogUpdate(updateId: string, bundled: ModelDatabase, ids: readonly string[]): Promise<void> {
     return this.serialize(async () => {

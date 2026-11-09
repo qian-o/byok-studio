@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { object, sanitizeError, text, validId, validateDatabase, validateProvider } from './core/configuration';
 import { StudioStore } from './core/store';
 import { discoverProviderModels } from './core/discovery';
+import { fetchModelCatalog } from './core/modelCatalog';
 import { renderHtml, t } from '../resources/shared/i18n.js';
 
 export class SettingsPanel implements vscode.Disposable {
@@ -74,6 +75,16 @@ export class SettingsPanel implements vscode.Disposable {
           finally { this.pending.delete(controller); }
           break;
         }
+        case 'updateCatalog': {
+          const controller = new AbortController();
+          this.pending.add(controller);
+          try {
+            const snapshot = await fetchModelCatalog(controller.signal);
+            await this.store.updateCatalog(snapshot);
+            data = await this.store.uiState();
+          } finally { this.pending.delete(controller); }
+          break;
+        }
         case 'saveDatabase':
           await this.store.saveDatabase(payload.database);
           data = await this.store.uiState(); break;
@@ -98,7 +109,7 @@ export class SettingsPanel implements vscode.Disposable {
         case 'openModels': await vscode.commands.executeCommand('workbench.action.chat.manageLanguageModels'); break;
         default: throw new Error(t('不支持的操作。'));
       }
-      if (['saveProvider', 'deleteProvider', 'saveDatabase', 'importDatabase'].includes(command)) {
+      if (['saveProvider', 'deleteProvider', 'saveDatabase', 'importDatabase', 'updateCatalog'].includes(command)) {
         const changingKey = command === 'saveProvider' && ((typeof payload.apiKey === 'string' && Boolean(payload.apiKey.trim())) || payload.clearKey === true);
         const changedKeyId = changingKey ? validId(object(payload.provider).id, t('供应商标识')) : undefined;
         await this.synchronizeGroups(changedKeyId);

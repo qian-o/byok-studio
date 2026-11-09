@@ -78,7 +78,7 @@ function canonicalJson(value) {
 }
 
 test('consolidated legacy profiles preserve the original pre-0.6 validation defaults', () => {
-  assert.deepStrictEqual(Object.keys(migrations).sort(), ['legacyProfiles', 'updates']);
+  assert.deepStrictEqual(Object.keys(migrations).sort(), ['legacyProfiles', 'modelsDevBaseline', 'updates']);
   const hash = createHash('sha256').update(canonicalJson(migrations.legacyProfiles)).digest('hex');
   assert.equal(hash, '57da1cfc17dcb8a237c7dbfa0f66b7cb46b2ba81a1b981ccae41b54c93e9d13a');
 });
