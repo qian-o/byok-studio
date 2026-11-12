@@ -25,7 +25,7 @@ Requires **VS Code 1.145+** and **GitHub Copilot Chat**.
 3. Refresh or manually add models and adjust their settings.
 4. Click **Save provider** to write the native configuration and refresh Copilot Chat's model list. Select the corresponding **Custom Endpoint** model in Copilot Chat.
 
-The extension loads on command. Starting VS Code, opening settings, and reading configuration do not write data. Only explicitly saving, importing, or deleting providers updates their corresponding official configuration groups.
+The extension activates on command and reads `customendpoint` groups directly from `chatLanguageModels.json`. Starting VS Code, opening the panel, and reading configuration never write data. Only explicitly saving, importing, or deleting providers updates their corresponding official configuration groups.
 
 **One protocol** mode uses a single protocol and URL for all models. **Per-model protocols** mode has no provider default: GPT / OpenAI models (including Codex) go to **Responses**, Claude models go to **Messages**, and other models go to **Chat Completions**. Change an individual model's **Request protocol**, or select models and move them to another protocol column. Switching modes preserves manual assignments.
 
@@ -35,7 +35,7 @@ Selecting models shows **Delete** immediately left of **Refresh**; deselecting a
 
 Use **Export** to select providers (all selected by default), then copy them to the clipboard or save a JSON file. Saved API keys are always included. **Import** reads from the clipboard or a JSON file and saves the selected providers; matching IDs or names update existing providers. Close either dialog using its top-right close button or Esc. Transfer configurations between devices with manual import and export.
 
-Successful saves show **Provider saved.** and successful imports show **Imported N providers.** Run **BYOK Studio: Open Official Model Configuration** to inspect the actual `chatLanguageModels.json`. Each provider becomes a `customendpoint` group, with request URLs, protocols, and capabilities on each model. The official JSON references protected keys using `${input:chat.lm.secret.…}`; exported transfer JSON contains plaintext API keys.
+Run **BYOK Studio: Open Official Model Configuration** to inspect the generated JSON. Each provider becomes a `customendpoint` group. Official configuration uses protected key references; exported transfer JSON contains plaintext API keys.
 
 <details>
 <summary>Configuration example</summary>
@@ -69,17 +69,16 @@ Successful saves show **Provider saved.** and successful imports show **Imported
 
 ## Development
 
-The browser preview stores test configuration in process memory and does not write VS Code's official configuration. Use the extension development host to verify Chat model-list updates.
+Run `node scripts/preview-ui.cjs` to preview the UI with data stored only in memory.
 
 - `src/` — extension and configuration logic
 - `resources/` — webview, shared modules, and runtime catalog
 - `scripts/` — development tools and catalog maintenance
-- `test/` — regression tests
 - `docs/` — screenshots and parameter sources
 
 ```powershell
 npm ci
-npm test
+npm run build
 npm run package
 ```
 

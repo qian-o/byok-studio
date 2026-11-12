@@ -25,7 +25,7 @@ Context 和 Output 直接写入官方 JSON 的 `contextWindow` 和 `maxOutputTok
 3. 刷新或手动添加模型，调整设置。
 4. 点击 **保存供应商** 写入原生配置并刷新 Copilot Chat 的模型列表，然后选择对应的 **Custom Endpoint** 模型。
 
-扩展按命令加载。启动 VS Code、打开设置或读取配置均不写入数据。只有显式保存、导入或删除供应商时才修改对应供应商的官方配置。
+扩展按命令激活，直接读取 `chatLanguageModels.json` 中的 `customendpoint` 分组。启动 VS Code、打开面板或读取配置均不写入数据。只有显式保存、导入或删除供应商时才修改对应供应商的官方配置。
 
 **统一协议** 模式下所有模型使用同一个协议和地址。**区分协议** 模式下没有供应商默认协议：GPT / OpenAI 系列（含 Codex）归入 **Responses**，Claude 归入 **Messages**，其余模型归入 **Chat Completions**。可在模型设置的 **请求协议** 中单独修改，或勾选模型后批量移动到其他协议列。切换模式会保留已有的手动分配。
 
@@ -35,7 +35,7 @@ Context 和 Output 直接写入官方 JSON 的 `contextWindow` 和 `maxOutputTok
 
 点击 **导出**，选择供应商（默认全选），复制到剪贴板或保存为 JSON 文件，始终包含已保存的 API Key。点击 **导入**，从剪贴板或 JSON 文件读取并选择供应商后保存；同 ID 或同名供应商会更新覆盖。两个弹窗均可通过右上角关闭按钮或 Esc 退出。跨设备迁移通过手动导入、导出完成。
 
-保存完成后显示 **供应商已保存。**，导入完成后显示 **已导入 N 个供应商。**。命令面板中的 **BYOK Studio: 打开官方模型配置** 可查看实际写入的 `chatLanguageModels.json`。每个供应商对应一个 `customendpoint` 分组，每个模型记录自己的请求地址、协议和能力参数。官方 JSON 使用 `${input:chat.lm.secret.…}` 引用受保护的密钥；导出的迁移 JSON 则包含明文 API Key。
+命令 **BYOK Studio: 打开官方模型配置** 可查看写入的 JSON。每个供应商对应一个 `customendpoint` 分组。官方配置使用受保护的密钥引用；导出的迁移 JSON 包含明文 API Key。
 
 <details>
 <summary>配置示例</summary>
@@ -69,17 +69,16 @@ Context 和 Output 直接写入官方 JSON 的 `contextWindow` 和 `maxOutputTok
 
 ## 开发
 
-浏览器预览使用进程内存保存测试配置，不会写入 VS Code 官方配置；验证 Chat 模型列表联动需要启动扩展开发宿主。
+运行 `node scripts/preview-ui.cjs` 可预览界面，数据仅保存在内存。
 
 - `src/` — 扩展与配置逻辑
 - `resources/` — 页面、共享模块及运行时参数库
 - `scripts/` — 开发工具与参数库维护资料
-- `test/` — 回归测试
 - `docs/` — 截图与参数来源
 
 ```powershell
 npm ci
-npm test
+npm run build
 npm run package
 ```
 

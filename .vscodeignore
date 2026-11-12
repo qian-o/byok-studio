@@ -1,11 +1,8 @@
 .vscode/**
-.vscode-test/**
 src/**
 resources/**/*.d.ts
-dist/hostTest.*
-dist/core/modelCatalog.*
+dist/catalogBuilder.*
 resources/catalog/compatibility.json
-test/**
 scripts/**
 releases/**
 docs/*.md

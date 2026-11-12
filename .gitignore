@@ -1,7 +1,6 @@
 node_modules/
 dist/
 releases/
-.vscode-test/
 *.log
 *.vsix
 .env

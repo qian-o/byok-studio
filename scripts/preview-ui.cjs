@@ -1,21 +1,63 @@
-// Local validation harness. It is excluded from the VSIX.
+// Local validation harness. Excluded from the VSIX.
+'use strict';
+
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const {StudioStore, parseExportBundle, MAX_IMPORT_BYTES} = require('../dist/core/store');
-const {validateProvider, sanitizeError} = require('../dist/core/configuration');
-const {discoverProviderModels} = require('../dist/core/discovery');
-const {setLocale,renderHtml} = require('../resources/shared/i18n');
+const { ConfigService } = require('../dist/configService');
+const { upsertOfficialGroup } = require('../dist/jsonc');
+const { MAX_IMPORT_BYTES, parseImportData, sanitizeError, validateCatalogSnapshot } = require('../dist/models');
+const { setLocale, renderHtml } = require('../resources/shared/i18n');
+
 setLocale(process.env.BYOK_PREVIEW_LANGUAGE || 'en');
-const root = path.resolve(__dirname,'..');
-const data = new Map(), keys = new Map();
-const store = new StudioStore({get:key=>data.get(key),update:async(key,value)=>{data.set(key,value);}}, {get:async key=>keys.get(key),store:async(key,value)=>{keys.set(key,value);},delete:async key=>{keys.delete(key);}},require('../resources/catalog/models.json').database,()=>{});
-const template=fs.readFileSync(path.join(root,'resources','webview','index.html'),'utf8');
-const resourcePattern=/\{\{resource:((?:webview|shared)\/[a-z0-9.-]+)\}\}/g;
-const allowedResources=new Set([...template.matchAll(resourcePattern)].map(match=>'/resources/'+match[1]));
-const nonce=crypto.randomBytes(18).toString('base64');
-const bridge=`window.acquireVsCodeApi=()=>{
+
+const root = path.resolve(__dirname, '..');
+const catalogRaw = JSON.parse(fs.readFileSync(path.join(root, 'resources', 'catalog', 'models.json'), 'utf8'));
+const database = validateCatalogSnapshot(catalogRaw).database;
+
+let officialText;
+let secretCounter = 0;
+const secrets = new Map();
+let routingHints = {};
+
+const service = new ConfigService({
+  async readCatalog() { return database; },
+  async readOfficialText() { return officialText; },
+  async writeOfficialText(expectedBefore, nextText) {
+    if (officialText !== expectedBefore) throw new Error('Concurrent modification in preview.');
+    officialText = nextText;
+  },
+  async provisionSecretReference(_providerId, _apiKey, beforeText) {
+    const base = beforeText ?? '[]\n';
+    const stagingId = `stage-${crypto.randomUUID()}`;
+    const reference = `\${input:chat.lm.secret.preview-${++secretCounter}}`;
+    const currentText = upsertOfficialGroup(base, stagingId, {
+      name: `BYOK Studio Key ${stagingId.slice(6, 14)}`,
+      vendor: 'customendpoint',
+      byokStudioId: stagingId,
+      models: [],
+      apiKey: reference
+    });
+    officialText = currentText;
+    return { currentText, reference };
+  },
+  async refreshChatModels() {},
+  async getSecret(id) { return secrets.get(id); },
+  async setSecret(id, key) {
+    if (key === undefined) secrets.delete(id);
+    else secrets.set(id, key);
+  },
+  getRoutingHints() { return JSON.parse(JSON.stringify(routingHints)); },
+  async saveRoutingHints(next) { routingHints = JSON.parse(JSON.stringify(next)); }
+});
+
+const template = fs.readFileSync(path.join(root, 'resources', 'webview', 'index.html'), 'utf8');
+const resourcePattern = /\{\{resource:((?:webview|shared)\/[a-z0-9.-]+)\}\}/g;
+const allowedResources = new Set([...template.matchAll(resourcePattern)].map(match => '/resources/' + match[1]));
+const nonce = crypto.randomBytes(18).toString('base64');
+
+const bridge = `window.acquireVsCodeApi=()=>{
   const post=(message)=>fetch('/rpc',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(message)}).then(r=>r.json());
   const reply=(data)=>window.dispatchEvent(new MessageEvent('message',{data}));
   const t=(message)=>window.ByokI18n.t(message);
@@ -54,40 +96,77 @@ const bridge=`window.acquireVsCodeApi=()=>{
     getState(){return undefined;},setState(){}
   };
 };`;
-const server = http.createServer(async(req,res)=>{
+
+const server = http.createServer(async (req, res) => {
   try {
-    if(req.method==='GET'&&req.url==='/'){
-      let html=renderHtml(template).replace(resourcePattern,(_match,file)=>'/resources/'+file).replaceAll('{{CSP_SOURCE}}',"'self'").replaceAll('{{NONCE}}',nonce);
-      html=html.replace("default-src 'none';","default-src 'none'; connect-src 'self';").replace('</head>',`<script nonce="${nonce}">${bridge}</script></head>`);
-      res.writeHead(200,{'content-type':'text/html; charset=utf-8'});res.end(html);return;
+    if (req.method === 'GET' && req.url === '/') {
+      let html = renderHtml(template)
+        .replace(resourcePattern, (_match, file) => '/resources/' + file)
+        .replaceAll('{{CSP_SOURCE}}', "'self'")
+        .replaceAll('{{NONCE}}', nonce);
+      html = html
+        .replace("default-src 'none';", "default-src 'none'; connect-src 'self';")
+        .replace('</head>', `<script nonce="${nonce}">${bridge}</script></head>`);
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end(html);
+      return;
     }
-    if(req.method==='GET'&&allowedResources.has(req.url)){
-      res.writeHead(200,{'content-type':req.url.endsWith('.css')?'text/css':'text/javascript'});res.end(fs.readFileSync(path.join(root,req.url)));return;
+    if (req.method === 'GET' && req.url === '/official.json') {
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+      res.end(officialText ?? '[]\n');
+      return;
     }
-    if(req.method==='GET'&&['/v1/models','/responses/v1/models','/chat/v1/models','/messages/v1/models'].includes(req.url.split('?')[0])){
-      const ids=require('../test/preview-models.json');
-      res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({data:ids.map(id=>({id,name:id})),has_more:false}));return;
+    if (req.method === 'GET' && allowedResources.has(req.url)) {
+      res.writeHead(200, { 'content-type': req.url.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/javascript; charset=utf-8' });
+      res.end(fs.readFileSync(path.join(root, req.url)));
+      return;
     }
-    if(req.method==='POST'&&req.url==='/rpc'){
-      const chunks=[];for await(const c of req)chunks.push(c);
-      const m=JSON.parse(Buffer.concat(chunks).toString());const p=m.payload||{};
+    if (req.method === 'GET' && ['/v1/models', '/responses/v1/models', '/chat/v1/models', '/messages/v1/models'].includes(req.url.split('?')[0])) {
+      const ids = require('./preview-models.json');
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ data: ids.map(id => ({ id, name: id })), has_more: false }));
+      return;
+    }
+    if (req.method === 'POST' && req.url === '/rpc') {
+      const chunks = [];
+      for await (const c of req) chunks.push(c);
+      const m = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+      const p = m.payload || {};
       let result;
-      try{
-        let output=null;
-        if(m.command==='getState')output=await store.uiState();
-        else if(m.command==='saveProvider'){await store.saveProvider(p.provider,p.apiKey,p.clearKey);output=await store.uiState();}
-        else if(m.command==='deleteProvider'){await store.deleteProvider(p.id);output=await store.uiState();}
-        else if(m.command==='exportProviders'){const bundle=await store.exportProviders(p.ids);const content=JSON.stringify(bundle,null,2)+'\n';output={exported:bundle.providers.length,target:p.target,content,filename:`byok-providers-${new Date().toISOString().slice(0,10)}.json`};}
-        else if(m.command==='readImportSource'){output={providers:parseExportBundle(p.rawText,store.database())};}
-        else if(m.command==='importProviders'){const importedIds=await store.importProviders({version:1,providers:p.providers});output={state:await store.uiState(),importedIds};}
-        else if(m.command==='discoverModels'){const provider=validateProvider(p.provider,store.database(),true);output=await discoverProviderModels(provider,p.apiKey||await store.key(provider.id)||'',AbortSignal.timeout(15000));}
-        else if(m.command==='openModels')output=null;
-        else throw Error('Preview operation unavailable');
-        result={id:m.id,ok:true,data:output};
-      }catch(e){const secrets=[p.apiKey,...(p.providers||[]).map(item=>item.apiKey)].filter(key=>typeof key==='string');result={id:m.id,ok:false,error:sanitizeError(e,secrets)};}
-      res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify(result));return;
+      try {
+        let output = null;
+        if (m.command === 'getState') output = await service.getUiState();
+        else if (m.command === 'saveProvider') output = await service.saveProvider(p.provider, p.apiKey);
+        else if (m.command === 'deleteProvider') output = await service.deleteProvider(p.id);
+        else if (m.command === 'discoverModels') output = await service.discoverModels(p.provider, p.apiKey, AbortSignal.timeout(15000));
+        else if (m.command === 'exportProviders') {
+          const bundle = await service.exportProviders(p.ids);
+          const content = JSON.stringify(bundle, null, 2) + '\n';
+          output = { exported: bundle.providers.length, target: p.target, content, filename: `byok-providers-${new Date().toISOString().slice(0, 10)}.json` };
+        } else if (m.command === 'readImportSource') {
+          output = { providers: parseImportData(p.rawText, await service.database()) };
+        } else if (m.command === 'importProviders') {
+          output = await service.importProviders(p.providers);
+        } else {
+          throw new Error('Preview operation unavailable');
+        }
+        result = { id: m.id, ok: true, data: output };
+      } catch (e) {
+        const sensitive = [p.apiKey, ...(p.providers || []).map(item => item?.apiKey)].filter(key => typeof key === 'string');
+        result = { id: m.id, ok: false, error: sanitizeError(e, sensitive) };
+      }
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify(result));
+      return;
     }
-    res.writeHead(404);res.end();
-  }catch(e){res.writeHead(500);res.end('Preview error');}
+    res.writeHead(404);
+    res.end();
+  } catch {
+    res.writeHead(500);
+    res.end('Preview error');
+  }
 });
-server.listen(0,'127.0.0.1',()=>console.log(`PREVIEW_URL=http://127.0.0.1:${server.address().port}`));
+
+server.listen(0, '127.0.0.1', () => {
+  console.log(`PREVIEW_URL=http://127.0.0.1:${server.address().port}`);
+});

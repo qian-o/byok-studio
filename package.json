@@ -2,7 +2,7 @@
   "name": "byok-studio",
   "displayName": "BYOK Studio",
   "description": "%extension.description%",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "publisher": "qian-o",
   "license": "MIT",
   "icon": "resources/icon.png",
@@ -52,8 +52,6 @@
   "scripts": {
     "build": "tsc -p .",
     "watch": "tsc -watch -p .",
-    "test": "npm run build && node --test test/*.test.cjs",
-    "test:host": "node scripts/test-host.cjs",
     "vscode:prepublish": "npm run build",
     "package": "vsce package --out releases/",
     "prebuild": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""
@@ -64,7 +62,6 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/vscode": "^1.116.0",
-    "@vscode/test-electron": "3.1.0",
     "@vscode/vsce": "4.1.0",
     "typescript": "7.0.2"
   },

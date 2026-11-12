@@ -3,8 +3,8 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const { fetchModelCatalog } = require('../../dist/core/modelCatalog');
-const { validateCatalogSnapshot } = require('../../dist/core/configuration');
+const { fetchModelCatalog } = require('../../dist/catalogBuilder');
+const { validateCatalogSnapshot } = require('../../dist/models');
 
 const OUTPUT = path.resolve(__dirname, '../../resources/catalog/models.json');
 

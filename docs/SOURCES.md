@@ -2,21 +2,19 @@
 
 The main source is [models.dev](https://models.dev), a community-maintained catalog. The release maintenance script reads [catalog.json](https://models.dev/catalog.json), which contains canonical model metadata and provider records. Upstream data is not labeled as independently verified by this project.
 
-- [Bundled snapshot](../resources/catalog/models.json): the offline starting catalog and its retrieval time.
-- [Compatibility data](../resources/catalog/compatibility.json): source priorities and parameters that the upstream JSON cannot express for Copilot.
-- [Converter](../src/core/modelCatalog.ts): used by the release maintenance script; the converter and compatibility source are excluded from the VSIX.
+- [Bundled snapshot](../resources/catalog/models.json): the offline model preset catalog and its retrieval time.
+- [Compatibility data](../resources/catalog/compatibility.json): source priorities and protocol parameters that upstream JSON cannot express for Copilot.
+- [Catalog builder](../src/catalogBuilder.ts): used by the release maintenance script; the builder and compatibility source are excluded from the VSIX.
 
 ## Updates
 
-Preset updates are prepared when releasing the extension using the commands below. There is no runtime download or refresh command. New configurations use the bundled snapshot; existing saved catalogs remain intact rather than being silently replaced.
+Preset updates are prepared when releasing the extension using the commands below. There is no runtime download or implicit sync. Provider configurations live directly in `chatLanguageModels.json`, while API keys for model discovery and manual export are stored in VS Code's `SecretStorage`.
 
-Presets are read-only; change parameters in **Model settings**. Header **Import** / **Export** transfers provider configurations. Provider keys, URLs, model IDs and per-model overrides remain separate from the upstream snapshot.
+Presets are read-only defaults; adjust parameters in **Model settings**. Header **Import** / **Export** transfers provider configurations manually.
 
-Legacy editable libraries are interpreted for display without writing to storage. Supported settings are retained as per-model overrides and custom names on an explicit save. Reading settings never persists a migration. Incompatible legacy settings produce an explicit error and leave the original storage intact.
+Provider records are selected by explicit priority, and aliases are matched through unambiguous upstream canonical IDs. Model discovery uses the configured provider's `/models` endpoint; `models.dev` does not determine which models an API key can access.
 
-Provider records are selected by explicit priority. Aliases are matched only through unambiguous upstream canonical IDs. Provider discovery still uses the configured provider's model-list endpoint; models.dev does not determine which models an API key can access.
-
-The editor and generated JSON use two token fields: **Context** (`contextWindow`) and **Output** (`maxOutputTokens`). The compiler writes both values exactly; it does not calculate `maxInputTokens` or maintain another output budget. Output must be smaller than Context. Older `defaultOutputTokens` values are read as Output, capped by the earlier output limit, and obsolete token fields disappear on an explicit save.
+The editor and generated JSON use two token fields: **Context** (`contextWindow`) and **Output** (`maxOutputTokens`). Output must be smaller than Context. Saving a provider removes retired model fields (`maxInputTokens`, `defaultOutputTokens`, `contextWindowMode`, `streaming`, `zeroDataRetentionEnabled`, `statefulResponses`) on that provider while leaving unrelated configuration groups untouched.
 
 Release-time conversion selects one usable Output default from upstream limits: at most the provider and canonical output limits, 131072 tokens, and one quarter of Context. This is a preset default that users can edit. Presets also contain capabilities, protocol settings, release dates and exact aliases. Pricing and per-record verification metadata are not stored.
 

@@ -1,84 +1,108 @@
-import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
-import { object, sanitizeError, text, validId, validateProvider } from './core/configuration';
-import { MAX_IMPORT_BYTES, parseExportBundle, StudioStore } from './core/store';
-import { discoverProviderModels } from './core/discovery';
+import * as vscode from 'vscode';
 import { renderHtml, t } from '../resources/shared/i18n.js';
+import type { ConfigService } from './configService';
+import { asObject, asText, isRecord, MAX_IMPORT_BYTES, parseImportData, sanitizeError } from './models';
 
 export class SettingsPanel implements vscode.Disposable {
   private panel: vscode.WebviewPanel | undefined;
   private readonly pending = new Set<AbortController>();
-  private readonly stateSubscription: vscode.Disposable;
-  constructor(private readonly context: vscode.ExtensionContext, private readonly store: StudioStore, changed: vscode.Event<void>, private readonly applyConfiguration: (providerIds: readonly string[], changedKeyId?: string) => Promise<void>) {
-    this.stateSubscription = changed(() => { void this.broadcast(); });
-  }
+
+  constructor(
+    private readonly context: vscode.ExtensionContext,
+    private readonly service: ConfigService
+  ) {}
+
   async open(): Promise<void> {
-    if (this.panel) { this.panel.reveal(); return; }
+    if (this.panel) {
+      this.panel.reveal();
+      return;
+    }
     const resources = vscode.Uri.joinPath(this.context.extensionUri, 'resources');
-    const panel = vscode.window.createWebviewPanel('byokStudio.settings', t('BYOK Studio · 模型设置'), vscode.ViewColumn.Active, { enableScripts: true, localResourceRoots: [resources], retainContextWhenHidden: true });
+    const panel = vscode.window.createWebviewPanel(
+      'byokStudio.settings',
+      t('BYOK Studio · 模型设置'),
+      vscode.ViewColumn.Active,
+      { enableScripts: true, localResourceRoots: [resources], retainContextWhenHidden: true }
+    );
     this.panel = panel;
-    const receive = panel.webview.onDidReceiveMessage(message => { void this.handle(message, panel); });
+
+    const receive = panel.webview.onDidReceiveMessage(message => {
+      void this.handle(message, panel);
+    });
     panel.onDidDispose(() => {
       receive.dispose();
       for (const controller of this.pending) controller.abort();
       this.pending.clear();
       if (this.panel === panel) this.panel = undefined;
     });
-    const raw = Buffer.from(await vscode.workspace.fs.readFile(vscode.Uri.joinPath(resources, 'webview', 'index.html'))).toString('utf8');
+
+    const rawHtml = Buffer.from(
+      await vscode.workspace.fs.readFile(vscode.Uri.joinPath(resources, 'webview', 'index.html'))
+    ).toString('utf8');
     const nonce = randomBytes(24).toString('base64');
-    panel.webview.html = renderHtml(raw)
-      .replace(/\{\{resource:((?:webview|shared)\/[a-z0-9.-]+)\}\}/g, (_, path: string) => panel.webview.asWebviewUri(vscode.Uri.joinPath(resources, ...path.split('/'))).toString())
+    panel.webview.html = renderHtml(rawHtml)
+      .replace(/\{\{resource:((?:webview|shared)\/[a-z0-9.-]+)\}\}/g, (_, relPath: string) =>
+        panel.webview.asWebviewUri(vscode.Uri.joinPath(resources, ...relPath.split('/'))).toString()
+      )
       .replace(/\{\{CSP_SOURCE\}\}/g, panel.webview.cspSource)
       .replace(/\{\{NONCE\}\}/g, nonce);
   }
-  private async broadcast(): Promise<void> {
-    const panel = this.panel;
-    if (!panel) return;
-    try { await panel.webview.postMessage({ event: 'state', data: await this.store.uiState() }); }
-    catch { /* A webview can be closed while its state is being prepared. */ }
-  }
+
   private async handle(message: unknown, panel: vscode.WebviewPanel): Promise<void> {
     let id: string;
     let command: string;
     let payload: Record<string, unknown>;
     try {
-      const envelope = object(message);
-      id = text(envelope.id, t('消息标识'), 100);
-      command = text(envelope.command, t('操作'), 50);
-      payload = envelope.payload == null ? {} : object(envelope.payload);
-    } catch { return; }
+      const envelope = asObject(message);
+      id = asText(envelope.id, 'id', 100);
+      command = asText(envelope.command, 'command', 50);
+      payload = envelope.payload == null ? {} : asObject(envelope.payload);
+    } catch {
+      return;
+    }
+
     const sensitive: string[] = [];
     if (typeof payload.apiKey === 'string') sensitive.push(payload.apiKey);
-    if (Array.isArray(payload.providers)) for (const entry of payload.providers) {
-      if (entry && typeof entry === 'object' && typeof entry.apiKey === 'string') sensitive.push(entry.apiKey);
+    if (Array.isArray(payload.providers)) {
+      for (const entry of payload.providers) {
+        if (isRecord(entry) && typeof entry.apiKey === 'string') sensitive.push(entry.apiKey);
+      }
     }
-    let changedKeyId: string | undefined;
-    let importedIds: string[] | undefined;
-    let affectedIds: string[] | undefined;
+
     try {
       let data: unknown = null;
       switch (command) {
-        case 'getState': data = await this.store.uiState(); break;
-        case 'saveProvider': {
-          const providerId = validId(object(payload.provider).id, t('供应商标识'));
-          await this.store.saveProvider(payload.provider, payload.apiKey, payload.clearKey === true);
-          affectedIds = [providerId];
-          if ((typeof payload.apiKey === 'string' && Boolean(payload.apiKey.trim())) || payload.clearKey === true) {
-            changedKeyId = providerId;
+        case 'getState':
+          data = await this.service.getUiState();
+          break;
+
+        case 'saveProvider':
+          data = await this.service.saveProvider(payload.provider, payload.apiKey);
+          break;
+
+        case 'deleteProvider':
+          data = await this.service.deleteProvider(payload.id);
+          break;
+
+        case 'discoverModels': {
+          const controller = new AbortController();
+          this.pending.add(controller);
+          try {
+            data = await this.service.discoverModels(payload.provider, payload.apiKey, controller.signal);
+          } finally {
+            this.pending.delete(controller);
           }
           break;
         }
-        case 'deleteProvider': {
-          const providerId = validId(payload.id, t('供应商标识'));
-          await this.store.deleteProvider(providerId);
-          affectedIds = [providerId];
-          break;
-        }
+
         case 'exportProviders': {
           const target = payload.target === 'file' ? 'file' : payload.target === 'clipboard' ? 'clipboard' : undefined;
           if (!target) throw new Error(t('请选择有效的导出方式。'));
-          const bundle = await this.store.exportProviders(payload.ids);
-          for (const provider of bundle.providers) if (provider.apiKey) sensitive.push(provider.apiKey);
+          const bundle = await this.service.exportProviders(payload.ids);
+          for (const provider of bundle.providers) {
+            if (provider.apiKey) sensitive.push(provider.apiKey);
+          }
           const content = JSON.stringify(bundle, null, 2) + '\n';
           if (target === 'clipboard') {
             await vscode.env.clipboard.writeText(content);
@@ -97,6 +121,7 @@ export class SettingsPanel implements vscode.Disposable {
           }
           break;
         }
+
         case 'readImportSource': {
           const source = payload.source === 'file' ? 'file' : payload.source === 'clipboard' ? 'clipboard' : undefined;
           if (!source) throw new Error(t('请选择有效的导入来源。'));
@@ -118,39 +143,29 @@ export class SettingsPanel implements vscode.Disposable {
             try { content = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
             catch { throw new Error(t('导入内容不是有效的 JSON。')); }
           }
-          data = { providers: parseExportBundle(content, this.store.database()) };
+          data = { providers: parseImportData(content, await this.service.database()) };
           break;
         }
-        case 'importProviders': {
-          importedIds = await this.store.importProviders({ version: 1, providers: payload.providers });
-          affectedIds = importedIds;
+
+        case 'importProviders':
+          data = await this.service.importProviders(payload.providers);
           break;
-        }
-        case 'discoverModels': {
-          const provider = validateProvider(payload.provider, this.store.database(), true);
-          const key = payload.apiKey === undefined ? await this.store.key(provider.id) ?? '' : text(payload.apiKey, 'API Key', 16000, true);
-          sensitive.push(key);
-          const controller = new AbortController();
-          this.pending.add(controller);
-          try { data = await discoverProviderModels(provider, key, controller.signal); }
-          finally { this.pending.delete(controller); }
-          break;
-        }
-        case 'openModels': await vscode.commands.executeCommand('workbench.action.chat.manageLanguageModels'); break;
-        default: throw new Error(t('不支持的操作。'));
-      }
-      if (affectedIds) {
-        try { await this.applyConfiguration(affectedIds, changedKeyId); }
-        catch (error) { throw new Error(t('配置已保存，但写入 Chat 配置失败：{0}', sanitizeError(error, sensitive))); }
-        const state = await this.store.uiState();
-        data = importedIds ? { state, importedIds } : state;
+
+        default:
+          throw new Error(t('不支持的操作。'));
       }
       await panel.webview.postMessage({ id, ok: true, data });
     } catch (error) {
       if (this.panel !== panel) return;
-      try { await panel.webview.postMessage({ id, ok: false, error: sanitizeError(error, sensitive) }); }
-      catch { /* The panel may close during an outstanding request. */ }
+      try {
+        await panel.webview.postMessage({ id, ok: false, error: sanitizeError(error, sensitive) });
+      } catch { /* Panel closed while request was in flight. */ }
     }
   }
-  dispose(): void { this.stateSubscription.dispose(); this.panel?.dispose(); for (const controller of this.pending) controller.abort(); this.pending.clear(); }
+
+  dispose(): void {
+    this.panel?.dispose();
+    for (const controller of this.pending) controller.abort();
+    this.pending.clear();
+  }
 }

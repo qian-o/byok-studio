@@ -29,7 +29,6 @@
     </header>
     <div id="loading-state" class="notice" role="status">{{t:正在加载配置…}}</div>
     <div id="load-error" class="notice error-notice" role="alert" hidden><span id="load-error-message"></span><button id="retry-state" class="button secondary small" type="button" data-initial-action>{{t:重新加载}}</button></div>
-    <div id="update-banner" class="notice update-notice" role="status" hidden><span>{{t:配置已在其他位置更新，当前草稿已保留。}}</span><button id="reload-state" class="button secondary small" type="button">{{t:重新载入}}</button></div>
     <div class="settings-card" id="settings-card" hidden>
       <div class="provider-navigation" aria-label="{{t:供应商管理}}">
         <h2>{{t:供应商}}</h2>
@@ -44,21 +43,21 @@
               <label for="api-key">API Key</label>
               <input id="api-key" type="password" maxlength="16000" placeholder="{{t:输入 API Key（可选）}}" autocomplete="off" spellcheck="false">
             </div>
+            <div class="provider-options">
+              <fieldset class="plain-fieldset routing-mode"><legend class="visually-hidden">{{t:协议模式}}</legend><div class="segmented-control"><label><input id="routing-unified" type="radio" name="routing-mode" value="unified"><span>{{t:统一协议}}</span></label><label><input id="routing-split" type="radio" name="routing-mode" value="split"><span>{{t:区分协议}}</span></label></div></fieldset>
+            </div>
             <div id="unified-endpoint" class="unified-endpoint">
               <div class="field compact-field"><label for="unified-api-type">{{t:协议}}</label><select id="unified-api-type"><option value="chatCompletions">Chat Completions</option><option value="responses">Responses</option><option value="messages">Messages</option></select></div>
               <div class="field compact-field"><label for="unified-url">Base URL</label><input id="unified-url" type="url" maxlength="4096" placeholder="https://api.example.com/v1" spellcheck="false" autocomplete="off"></div>
-            </div>
-            <div class="provider-options">
-              <fieldset class="plain-fieldset routing-mode"><legend class="visually-hidden">{{t:协议模式}}</legend><div class="segmented-control"><label><input id="routing-unified" type="radio" name="routing-mode" value="unified"><span>{{t:统一协议}}</span></label><label><input id="routing-split" type="radio" name="routing-mode" value="split"><span>{{t:区分协议}}</span></label></div></fieldset>
             </div>
           </div>
           <section class="model-box" aria-labelledby="models-heading">
             <header class="model-box-header">
               <div class="model-heading"><h3 id="models-heading">{{t:模型}}</h3><span id="model-total" class="model-total"></span></div>
               <label id="unified-model-selection" class="checkbox compact"><input id="select-all-unified" type="checkbox" data-select-all="unified" aria-label="{{t:全选模型}}">{{t:全选}}</label>
-              <div class="model-header-actions"><button id="delete-selected-models" class="button secondary small delete-models" type="button" hidden>{{t:删除}}</button><button id="refresh-models" class="button secondary small" type="button"><svg aria-hidden="true"><use href="#i-refresh"/></svg><span id="refresh-models-label">{{t:刷新}}</span></button><button id="add-model" class="button primary small" type="button"><svg aria-hidden="true"><use href="#i-plus"/></svg>{{t:添加模型}}</button></div>
+              <div class="model-header-actions"><button id="delete-selected-models" class="button secondary small delete-models" type="button" hidden>{{t:删除}}</button><button id="refresh-models" class="button secondary small" type="button"><svg aria-hidden="true"><use href="#i-refresh"/></svg><span>{{t:刷新}}</span></button><button id="add-model" class="button primary small" type="button"><svg aria-hidden="true"><use href="#i-plus"/></svg>{{t:添加模型}}</button></div>
             </header>
-            <div id="model-list" class="model-list" role="region" aria-labelledby="models-heading" tabindex="-1"></div>
+            <div id="model-list" class="model-list" role="region" aria-labelledby="models-heading"></div>
           </section>
           <p id="provider-error" class="inline-error" role="alert" hidden></p>
           <footer class="panel-footer"><button id="delete-provider" class="button delete-provider" type="button">{{t:删除供应商}}</button><button id="save-provider" class="button primary" type="submit">{{t:保存供应商}}</button></footer>
@@ -76,10 +75,9 @@
         <div class="field"><label for="model-name">{{t:显示名称}}</label><input id="model-name" maxlength="200" autocomplete="off" required></div>
         <div class="field"><label for="model-id">{{t:请求模型 ID}}</label><input id="model-id" maxlength="512" list="model-id-options" spellcheck="false" autocomplete="off" required><datalist id="model-id-options"></datalist></div>
         <div id="model-protocol-field" class="field"><label for="model-protocol">{{t:请求协议}}</label><select id="model-protocol"><option value="chatCompletions">Chat Completions</option><option value="responses">Responses</option><option value="messages">Messages</option></select></div>
-        <p id="model-update" class="notice compact-notice" role="status" hidden>{{t:配置已在其他位置更新。当前编辑内容已保留，请在保存供应商前检查。}}</p>
         <div class="token-fields"><div class="field"><label for="context-window">Context</label><input id="context-window" type="number" min="2" max="100000000" step="1" required></div><div class="field"><label for="max-output">Output</label><input id="max-output" type="number" min="1" max="100000000" step="1" required></div></div>
         <fieldset class="plain-fieldset"><legend>{{t:模型能力}}</legend><div class="capabilities"><label class="checkbox"><input id="cap-tools" type="checkbox">{{t:工具调用}}</label><label class="checkbox"><input id="cap-vision" type="checkbox">{{t:视觉}}</label><label class="checkbox"><input id="cap-thinking" type="checkbox">{{t:思考}}</label></div></fieldset>
-        <fieldset class="plain-fieldset"><legend>{{t:可用推理档位}}</legend><div id="effort-options" class="efforts"></div></fieldset>
+        <fieldset id="effort-fieldset" class="plain-fieldset"><legend>{{t:可用推理档位}}</legend><div id="effort-options" class="efforts"></div></fieldset>
         <div class="field"><label for="reasoning-effort">{{t:推理强度}}</label><select id="reasoning-effort"><option value="">{{t:默认（不指定）}}</option></select></div>
       </div>
       <p id="model-error" class="dialog-error" role="alert" hidden></p>
@@ -112,11 +110,10 @@
       <div id="import-selection-section" hidden>
         <div class="transfer-toolbar">
           <label class="checkbox"><input id="import-select-all" type="checkbox" checked>{{t:全选}}</label>
-          <span id="import-summary" class="source-note"></span>
         </div>
         <div id="import-provider-list" class="transfer-list" role="group" aria-labelledby="import-title"></div>
       </div>
-      <p id="import-empty" class="empty-models">{{t:从剪贴板读取或选择导出的 JSON 文件以预览供应商。}}</p>
+      <p id="import-empty" class="empty-models">{{t:选择导入来源}}</p>
       <p id="import-error" class="dialog-error" role="alert" hidden></p>
       <footer class="dialog-footer">
         <button id="apply-import" class="button primary" type="button" disabled>{{t:导入所选}}</button>
@@ -124,10 +121,9 @@
     </div>
   </dialog>
 
-  <dialog id="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title">
     <div class="dialog-scroll">
     <header class="dialog-header"><h2 id="confirm-title">{{t:确认操作}}</h2><button class="icon-button" type="button" data-close="confirm-dialog" aria-label="{{t:关闭确认}}"><svg aria-hidden="true"><use href="#i-close"/></svg></button></header>
-    <p id="confirm-message" class="dialog-copy"></p>
     <footer class="dialog-footer"><button id="confirm-cancel" class="button secondary" type="button" data-close="confirm-dialog">{{t:取消}}</button><button id="confirm-action" class="button primary" type="button">{{t:确认}}</button></footer>
     </div>
   </dialog>
@@ -135,7 +131,6 @@
   <script nonce="{{NONCE}}" src="{{resource:shared/messages.en.js}}"></script>
   <script nonce="{{NONCE}}" src="{{resource:shared/i18n.js}}"></script>
   <script nonce="{{NONCE}}" src="{{resource:shared/routing.js}}"></script>
-  <script nonce="{{NONCE}}" src="{{resource:shared/model-policy.js}}"></script>
   <script nonce="{{NONCE}}" src="{{resource:webview/app.js}}"></script>
 </body>
 </html>
