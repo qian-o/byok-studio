@@ -1,7 +1,5 @@
 import type { ApiType, ModelParameters, OfficialProtocol } from '../../src/core/types';
 export function validDate(value: unknown): value is string;
-type ContextParameters = Pick<ModelParameters, 'contextWindow' | 'contextWindowMode' | 'maxInputTokens'>;
-export function inputCeiling(parameters: ContextParameters): number;
 export interface EffortProjection {
   levels: string[];
   nativeLevels: string[];

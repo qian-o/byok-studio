@@ -8,7 +8,7 @@ import { t } from '../resources/shared/i18n.js';
 
 const BINDINGS_KEY = 'byokStudio.officialBindings.v1';
 const ADD_GROUP = 'lm.addLanguageModelsProviderGroup';
-const MANAGED_MODEL_FIELDS = ['id', 'name', 'url', 'apiType', 'toolCalling', 'vision', 'thinking', 'maxInputTokens', 'maxOutputTokens', 'contextWindow', 'adaptiveThinking', 'minThinkingBudget', 'maxThinkingBudget', 'supportsReasoningEffort', 'reasoningEffortFormat', 'defaultReasoningEffort', 'streaming', 'modelOptions'];
+const MANAGED_MODEL_FIELDS = ['id', 'name', 'url', 'apiType', 'toolCalling', 'vision', 'thinking', 'maxInputTokens', 'maxOutputTokens', 'contextWindow', 'defaultOutputTokens', 'contextWindowMode', 'adaptiveThinking', 'minThinkingBudget', 'maxThinkingBudget', 'supportsReasoningEffort', 'reasoningEffortFormat', 'defaultReasoningEffort', 'streaming', 'modelOptions', 'zeroDataRetentionEnabled', 'statefulResponses'];
 interface Binding { keyFingerprint?: string; secretReference?: string; clearKeyPending?: boolean }
 type Bindings = Record<string, Binding>;
 interface Snapshot { document: vscode.TextDocument; text: string }
@@ -29,13 +29,14 @@ export class OfficialConfigurationManager {
     // Storage change notifications can lag behind completed writes; the queue retains its latest state.
     this.bindings = structuredClone(bindings);
   }
-  synchronize(changedKeyId?: string): Promise<void> {
-    const next = this.pending.catch(() => undefined).then(() => this.sync(changedKeyId));
+  applyProviders(providerIds: readonly string[], changedKeyId?: string): Promise<void> {
+    const selected = new Set(providerIds);
+    const next = this.pending.catch(() => undefined).then(() => this.apply(selected, changedKeyId));
     this.pending = next;
     return next;
   }
   async openConfiguration(): Promise<void> {
-    const snapshot = await this.read();
+    const snapshot = await this.read(false);
     await vscode.window.showTextDocument(snapshot.document, { preview: false });
   }
   private async ready(): Promise<void> {
@@ -44,7 +45,7 @@ export class OfficialConfigurationManager {
     await official.activate();
     if (!(await vscode.commands.getCommands(true)).includes(ADD_GROUP)) throw new Error(t('当前 VS Code 未提供官方模型配置命令，请更新 VS Code。'));
   }
-  private async read(): Promise<Snapshot> {
+  private async read(create = true): Promise<Snapshot> {
     const samePath = (uri: vscode.Uri) => ['file', 'vscode-userdata'].includes(uri.scheme) && uri.authority === this.configurationUri.authority
       && (process.platform === 'win32' ? uri.path.toLowerCase() === this.configurationUri.path.toLowerCase() : uri.path === this.configurationUri.path);
     const open = vscode.workspace.textDocuments.filter(document => samePath(document.uri));
@@ -63,6 +64,7 @@ export class OfficialConfigurationManager {
             exists = false;
           }
           if (exists) throw openError;
+          if (!create) throw new Error(t('尚未保存官方模型配置，请先保存供应商。'));
           const creation = new vscode.WorkspaceEdit();
           creation.createFile(file, { ignoreIfExists: true, contents: Buffer.from('[]\n') });
           if (!await vscode.workspace.applyEdit(creation)) throw new Error(t('无法创建官方模型配置文件。'));
@@ -135,18 +137,18 @@ export class OfficialConfigurationManager {
     // The official command normalizes the file. Restore the original text while publishing only our node.
     return { snapshot: after, originalText: snapshot.text, reference: staged.apiKey };
   }
-  private async sync(changedKeyId?: string): Promise<void> {
+  private async apply(selected: ReadonlySet<string>, changedKeyId?: string): Promise<void> {
+    if (!selected.size) return;
     const state = this.store.snapshot();
     const database = this.store.database();
     const bindings = structuredClone(this.bindings);
-    if (changedKeyId && !await this.store.key(changedKeyId)) {
+    if (changedKeyId && selected.has(changedKeyId) && !await this.store.key(changedKeyId)) {
       bindings[changedKeyId] = { ...bindings[changedKeyId], clearKeyPending: true };
       await this.saveBindings(bindings);
     }
-    if (!state.providers.length && !Object.keys(bindings).length) return;
     await this.ready();
     let snapshot = await this.read();
-    const active = state.providers.filter(provider => provider.enabled && provider.models.length);
+    const active = state.providers.filter(provider => selected.has(provider.id) && provider.enabled && provider.models.length);
     const planned = new Map(active.map(provider => [provider.id, compileOfficialGroup(provider, database)]));
     const names = new Set<string>();
     const initialGroups = listGroups(snapshot.text);
@@ -157,12 +159,11 @@ export class OfficialConfigurationManager {
     }
     await this.saveBindings(bindings);
     const currentIds = new Set(active.map(provider => provider.id));
-    const knownIds = new Set([...Object.keys(bindings), ...state.providers.map(provider => provider.id)]);
-    let text = removeLegacyGroups(snapshot.text, [...knownIds]);
+    let text = removeLegacyGroups(snapshot.text, [...selected]);
     for (const group of listGroups(text)) {
       if (group.vendor !== 'customendpoint' || typeof group.byokStudioId !== 'string') continue;
       const id = group.byokStudioId;
-      if ((knownIds.has(id) && !currentIds.has(id)) || (typeof group.byokStudioStageFor === 'string' && knownIds.has(group.byokStudioStageFor))) text = updateOwnedGroup(text, id, null);
+      if ((selected.has(id) && !currentIds.has(id)) || (typeof group.byokStudioStageFor === 'string' && selected.has(group.byokStudioStageFor))) text = updateOwnedGroup(text, id, null);
     }
     if (text !== snapshot.text) { await this.write(snapshot, text); snapshot = await this.read(); }
     for (const provider of active) {
@@ -187,19 +188,21 @@ export class OfficialConfigurationManager {
       const settings = structuredClone(existing?.settings && typeof existing.settings === 'object' && !Array.isArray(existing.settings) ? existing.settings : {}) as Record<string, Record<string, unknown>>;
       for (const model of generated.models) {
         const current = settings[model.id] && typeof settings[model.id] === 'object' ? { ...settings[model.id] } : {};
+        delete current.zeroDataRetentionEnabled;
+        delete current.statefulResponses;
         if (model.defaultReasoningEffort) current.reasoningEffort = model.defaultReasoningEffort;
         else delete current.reasoningEffort;
         if (Object.keys(current).length) settings[model.id] = current;
         else delete settings[model.id];
       }
       if (Object.keys(settings).length) merged.settings = settings; else delete merged.settings;
-      const patched = updateOwnedGroup(originalText, provider.id, merged, { managedModelFields: MANAGED_MODEL_FIELDS, replaceFields: ['settings'], removeFields: ['apiType', ...(reference ? [] : ['apiKey'])] });
+      const patched = updateOwnedGroup(originalText, provider.id, merged, { managedModelFields: MANAGED_MODEL_FIELDS, replaceFields: ['settings'], removeFields: ['apiType', 'zeroDataRetentionEnabled', 'statefulResponses', ...(reference ? [] : ['apiKey'])] });
       await this.write(snapshot, patched);
       bindings[provider.id] = { keyFingerprint, secretReference: reference };
       await this.saveBindings(bindings);
       snapshot = await this.read();
     }
-    for (const id of Object.keys(bindings)) if (!currentIds.has(id)) delete bindings[id];
+    for (const id of selected) if (!currentIds.has(id)) delete bindings[id];
     await this.saveBindings(bindings);
     await vscode.lm.selectChatModels({ vendor: 'customendpoint' });
   }

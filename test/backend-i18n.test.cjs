@@ -34,7 +34,7 @@ test('backend messages default to English and localize validation labels before 
   assert.throws(() => object(null), { message: 'Configuration must be an object.' });
   assert.throws(() => validId('two words'), { message: 'Model ID cannot contain whitespace or control characters.' });
   assert.throws(() => validateParameters({ ...defaults, contextWindow: 0 }), {
-    message: 'Context window must be an integer between 1 and 100000000.'
+    message: 'Context must be an integer between 1 and 100000000.'
   });
   assert.throws(() => validateProvider({ ...provider(), enabled: 'true' }, database()), {
     message: 'Enabled status must be a boolean.'
@@ -48,7 +48,7 @@ test('Chinese locale variants change validation and fallback messages at call ti
     assert.throws(() => object(null), { message: '配置必须是对象。' });
     assert.throws(() => validId('two words'), { message: '模型 ID不能包含空白或控制字符。' });
     assert.throws(() => validateParameters({ ...defaults, contextWindow: 0 }), {
-      message: '上下文窗口必须是 1–100000000 的整数。'
+      message: 'Context必须是 1–100000000 的整数。'
     });
     assert.equal(sanitizeError(null), '操作失败。');
   }
@@ -104,12 +104,12 @@ test('sanitization preserves raw errors while redacting credentials in either lo
     assert.equal(sanitizeError(new Error('The provider refused this request.')), 'The provider refused this request.');
     assert.equal(sanitizeError(new Error('x'.repeat(2100))).length, 2000);
   }
-  assert.equal(t('BYOK Studio 官方配置写入失败：{0}', '操作失败。 {1} $&'), 'BYOK Studio 官方配置写入失败：操作失败。 {1} $&');
+  assert.equal(t('配置已保存，但写入 Chat 配置失败：{0}', '操作失败。 {1} $&'), '配置已保存，但写入 Chat 配置失败：操作失败。 {1} $&');
   setLocale('en');
-  assert.equal(t('BYOK Studio 官方配置写入失败：{0}', '操作失败。 {1} $&'), 'BYOK Studio could not write the official configuration: 操作失败。 {1} $&');
+  assert.equal(t('配置已保存，但写入 Chat 配置失败：{0}', '操作失败。 {1} $&'), 'Settings were saved, but writing the Chat configuration failed: 操作失败。 {1} $&');
 });
 
-test('saved-state validation and asynchronous library errors use the selected locale', async () => {
+test('saved-state validation and asynchronous save errors use the selected locale', async () => {
   const invalid = { version: 2, providers: [] };
   assert.throws(() => new StudioStore({ get: () => invalid }, secrets, database(), () => {}), {
     message: 'The saved BYOK configuration version is not supported; the original data has not been changed.'
@@ -123,12 +123,12 @@ test('saved-state validation and asynchronous library errors use the selected lo
   item.models[0].name = '操作失败。 {0} $&';
   item.models[0].overrides = { maxOutputTokens: 64000 };
   await store.saveProvider(item);
-  const smaller = database();
-  smaller.defaults.contextWindow = 32000;
+  const invalidProvider = provider();
+  invalidProvider.models[0].overrides = { contextWindow: 32000, maxOutputTokens: 64000 };
   for (const locale of ['en', 'zh-CN']) {
     setLocale(locale);
-    const message = t('目录更新与供应商 {0} 的模型配置不兼容，未保存任何更改：{1}', item.name, t('输入或输出上限不能超过上下文窗口。'));
-    await assert.rejects(store.updateCatalog({ source: 'models.dev', updatedAt: '2026-01-01T00:00:00Z', database: smaller }), { message });
+    const message = t('Output 必须小于 Context。');
+    await assert.rejects(store.saveProvider(invalidProvider), { message });
     assert.equal(store.database().defaults.contextWindow, 128000);
   }
 });

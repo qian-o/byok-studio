@@ -49,6 +49,21 @@ test('retired fields are discarded without changing native token capacities', ()
   }
   assert.equal(Object.hasOwn(result.models[0], 'contextSize'), false);
 });
+
+test('legacy output budgets become one Output value and obsolete token fields do not persist', async () => {
+  const legacy = { ...defaults, contextWindow: 1048576, maxOutputTokens: 1048576, defaultOutputTokens: 131072,
+    maxInputTokens: 917504, contextWindowMode: 'input' };
+  const converted = validateParameters(legacy);
+  assert.equal(converted.contextWindow, 1048576); assert.equal(converted.maxOutputTokens, 131072);
+  for (const field of ['maxInputTokens', 'defaultOutputTokens', 'contextWindowMode']) assert.equal(Object.hasOwn(converted, field), false);
+  const s = storage(), p = provider();
+  p.models[0].overrides = { maxInputTokens: 120000, maxOutputTokens: 64000, defaultOutputTokens: 8192 };
+  await s.store.saveProvider(p);
+  assert.deepEqual(s.store.snapshot().providers[0].models[0].overrides, { maxOutputTokens: 8192 });
+  const restored = new StudioStore(s.global, s.secrets, database(), () => {});
+  assert.deepEqual(restored.snapshot().providers, s.store.snapshot().providers);
+  assert.deepEqual((await restored.exportProviders([p.id])).providers[0].models[0].overrides, { maxOutputTokens: 8192 });
+});
 test('keys stay in secret storage and an empty input preserves the existing key', async () => {
   const s = storage(); await s.store.saveProvider(provider(), 'secret-canary');
   assert.equal(await s.store.key('provider-one'), 'secret-canary');

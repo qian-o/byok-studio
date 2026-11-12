@@ -3,14 +3,13 @@ import { randomBytes } from 'node:crypto';
 import { object, sanitizeError, text, validId, validateProvider } from './core/configuration';
 import { MAX_IMPORT_BYTES, parseExportBundle, StudioStore } from './core/store';
 import { discoverProviderModels } from './core/discovery';
-import { fetchModelCatalog } from './core/modelCatalog';
 import { renderHtml, t } from '../resources/shared/i18n.js';
 
 export class SettingsPanel implements vscode.Disposable {
   private panel: vscode.WebviewPanel | undefined;
   private readonly pending = new Set<AbortController>();
   private readonly stateSubscription: vscode.Disposable;
-  constructor(private readonly context: vscode.ExtensionContext, private readonly store: StudioStore, changed: vscode.Event<void>, private readonly applyConfiguration: (changedKeyId?: string) => Promise<void>) {
+  constructor(private readonly context: vscode.ExtensionContext, private readonly store: StudioStore, changed: vscode.Event<void>, private readonly applyConfiguration: (providerIds: readonly string[], changedKeyId?: string) => Promise<void>) {
     this.stateSubscription = changed(() => { void this.broadcast(); });
   }
   async open(): Promise<void> {
@@ -55,20 +54,26 @@ export class SettingsPanel implements vscode.Disposable {
     }
     let changedKeyId: string | undefined;
     let importedIds: string[] | undefined;
+    let affectedIds: string[] | undefined;
     try {
       let data: unknown = null;
       switch (command) {
         case 'getState': data = await this.store.uiState(); break;
         case 'saveProvider': {
+          const providerId = validId(object(payload.provider).id, t('供应商标识'));
           await this.store.saveProvider(payload.provider, payload.apiKey, payload.clearKey === true);
+          affectedIds = [providerId];
           if ((typeof payload.apiKey === 'string' && Boolean(payload.apiKey.trim())) || payload.clearKey === true) {
-            changedKeyId = validId(object(payload.provider).id, t('供应商标识'));
+            changedKeyId = providerId;
           }
           break;
         }
-        case 'deleteProvider':
-          await this.store.deleteProvider(validId(payload.id, t('供应商标识')));
+        case 'deleteProvider': {
+          const providerId = validId(payload.id, t('供应商标识'));
+          await this.store.deleteProvider(providerId);
+          affectedIds = [providerId];
           break;
+        }
         case 'exportProviders': {
           const target = payload.target === 'file' ? 'file' : payload.target === 'clipboard' ? 'clipboard' : undefined;
           if (!target) throw new Error(t('请选择有效的导出方式。'));
@@ -118,6 +123,7 @@ export class SettingsPanel implements vscode.Disposable {
         }
         case 'importProviders': {
           importedIds = await this.store.importProviders({ version: 1, providers: payload.providers });
+          affectedIds = importedIds;
           break;
         }
         case 'discoverModels': {
@@ -130,20 +136,11 @@ export class SettingsPanel implements vscode.Disposable {
           finally { this.pending.delete(controller); }
           break;
         }
-        case 'updateCatalog': {
-          const controller = new AbortController();
-          this.pending.add(controller);
-          try {
-            const snapshot = await fetchModelCatalog(controller.signal);
-            await this.store.updateCatalog(snapshot);
-          } finally { this.pending.delete(controller); }
-          break;
-        }
         case 'openModels': await vscode.commands.executeCommand('workbench.action.chat.manageLanguageModels'); break;
         default: throw new Error(t('不支持的操作。'));
       }
-      if (['saveProvider', 'deleteProvider', 'importProviders', 'updateCatalog'].includes(command)) {
-        try { await this.applyConfiguration(changedKeyId); }
+      if (affectedIds) {
+        try { await this.applyConfiguration(affectedIds, changedKeyId); }
         catch (error) { throw new Error(t('配置已保存，但写入 Chat 配置失败：{0}', sanitizeError(error, sensitive))); }
         const state = await this.store.uiState();
         data = importedIds ? { state, importedIds } : state;

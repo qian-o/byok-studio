@@ -122,28 +122,27 @@ test('canonical-origin providers supply facts while priority resolves unrelated 
   assert.equal(result['canonical-source'].contextWindow, 320000);
 });
 
-test('context semantics follow data, clamp independent input, and reserve a conservative output budget', () => {
-  const raw = fixture(); const inputProvider = policy.providers.find(id => policy.providerDefaults[id].contextWindowMode === 'input');
-  add(raw, inputProvider, 'renamed-independent', { limit: { context: 100000, input: 200000, output: 150000 } });
+test('release presets expose only Context and the selected Output limit', () => {
+  const raw = fixture();
+  add(raw, SECOND, 'renamed-independent', { limit: { context: 100000, input: 200000, output: 150000 } });
   add(raw, FIRST, 'large-output', { limit: { context: 1048576, input: 1048576, output: 1048576 } }, { limit: { context: 1048576, output: 131072 } });
   add(raw, FIRST, 'missing-output', { limit: { context: 64000 } });
   add(raw, FIRST, 'shared-clamp', { limit: { context: 90000, input: 200000, output: 120000 } });
   const result = models(raw);
-  assert.equal(result['renamed-independent'].contextWindowMode, 'input'); assert.equal(result['renamed-independent'].maxInputTokens, 100000);
-  assert.equal(result['renamed-independent'].maxOutputTokens, 150000);
-  assert.equal(result['large-output'].maxOutputTokens, 1048576); assert.equal(result['large-output'].defaultOutputTokens, 131072);
-  assert.equal(result['large-output'].contextWindowMode, undefined);
-  assert.equal(result['shared-clamp'].maxInputTokens, 90000); assert.equal(result['shared-clamp'].maxOutputTokens, 90000);
+  assert.equal(result['renamed-independent'].contextWindow, 100000);
+  assert.equal(result['renamed-independent'].maxOutputTokens, 25000);
+  assert.equal(result['large-output'].contextWindow, 1048576); assert.equal(result['large-output'].maxOutputTokens, 131072);
+  assert.equal(result['shared-clamp'].contextWindow, 90000); assert.equal(result['shared-clamp'].maxOutputTokens, 22500);
   assert.equal(result['missing-output'].maxOutputTokens, 16000);
-  assert(result['missing-output'].defaultOutputTokens <= result['missing-output'].contextWindow / 4);
+  for (const record of Object.values(result)) for (const field of ['maxInputTokens', 'defaultOutputTokens', 'contextWindowMode']) assert.equal(Object.hasOwn(record, field), false);
 });
 
-test('shared physical output may equal context when a separate safe default budget is supplied', () => {
+test('a full-window upstream output capability becomes one usable Output default', () => {
   const raw = fixture();
   add(raw, FIRST, 'shared-full-output', { limit: { context: 1048576, output: 1048576 } }, { limit: { context: 1048576, output: 131072 } });
   const result = models(raw)['shared-full-output'];
-  assert.equal(result.contextWindowMode, undefined); assert.equal(result.maxOutputTokens, 1048576);
-  assert.equal(result.defaultOutputTokens, 131072); assert.equal(result.maxInputTokens, undefined);
+  assert.equal(result.contextWindow, 1048576); assert.equal(result.maxOutputTokens, 131072);
+  assert.equal(Object.hasOwn(result, 'defaultOutputTokens'), false); assert.equal(Object.hasOwn(result, 'maxInputTokens'), false);
 });
 
 test('effort, toggle, and budget remain distinct and Messages budgets require protocol evidence', () => {
@@ -171,22 +170,18 @@ test('pricing and provenance metadata cannot change normalized model capabilitie
   assert.deepEqual(models(raw), baseline);
 });
 
-test('renamed compatibility data applies sampling parameters and context mode without identity branches', () => {
+test('renamed compatibility data applies sampling parameters without identity branches', () => {
   const moduleId = require.resolve('../dist/core/modelCatalog'), policyId = require.resolve('../resources/catalog/compatibility.json');
   const original = require.cache[policyId].exports, originalModule = require.cache[moduleId];
   const renamed = structuredClone(original);
   const sampling = Object.values(renamed.models).find(patch => renamed.profiles[patch.profile]?.protocols?.chatCompletions?.modelOptions?.top_p === 0.95);
-  const shared = Object.values(renamed.models).find(patch => patch.contextWindowMode === 'shared');
-  renamed.models = { 'unrelated-sampling-name': sampling, 'unrelated-window-name': shared };
+  renamed.models = { 'unrelated-sampling-name': sampling };
   try {
     require.cache[policyId].exports = renamed; delete require.cache[moduleId];
     const converter = require('../dist/core/modelCatalog').buildModelCatalog, raw = fixture();
     add(raw, FIRST, 'unrelated-sampling-name');
-    const inputProvider = policy.providers.find(id => policy.providerDefaults[id].contextWindowMode === 'input');
-    add(raw, inputProvider, 'unrelated-window-name');
     const result = converter(raw, TIME).database.models;
     assert.equal(result['unrelated-sampling-name'].protocols.chatCompletions.modelOptions.top_p, 0.95);
-    assert.equal(result['unrelated-window-name'].contextWindowMode, undefined);
   } finally { require.cache[policyId].exports = original; require.cache[moduleId] = originalModule; }
 });
 
@@ -289,7 +284,7 @@ test('the same timeout also bounds a stalled response stream and releases it', a
 test('downloaded real snapshot preserves representative canonical aliases, budgets, and compatibility', { skip: !process.env.MODELS_DEV_CATALOG_FIXTURE }, () => {
   const raw = JSON.parse(fs.readFileSync(process.env.MODELS_DEV_CATALOG_FIXTURE, 'utf8'));
   const result = models(raw);
-  assert.equal(result['kimi-k3'].maxOutputTokens, 1048576); assert.equal(result['kimi-k3'].defaultOutputTokens, 131072);
+  assert.equal(result['kimi-k3'].contextWindow, 1048576); assert.equal(result['kimi-k3'].maxOutputTokens, 131072);
   assert.equal(result['kimi-k3'].protocols.chatCompletions.modelOptions.top_p, 0.95);
   assert.equal(result['gemini-4-argon'].contextWindowMode, undefined);
   assert.equal(result['gemini-3.1-pro-preview'].protocols.chatCompletions.effortFormat, 'unsupported');

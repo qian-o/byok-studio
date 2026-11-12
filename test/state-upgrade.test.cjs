@@ -27,7 +27,8 @@ test('legacy customized presets and unknown-model defaults become provider overr
   assert.equal(store.snapshot().providers[0].models[0].name, 'Old name');
   assert.equal(store.snapshot().providers[0].models[1].overrides.contextWindow, 400000);
   assert.deepEqual(w.values.get(KEY), saved, 'Construction does not write');
-  await store.uiState(); assert.equal(w.writes, 1);
+  await store.uiState(); assert.equal(w.writes, 0); assert.deepEqual(w.values.get(KEY), saved);
+  await store.saveProvider(store.snapshot().providers[0]); assert.equal(w.writes, 1);
   assert.equal(w.values.get(KEY).database, undefined); assert.equal(w.values.get(KEY).appliedCatalogUpdates, undefined);
   const restarted = w.create(); assert.deepEqual(restarted.snapshot(), store.snapshot());
   assert.equal(await restarted.key('provider'), 'preserved-key');
@@ -71,6 +72,8 @@ test('cached legacy profiles retain effort formats, disabled choices, adaptive t
   assert.deepEqual(protocols.chatCompletions, { effortFormat: 'unsupported', modelOptions: { top_p: 0.95 } });
   assert.deepEqual(protocols.messages, { effortValues: { none: null }, adaptiveThinking: true, thinkingBudget: { min: 1024, max: 8000 } });
   assert.equal(compileOfficialGroup(store.snapshot().providers[0], store.database()).models[0].defaultReasoningEffort, 'max');
+  assert.deepEqual(w.values.get(KEY), saved); assert.equal(w.writes, 0);
+  await store.saveProvider(store.snapshot().providers[0]);
   assert.equal(JSON.stringify(w.values.get(KEY)).includes('reasoningControls'), false);
   assert.deepEqual(w.create().database(), store.database());
 });
@@ -108,14 +111,15 @@ test('invalid saved data and selections are never normalized away or persisted',
   }
 });
 
-test('pending upgrade failures and invalid saves preserve persisted state and can be retried', async () => {
+test('reads remain available when writes fail and only an explicit save persists legacy data', async () => {
   const saved = { version: 1, providers: [provider()], database: db() };
   const w = world(saved), store = w.create(); w.fail = true;
-  await assert.rejects(store.uiState(), /write failed/);
-  await assert.rejects(store.updateCatalog({ source: 'models.dev', updatedAt: '2026-01-01T00:00:00Z', database: db() }), /write failed/);
+  await store.uiState(); await store.uiState(); assert.equal(w.writes, 0);
+  await assert.rejects(store.saveProvider(store.snapshot().providers[0]), /write failed/);
   assert.deepEqual(w.values.get(KEY), saved);
   w.fail = false;
   await assert.rejects(store.saveProvider({ ...provider(), name: '' }));
   assert.deepEqual(w.values.get(KEY), saved); assert.equal(w.writes, 0);
-  await store.uiState(); assert.equal(w.writes, 1); assert.deepEqual(w.create().snapshot(), store.snapshot());
+  await store.uiState(); assert.equal(w.writes, 0);
+  await store.saveProvider(store.snapshot().providers[0]); assert.equal(w.writes, 1); assert.deepEqual(w.create().snapshot(), store.snapshot());
 });

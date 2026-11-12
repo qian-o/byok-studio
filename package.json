@@ -21,9 +21,6 @@
     "copilot"
   ],
   "main": "./dist/extension.js",
-  "activationEvents": [
-    "onStartupFinished"
-  ],
   "extensionKind": [
     "ui"
   ],

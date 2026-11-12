@@ -15,17 +15,12 @@ export interface ProtocolProfile {
 export interface ModelParameters {
   name: string;
   contextWindow: number;
-  /** Whether the documented window is a shared pool or an independent input quota. */
-  contextWindowMode?: 'shared' | 'input';
   maxOutputTokens: number;
-  /** Default generation budget; separate from the documented physical output ceiling. */
-  defaultOutputTokens?: number;
   toolCalling: boolean;
   vision: boolean;
   thinking: boolean;
   supportsReasoningEffort: string[];
   releaseDate?: string | null;
-  maxInputTokens?: number;
   /** Presentation preset only; the original request ID is never rewritten. */
   aliasOf?: string;
   protocols?: Partial<Record<ApiType, ProtocolProfile>>;
@@ -43,7 +38,7 @@ export interface CatalogSnapshot {
   database: ModelDatabase;
 }
 
-export type ParameterOverrides = Partial<Pick<ModelParameters, 'contextWindow' | 'maxInputTokens' | 'maxOutputTokens' | 'defaultOutputTokens' | 'toolCalling' | 'vision' | 'thinking' | 'supportsReasoningEffort'>>;
+export type ParameterOverrides = Partial<Pick<ModelParameters, 'contextWindow' | 'maxOutputTokens' | 'toolCalling' | 'vision' | 'thinking' | 'supportsReasoningEffort'>>;
 
 export interface ModelConfig {
   id: string;

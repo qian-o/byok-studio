@@ -10,11 +10,11 @@
 
 - 供应商名称、端点地址和 API Key。
 - **Chat Completions**、**Responses** 或 **Messages** 协议配置，可统一设置或按模型分配。
-- 模型列表、显示名称、Token 限制、能力声明和默认推理档位。
+- 模型列表、显示名称、Context、Output、能力声明和推理档位。
 
-模型预设来自 [models.dev](https://models.dev)。点击页面顶部的 **更新预设库**，在具体模型的 **高级选项** 中调整参数；更新会保留模型的手动覆盖。[参数来源](docs/SOURCES.md)。
+模型预设来自 [models.dev](https://models.dev)，随扩展发版提供。在 **模型设置** 中调整参数。[参数来源与发版维护](docs/SOURCES.md)。
 
-BYOK Studio 不再生成或管理 `zeroDataRetentionEnabled` 和 `statefulResponses`。官方 JSON 中保留模型的已有字段值会原样保留；新模型使用 Copilot 默认行为，也可自行编辑 JSON。
+Context 和 Output 直接写入官方 JSON 的 `contextWindow` 和 `maxOutputTokens`。保存供应商时会清除该供应商旧模型中的 `maxInputTokens`、`zeroDataRetentionEnabled` 和 `statefulResponses`；未操作的供应商保持不变。
 
 ## 使用
 
@@ -25,11 +25,13 @@ BYOK Studio 不再生成或管理 `zeroDataRetentionEnabled` 和 `statefulRespon
 3. 刷新或手动添加模型，调整设置。
 4. 点击 **保存供应商** 写入原生配置并刷新 Copilot Chat 的模型列表，然后选择对应的 **Custom Endpoint** 模型。
 
+扩展按命令加载。启动 VS Code、打开设置或读取配置均不写入数据。只有显式保存、导入或删除供应商时才修改对应供应商的官方配置。
+
 **统一协议** 模式下所有模型使用同一个协议和地址。**区分协议** 模式下没有供应商默认协议：GPT / OpenAI 系列（含 Codex）归入 **Responses**，Claude 归入 **Messages**，其余模型归入 **Chat Completions**。可在模型设置的 **请求协议** 中单独修改，或勾选模型后批量移动到其他协议列。切换模式会保留已有的手动分配。
 
 **刷新** 会替换模型列表，并将协议分配重置为上述模型系列规则。同 ID 模型保留名称、Token 覆盖和推理设置；端点地址及 API Key 保持不变，模型按发现顺序排列。刷新失败不会改变草稿。
 
-两种模式都可勾选模型并点击 **删除所选**，确认数量后批量删除。可 **全选** 统一列表或某一协议列，也可清除选择。删除只修改当前草稿，保存供应商后才生效。原生配置写入和 Chat 模型列表刷新均完成后显示绿色提示，失败时仍显示错误。
+勾选模型后，**刷新** 左侧显示 **删除**。取消全部勾选后隐藏；可使用统一列表或协议列的 **全选**。模型删除只修改草稿，保存供应商后生效。保存完成后显示绿色提示，失败时显示错误。
 
 点击 **导出**，选择供应商（默认全选），复制到剪贴板或保存为 JSON 文件，始终包含已保存的 API Key。点击 **导入**，从剪贴板或 JSON 文件读取并选择供应商后保存；同 ID 或同名供应商会更新覆盖。两个弹窗均可通过右上角关闭按钮或 Esc 退出。跨设备迁移通过手动导入、导出完成。
 
@@ -52,7 +54,7 @@ BYOK Studio 不再生成或管理 `zeroDataRetentionEnabled` 和 `statefulRespon
         "apiType": "chat-completions",
         "toolCalling": true,
         "vision": true,
-        "maxInputTokens": 917504,
+        "contextWindow": 1048576,
         "maxOutputTokens": 131072,
         "thinking": true,
         "supportsReasoningEffort": ["low", "high", "max"],

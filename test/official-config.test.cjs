@@ -3,7 +3,6 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { compileOfficialGroup, compileOfficialModel, officialProtocol } = require('../dist/core/officialConfig');
 const { effectiveParameters } = require('../dist/core/configuration');
-const { inputCeiling } = require('../resources/shared/model-policy');
 const { projectEfforts } = require('../resources/shared/model-policy');
 const catalog = require('../resources/catalog/models.json').database;
 
@@ -83,13 +82,13 @@ test('all catalog entries and fallback compile for every native protocol with va
       assert.equal(Object.hasOwn(native, 'streaming'), false);
       assert.equal(native.thinking ?? false, params.thinking);
       assert.deepEqual(native.supportsReasoningEffort ?? [], projectEfforts(params, protocols[index]).nativeLevels);
-      assert.ok(Number.isInteger(native.maxInputTokens) && native.maxInputTokens > 0, native.id);
+      assert.equal(native.contextWindow, params.contextWindow, native.id);
       assert.ok(Number.isInteger(native.maxOutputTokens) && native.maxOutputTokens > 0, native.id);
-      assert.ok(native.maxInputTokens <= inputCeiling(params), native.id);
-      assert.equal(native.maxInputTokens, Math.min(inputCeiling(params), params.contextWindowMode === 'input' ? Infinity : params.contextWindow - native.maxOutputTokens), native.id);
-      assert.ok(native.maxOutputTokens <= params.maxOutputTokens, native.id);
-      if (params.contextWindowMode !== 'input') assert.ok(native.maxInputTokens + native.maxOutputTokens <= params.contextWindow, native.id);
-      assert.equal(Object.hasOwn(native, 'contextWindow'), false);
+      assert.equal(native.maxOutputTokens, params.maxOutputTokens, native.id);
+      assert.ok(native.maxOutputTokens < native.contextWindow, native.id);
+      for (const key of ['maxInputTokens', 'defaultOutputTokens', 'contextWindowMode', 'zeroDataRetentionEnabled', 'statefulResponses']) {
+        assert.equal(Object.hasOwn(native, key), false, `${native.id}: ${key}`);
+      }
     }
   }
 });
@@ -160,35 +159,26 @@ test('generic endpoint normalization accepts roots, prefixes, versions and full 
   }
 });
 
-test('output reservations, overrides and explicit input limits form the native configured total', () => {
-  assert.deepEqual([compile().maxInputTokens, compile().maxOutputTokens], [112000, 16000]);
-  let native = compile({ contextWindow: 100000, maxInputTokens: 90000, maxOutputTokens: 80000, defaultOutputTokens: 10000 },
-    model('sample', { contextSize: 95000, overrides: { defaultOutputTokens: 20000, vision: true, toolCalling: true } }));
-  assert.equal(native.maxInputTokens, 80000);
-  assert.equal(native.maxOutputTokens, 20000);
+test('Context and Output are emitted exactly without derived input quotas or extra budgets', () => {
+  assert.deepEqual([compile().contextWindow, compile().maxOutputTokens], [128000, 16000]);
+  const native = compile({ contextWindow: 100000, maxInputTokens: 90000, maxOutputTokens: 80000 },
+    model('sample', { contextSize: 95000, overrides: { contextWindow: 32769, maxOutputTokens: 4097, vision: true, toolCalling: true } }));
+  assert.equal(native.contextWindow, 32769);
+  assert.equal(native.maxOutputTokens, 4097);
   assert.equal(native.vision, true);
   assert.equal(native.toolCalling, true);
-  native = compile({ contextWindow: 100000, maxOutputTokens: 80000, defaultOutputTokens: 10000 }, model('sample', { contextSize: 50000 }));
-  assert.equal(native.maxInputTokens + native.maxOutputTokens, 100000);
-  assert.equal(Object.hasOwn(native, 'contextWindow'), false);
-  native = compile({ defaultOutputTokens: 1000000 });
-  assert.equal(native.maxOutputTokens, 16000);
+  for (const key of ['maxInputTokens', 'defaultOutputTokens', 'contextSize']) assert.equal(Object.hasOwn(native, key), false);
 });
 
-test('equal physical input/output windows reserve a conservative positive output budget', () => {
-  for (const [window, output] of [[100000, 16384], [8000, 2000], [2, 1]]) {
-    const native = compile({ contextWindow: window, maxInputTokens: window, maxOutputTokens: window });
-    assert.equal(native.maxOutputTokens, output);
-    assert.equal(native.maxInputTokens + native.maxOutputTokens, window);
+test('invalid Output values are rejected rather than silently adjusted', () => {
+  for (const [contextWindow, maxOutputTokens] of [[100000, 100000], [8000, 20000], [1, 1]]) {
+    assert.throws(() => compile({ contextWindow, maxOutputTokens }), /Output.*Context/);
   }
-  assert.throws(() => compile({ contextWindow: 1, maxInputTokens: 1, maxOutputTokens: 1 }), /至少容纳一个输入 token 和一个输出 token/);
-  const independent = compile({ contextWindowMode: 'input', contextWindow: 8000, maxOutputTokens: 20000 });
-  assert.equal(independent.maxInputTokens, 8000);
-  assert.equal(independent.maxOutputTokens, 20000);
+  assert.deepEqual([compile({contextWindow: 2, maxOutputTokens: 1}).contextWindow, compile({contextWindow: 2, maxOutputTokens: 1}).maxOutputTokens], [2, 1]);
 });
 
 test('provider output overrides apply consistently to each protocol', () => {
-  const params = { maxOutputTokens: 64000, defaultOutputTokens: 50000 };
+  const params = { maxOutputTokens: 64000 };
   for (const apiType of protocols) assert.equal(compile(params, model('sample', { overrides: { maxOutputTokens: 4096 } }), apiType).maxOutputTokens, 4096);
 });
 
@@ -196,8 +186,8 @@ test('billing tiers and retired per-model budgets never reduce published capacit
   const params = { contextWindow: 300000, maxOutputTokens: 20000, contextPricing: {
     kind: 'tiered', scope: 'custom', thresholds: [100000, 200000], source: 'test', checkedAt: null, note: '' } };
   const full = compile(params);
-  assert.equal(full.maxInputTokens, 280000);
-  assert.equal(full.maxInputTokens + full.maxOutputTokens, 300000);
+  assert.equal(full.contextWindow, 300000);
+  assert.equal(full.maxOutputTokens, 20000);
   assert.deepEqual(compile(params, model('sample', { contextSize: 200000 })), full);
   for (const contextPricing of [undefined, { ...params.contextPricing, thresholds: [128000] }, { ...params.contextPricing, kind: 'flat', thresholds: [] }]) {
     assert.deepEqual(compile({ ...params, contextPricing }), full);
@@ -208,15 +198,15 @@ test('thinking mapping is profile-driven, target-specific and invariant under ar
   const params = { thinking: true, supportsReasoningEffort: ['low', 'max'], protocols: {
     messages: { adaptiveThinking: true, thinkingBudget: { min: 1024, max: 63999 } }
   } };
-  const native = compile(params, model('sample', { overrides: { defaultOutputTokens: 512 } }), 'messages');
+  const native = compile(params, model('sample', { overrides: { maxOutputTokens: 512 } }), 'messages');
   assert.equal(native.adaptiveThinking, true);
   assert.equal(native.minThinkingBudget, undefined);
   assert.equal(native.maxThinkingBudget, undefined, 'Adaptive thinking does not also configure a legacy budget');
   const budgetOnly = structuredClone(params); budgetOnly.protocols.messages.adaptiveThinking = false;
-  assert.throws(()=>compile(budgetOnly,model('sample',{overrides:{defaultOutputTokens:512}}),'messages'),/最小思考预算/);
-  assert.equal(compile(budgetOnly,model('sample',{overrides:{defaultOutputTokens:2048}}),'messages').minThinkingBudget,1024);
+  assert.throws(()=>compile(budgetOnly,model('sample',{overrides:{maxOutputTokens:512}}),'messages'),/最小思考预算/);
+  assert.equal(compile(budgetOnly,model('sample',{overrides:{maxOutputTokens:2048}}),'messages').minThinkingBudget,1024);
   const db = database(params); db.models['unrelated-id'] = structuredClone(db.models.sample);
-  const renamed = compileOfficialModel(provider('messages'), db, model('unrelated-id', { overrides: { defaultOutputTokens: 512 } }));
+  const renamed = compileOfficialModel(provider('messages'), db, model('unrelated-id', { overrides: { maxOutputTokens: 512 } }));
   assert.deepEqual({ ...native, id: '', name: '' }, { ...renamed, id: '', name: '' });
   for (const api of ['responses', 'chatCompletions']) {
     const other = compile(params, model(), api);
@@ -231,7 +221,7 @@ test('default-valued optional fields are omitted while required capabilities rem
   const native = compile({}, model(), 'chatCompletions');
   assert.deepEqual(native, {
     id: 'sample', name: 'sample', url: 'https://gateway.example/v1/chat/completions', apiType: 'chat-completions',
-    toolCalling: false, vision: false, maxInputTokens: 112000, maxOutputTokens: 16000
+    toolCalling: false, vision: false, contextWindow: 128000, maxOutputTokens: 16000
   });
   const thinking = compile({ thinking: true, supportsReasoningEffort: ['low', 'high'] }, model(), 'chatCompletions');
   assert.equal(thinking.thinking, true);
@@ -243,6 +233,8 @@ test('K3 sampling overrides Copilot chat defaults without adding unused settings
   for (const id of ['kimi-k3', 'kimi-k3.1-pro', 'kimi-k3.1-pro-highspeed']) {
     const item = model(id);
     const native = compileOfficialModel(provider('chatCompletions', [item]), catalog, item);
+    assert.equal(native.contextWindow, 1048576);
+    assert.equal(native.maxOutputTokens, 131072);
     assert.deepEqual(native.modelOptions, { top_p: 0.95 });
     assert.equal(native.thinking, true, 'The official adapter omits temperature for thinking models');
     for (const apiType of ['responses', 'messages']) {

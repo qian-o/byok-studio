@@ -66,11 +66,12 @@ test('refresh replacement removes vanished IDs, deduplicates, filters generators
   assert.deepEqual(replaced.map(m=>m.id),['new-id','gpt-6-astra']);assert.equal(replaced[1].name,'My Astra');assert.equal(replaced[1].reasoningEffort,'high');assert.equal(replaced[1].overrides.maxOutputTokens,8192);
   assert.deepEqual(vendors.replaceModels(old,[]),[]);assert.equal(old.length,3);
 });
-test('independent input ceilings support full-context output specifications without inventing a zero input budget',()=>{
-  const database=db();database.models['kimi-k3']={...parameters,name:'Kimi K3',contextWindow:262144,maxOutputTokens:262144,maxInputTokens:262144};
-  const valid=validateDatabase(database);assert.equal(effectiveParameters(valid,model('kimi-k3')).maxInputTokens,262144);
-  database.models['kimi-k3'].maxInputTokens=262145;assert.throws(()=>validateDatabase(database));
-  delete database.models['kimi-k3'].maxInputTokens;assert.throws(()=>validateDatabase(database));
+test('legacy preset budgets collapse to Output and retired input fields are dropped',()=>{
+  const database=db();database.models['kimi-k3']={...parameters,name:'Kimi K3',contextWindow:262144,maxOutputTokens:262144,defaultOutputTokens:65536,maxInputTokens:262144};
+  const valid=validateDatabase(database),effective=effectiveParameters(valid,model('kimi-k3'));
+  assert.equal(effective.contextWindow,262144);assert.equal(effective.maxOutputTokens,65536);
+  assert.equal(Object.hasOwn(effective,'maxInputTokens'),false);assert.equal(Object.hasOwn(effective,'defaultOutputTokens'),false);
+  delete database.models['kimi-k3'].defaultOutputTokens;assert.throws(()=>validateDatabase(database));
 });
 async function mock(t,handler){const requests=[];const server=http.createServer((req,res)=>{requests.push({url:req.url,headers:req.headers});handler(req,res);});server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>new Promise(resolve=>{server.close(resolve);server.closeAllConnections();}));return {url:`http://127.0.0.1:${server.address().port}`,requests};}
 test('model discovery deduplicates identical endpoints, unions channels and filters non-chat models',async t=>{

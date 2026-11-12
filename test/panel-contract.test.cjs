@@ -4,7 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
 const {randomUUID}=require('node:crypto');
-const {validateProvider,validateDatabase}=require('../dist/core/configuration');
+const {validateProvider}=require('../dist/core/configuration');
 const vendors=require('../resources/shared/routing.js');
 const modelRules=require('../resources/catalog/rules.json');
 const vendorScript=fs.readFileSync(path.join(__dirname,'..','resources','shared','routing.js'),'utf8');
@@ -25,6 +25,7 @@ const splitProvider=(id='gateway')=>({...provider(id),routingMode:'split'});
 const explicitProtocols=ids=>Object.fromEntries(ids.map(id=>[id,vendors.recommendedProtocol(id)]));
 const inProtocol=(ui,apiType)=>ui.get('model-list').querySelector(`[data-protocol="${apiType}"]`).querySelectorAll('[data-model-id]').map(row=>row.dataset.modelId);
 const shownModels=ui=>ui.elements.get('model-list').querySelectorAll('[data-model-id]').map(row=>row.dataset.modelId);
+const selectedModels=ui=>ui.get('model-list').querySelectorAll('[data-select-model]').filter(input=>input.checked).map(input=>input.dataset.selectModel);
 const shownGroups=ui=>ui.elements.get('model-list').querySelectorAll('[data-vendor]').map(group=>group.dataset.vendor);
 function assertSaveToast(ui) {
   const toast=ui.get('toast');
@@ -86,6 +87,7 @@ async function webview(providers, modelDatabase = database, options = {}) {
   for(const match of html.matchAll(/<([a-z][\w-]*)\b[^>]*\bid="([^"]+)"[^>]*>/gi)){
     const item=element(match[1],match[2]);
     item.hidden=/\bhidden\b/.test(match[0]);
+    item.type=match[0].match(/\btype="([^"]*)"/)?.[1]||'';
     item.className=match[0].match(/\bclass="([^"]*)"/)?.[1]||'';
     for(const [,name,value] of match[0].matchAll(/\s(data-[\w-]+)="([^"]*)"/g))item.dataset[dataKey(name)]=value;
     elements.set(match[2],item);
@@ -115,12 +117,6 @@ async function webview(providers, modelDatabase = database, options = {}) {
         }else if(message.command==='discoverModels'){
           if(options.discoveryError)throw new Error(options.discoveryError);
           data=options.discover?await options.discover(message):options.discovery||{models:[{id:'discovered-id',name:'Discovered Model'}]};
-        }else if(message.command==='updateCatalog'){
-          if(options.beforeUpdate)await options.beforeUpdate(message);
-          if(options.catalogError)throw new Error(options.catalogError);
-          if(options.updatedCatalog)state.database=validateDatabase(options.updatedCatalog);
-          state.catalog={source:'models.dev',updatedAt:'2026-11-09T00:00:00.000Z'};
-          state.revision++;data=state;
         }else if(message.command==='deleteProvider'){
           state.providers=state.providers.filter(item=>item.id!==message.payload.id);state.revision++;data=state;
         }else if(message.command==='exportProviders'){
@@ -198,7 +194,11 @@ test('compact main panel removes help, duplicate headings and secondary footer a
   assert.doesNotMatch(main,/page-footnote|provider-header|class="source-note|密钥由 VS Code|管理自定义模型供应商/);
   assert.match(main,/class="field compact-field"/);
   assert.match(main,/class="provider-options"/);
-  assert.match(main,/id="update-catalog" class="catalog-action"/);
+  for(const id of ['update-catalog','toggle-key','clear-model-selection','model-selection-count','model-selection-target','model-selection-status']){
+    assert.ok(!html.includes(`id="${id}"`),id);
+    assert.ok(!script.includes(`$('${id}')`),id);
+  }
+  assert.match(main,/<div class="model-header-actions"><button id="delete-selected-models"[^>]*hidden>删除<\/button><button id="refresh-models"/);
   assert.doesNotMatch(html,/id="(?:database-|open-database|provider-zdr)|context-pricing/);
   assert.match(main,/id="request-status" class="visually-hidden" role="status"/);
   assert.match(main,/id="model-list" class="model-list" role="region" aria-labelledby="models-heading" tabindex="-1"/);
@@ -269,15 +269,14 @@ test('save always submits unchanged suppliers and preserves saved keys without r
   for(const save of saves){assert.deepEqual(save.payload.provider,before);assert.equal(Object.hasOwn(save.payload,'apiKey'),false);assert.equal(Object.hasOwn(save.payload,'clearKey'),false);}
   assert.equal(ui.state.providers[0].hasKey,true);assert.equal(ui.state.revision,3);
 });
-test('replacing a key resets visibility and subsequent blank saves preserve the saved key',async()=>{
+test('key input remains masked and subsequent blank saves preserve the saved key',async()=>{
   const ui=await webview([{...provider(),hasKey:true}]);
   await ui.emit('api-key','input',{value:'  REPLACEMENT-KEY  '});
-  await ui.emit('toggle-key','click');
-  assert.equal(ui.get('api-key').type,'text');
+  assert.equal(ui.get('api-key').type,'password');
+  assert.equal(ui.elements.has('toggle-key'),false);
   await ui.saved();
   assert.equal(ui.messages.filter(message=>message.command==='saveProvider').at(-1).payload.apiKey,'REPLACEMENT-KEY');
   assert.equal(ui.get('api-key').type,'password');
-  assert.equal(ui.get('toggle-key').attributes.get('aria-pressed'),'false');
   for(const value of ['', '   ', '']){
     await ui.emit('api-key','input',{value});
     await ui.saved();
@@ -335,20 +334,21 @@ test('save confirmation waits for native sync after interim state updates and st
   }
 });
 test('save success uses green polite status while other errors retain red alerts',async()=>{
-  const ui=await webview([provider()],database,{language:'en',catalogError:'catalog unavailable'});
+  const ui=await webview([provider()],database,{language:'en'});
   await ui.saved();
   assert.equal(ui.get('toast').textContent,'Provider saved.');
-  await ui.emit('update-catalog','click');
+  const before=ui.state;
+  await ui.pushState({...before,database:null});
   const toast=ui.get('toast');
   assert.equal(toast.hidden,false);
   assert.equal(toast.attributes.get('role'),'alert');
   assert.equal(toast.attributes.get('aria-live'),'assertive');
   assert.match(toast.className,/error-toast/);
   assert.doesNotMatch(toast.className,/success-toast/);
-  assert.match(toast.textContent,/catalog unavailable/);
+  assert.match(toast.textContent,/invalid settings format/);
   assert.match(css,/\.toast\.error-toast \{ border-color: var\(--error\); color: var\(--error\)/);
   assert.match(css,/\.toast\.success-toast \{ border-color: var\(--good\); color: var\(--good\)/);
-  await ui.saved();
+  await ui.pushState(before);await ui.saved();
 });
 test('supplier URLs stay outside the model editor and retired controls are absent',()=>{
   const form=html.match(/<form id="provider-form"[\s\S]*?<\/form>/)[0];
@@ -359,11 +359,17 @@ test('supplier URLs stay outside the model editor and retired controls are absen
   assert.doesNotMatch(script,/data-vendor-protocol|vendor-protocol-/);
   assert.doesNotMatch(editor,/id="context-size"/);
   assert.doesNotMatch(html,/context-pricing|database-pricing/);
-  assert.match(editor,/id="max-input" type="number"/);
+  assert.equal([...editor.matchAll(/type="number"/g)].length,2);
+  assert.match(editor,/<label for="context-window">Context<\/label>/);
+  assert.match(editor,/<label for="max-output">Output<\/label>/);
+  for(const id of ['model-match','model-protocol-note','max-input','max-input-note','default-output','model-extra-efforts','reasoning-note','reset-model','advanced-options']){
+    assert.ok(!editor.includes(`id="${id}"`),id);
+    assert.ok(!script.includes(`$('${id}')`),id);
+  }
   assert.doesNotMatch(html,/zdr|ZDR|零数据保留/);
   assert.doesNotMatch(script,/zeroDataRetentionEnabled|statefulResponses|\bzdr\b/);
-  assert.ok(editor.indexOf('id="model-name"')<editor.indexOf('<details'));
-  assert.match(editor,/<details[\s\S]*<input id="model-id"[^>]*list="model-id-options"/);
+  assert.doesNotMatch(editor,/<details|source-note/);
+  assert.match(editor,/<input id="model-id"[^>]*list="model-id-options"/);
   assert.doesNotMatch(editor,/<select[^>]*id="model-id"/);
 });
 test('model insertion and discovery order survive edits, additions, saving and reloading',async()=>{
@@ -447,7 +453,7 @@ test('legacy single routes remain unified while 0.2 group routes migrate to spli
   assert.deepEqual(exported,validateProvider(old,database));
 });
 test('refresh replaces all models, preserves retained settings and excludes image/video families',async()=>{
-  const retained={...model('gpt-ui'),name:'My independent name',discoveredName:'Old upstream name',overrides:{contextWindow:1000,maxInputTokens:800,maxOutputTokens:1000,thinking:true,supportsReasoningEffort:['high']},reasoningEffort:'high'};
+  const retained={...model('gpt-ui'),name:'My independent name',discoveredName:'Old upstream name',overrides:{contextWindow:1000,maxOutputTokens:200,thinking:true,supportsReasoningEffort:['high']},reasoningEffort:'high'};
   const discovery={models:[{id:'claude-ui',name:'Claude'},{id:'gpt-ui',name:'New upstream name'},{id:'gpt-ui',name:'Duplicate'},{id:'gpt-image-2',name:'Image'},{id:'kling-v3',name:'Video'},{id:'custom-new',name:'Custom'}],excludedCount:2,sourceCount:3};
   const ui=await webview([{...provider(),models:[retained,model('removed-ui')]}],database,{discovery});
   await ui.emit('api-key','input',{value:'SHARED-KEY'});
@@ -545,11 +551,11 @@ test('removing a model changes the draft immediately while supplier deletion sti
   assert.equal(ui.elements.get('confirm-dialog').open,true);
   assert.equal(ui.messages.some(message=>message.command==='deleteProvider'),false);
 });
-test('model edits retain optional input limits and independent names and allow output equal to context',async()=>{
-  const configured={...model('gpt-ui'),name:'Independent',overrides:{contextWindow:1000,maxInputTokens:800,maxOutputTokens:1000,thinking:true,supportsReasoningEffort:['low','high']},reasoningEffort:'high'};
+test('model edits retain Context, Output and names and reject invalid output without adjusting it',async()=>{
+  const configured={...model('gpt-ui'),name:'Independent',overrides:{contextWindow:1000,maxOutputTokens:200,thinking:true,supportsReasoningEffort:['low','high']},reasoningEffort:'high'};
   const ui=await webview([{...provider(),models:[configured]}]);
   await ui.editModel('gpt-ui');
-  assert.equal(ui.elements.get('max-input').value,'800');
+  assert.equal(ui.get('context-window').value,'1000');assert.equal(ui.get('max-output').value,'200');
   assert.equal(ui.elements.get('reasoning-effort').value,'high');
   await ui.emit('model-name','input',{value:'Renamed only'});
   await ui.emit('model-form','submit');
@@ -558,39 +564,38 @@ test('model edits retain optional input limits and independent names and allow o
   const saved=ui.state.providers[0].models[0];
   assert.equal(saved.id,'gpt-ui');
   assert.equal(saved.name,'Renamed only');
-  assert.equal(saved.overrides.maxInputTokens,800);
-  assert.equal(saved.overrides.maxOutputTokens,1000);
+  assert.equal(saved.overrides.contextWindow,1000);
+  assert.equal(saved.overrides.maxOutputTokens,200);
   assert.equal(saved.reasoningEffort,'high');
   await ui.editModel('gpt-ui');
-  for(const input of ['', '0','-1','1001','1.5']){
-    await ui.emit('max-input','input',{value:input});
+  for(const input of ['', '0','-1','1000','1001','1.5']){
+    await ui.emit('max-output','input',{value:input});
     await ui.emit('model-form','submit');
     assert.equal(ui.elements.get('model-dialog').open,true,`Rejected input ${input}`);
     assert.equal(ui.elements.get('model-error').hidden,false);
   }
-  await ui.emit('max-input','input',{value:'1000'});
+  await ui.emit('max-output','input',{value:'999'});
   await ui.emit('model-form','submit');
   assert.equal(ui.elements.get('model-dialog').open,false);
 });
-test('preset input limits survive unrelated edits and blank model input derives context minus one',async()=>{
+test('two-field model overrides roundtrip without generating extra token settings',async()=>{
   const db=structuredClone(database);
-  db.models['gpt-ui']={...db.defaults,name:'Preset',contextWindow:1000,maxOutputTokens:200,maxInputTokens:900,releaseDate:'2026-01-01'};
+  db.models['gpt-ui']={...db.defaults,name:'Preset',contextWindow:1000,maxOutputTokens:200,releaseDate:'2026-01-01'};
   const ui=await webview([{...provider(),models:[model('gpt-ui')]}],db);
   await ui.editModel('gpt-ui');
-  assert.equal(ui.elements.get('max-input').value,'900');
+  assert.equal(ui.get('context-window').value,'1000');assert.equal(ui.get('max-output').value,'200');
   await ui.emit('model-name','input',{value:'Local label'});
   await ui.emit('model-form','submit');
   await ui.emit('provider-form','submit');
-  assert.equal(Object.hasOwn(ui.state.providers[0].models[0].overrides,'maxInputTokens'),false);
+  assert.deepEqual(ui.state.providers[0].models[0].overrides,{});
   await ui.editModel('gpt-ui');
-  assert.equal(ui.elements.get('max-input').value,'900');
-  await ui.emit('max-input','input',{value:''});
+  await ui.emit('context-window','input',{value:'2000'});
+  await ui.emit('max-output','input',{value:'512'});
   await ui.emit('model-form','submit');
   await ui.emit('provider-form','submit');
-  assert.equal(ui.state.providers[0].models[0].overrides.maxInputTokens,999);
-  await ui.editModel('gpt-ui');
-  await ui.emit('reset-model','click');
-  assert.equal(ui.elements.get('max-input').value,'900');
+  assert.deepEqual(ui.state.providers[0].models[0].overrides,{contextWindow:2000,maxOutputTokens:512});
+  const restarted=await webview(ui.state.providers,db);await restarted.editModel('gpt-ui');
+  assert.equal(restarted.get('context-window').value,'2000');assert.equal(restarted.get('max-output').value,'512');
 });
 test('state pushes preserve dirty routing, key input and the open model editor',async()=>{
   const ui=await webview([{...splitProvider(),hasKey:true,models:[model('gpt-ui')]}]);
@@ -664,7 +669,7 @@ test('split columns group models by family in provider order with no provider pr
   assert.match(html,/<div id="unified-endpoint"[^>]*>\s*<div[^>]*><label for="unified-api-type">/);
   assert.doesNotMatch(html,/供应商默认协议|恢复继承|继承供应商默认/);
   assert.equal(ui.get('model-list').querySelectorAll('.protocol-inheritance').length,0);
-  assert.equal(ui.get('model-selection').hidden,true);
+  assert.equal(ui.get('delete-selected-models').hidden,true);
   assert.equal(ui.get('model-total').textContent,'6');
   for(const apiType of vendors.apiTypes){
     assert.equal(ui.get(`move-to-${apiType}`).hidden,true);
@@ -690,13 +695,14 @@ test('checkboxes select independently of model editing and transfers preserve se
   assert.equal(ui.get('save-provider').disabled,false);
   assert.equal(ui.get('select-all-responses').indeterminate,true);
   assert.equal(ui.get('select-all-responses').checked,false);
-  assert.equal(ui.get('model-selection-count').textContent,'已选 1');
+  assert.equal(selectedModels(ui).length,1);
+  assert.equal(ui.get('delete-selected-models').hidden,false);
   assert.equal(ui.get('move-to-messages').disabled,false);
   await ui.move('messages');
   assert.deepEqual(inProtocol(ui,'responses'),['gpt-two']);
   assert.deepEqual(inProtocol(ui,'messages'),['gpt-one','claude-one']);
   assert.equal(ui.get('model-list').querySelector('[data-select-model="gpt-one"]').checked,true);
-  assert.equal(ui.get('model-selection-count').textContent,'已选 1');
+  assert.equal(selectedModels(ui).length,1);
   assert.equal(ui.get('select-all-messages').indeterminate,true);
   assert.equal(ui.get('confirm-dialog').open,false);
   const moved=await ui.saved();
@@ -706,9 +712,9 @@ test('checkboxes select independently of model editing and transfers preserve se
   assert.equal(moved.modelProtocols['gpt-two'],'responses');
   await ui.emit('select-all-messages','change',{checked:true});
   assert.equal(ui.get('select-all-messages').indeterminate,false);
-  assert.equal(ui.get('model-selection-count').textContent,'已选 2');
+  assert.equal(selectedModels(ui).length,2);
   await ui.emit('select-all-messages','change',{checked:false});
-  assert.equal(ui.get('model-selection').hidden,true);
+  assert.equal(ui.get('delete-selected-models').hidden,true);
   await ui.emit('select-all-messages','change',{checked:true});
   await ui.move('chatCompletions');
   await ui.emit('provider-form','submit');
@@ -719,21 +725,20 @@ test('checkboxes select independently of model editing and transfers preserve se
   assert.deepEqual(inProtocol(await webview([saved]),'chatCompletions'),['gpt-one','claude-one']);
 });
 test('one destination moves selected IDs across sources, skips resident models and preserves order and focus',async()=>{
-  const models=['custom-selected','gpt-stay','claude-selected','gpt-selected','custom-stay'].map(id=>({...model(id),name:`Name ${id}`,overrides:{maxOutputTokens:16000,defaultOutputTokens:4000,thinking:true,supportsReasoningEffort:['low','high']},reasoningEffort:'high'}));
+  const models=['custom-selected','gpt-stay','claude-selected','gpt-selected','custom-stay'].map(id=>({...model(id),name:`Name ${id}`,overrides:{maxOutputTokens:4000,thinking:true,supportsReasoningEffort:['low','high']},reasoningEffort:'high'}));
   const ui=await webview([{...splitProvider(),models,modelProtocols:explicitProtocols(models.map(model=>model.id))}]);
   for(const id of ['gpt-selected','claude-selected','custom-selected'])await ui.choose(id);
-  assert.equal(ui.get('model-selection-count').textContent,'已选 3');
-  assert.match(ui.get('move-to-messages').attributes.get('aria-label'),/2.*Messages/);
-  assert.equal(ui.get('move-to-messages').querySelector('span').textContent,'移到这里 · 2');
+  assert.equal(selectedModels(ui).length,3);
+  assert.equal(ui.get('move-to-messages').attributes.get('aria-label'),'移到 Messages');
+  assert.equal(ui.get('move-to-messages').querySelector('span').textContent,'移到这里');
   await ui.move('messages');
   assert.deepEqual(inProtocol(ui,'messages'),['custom-selected','claude-selected','gpt-selected']);
   assert.deepEqual(inProtocol(ui,'responses'),['gpt-stay']);
   assert.deepEqual(inProtocol(ui,'chatCompletions'),['custom-stay']);
-  assert.equal(ui.get('model-selection-count').textContent,'已选 3');
+  assert.equal(selectedModels(ui).length,3);
   assert.equal(ui.get('select-all-messages').checked,true);
   assert.equal(ui.activeElement.dataset.selectModel,'custom-selected');
   assert.equal(ui.get('move-to-messages').disabled,true);
-  assert.match(ui.get('model-selection-status').textContent,/已将 2 个模型移到 Messages/);
   assert.equal(ui.get('toast').hidden,true);
   const focused=ui.activeElement;
   await ui.move('messages');
@@ -749,50 +754,47 @@ test('one destination moves selected IDs across sources, skips resident models a
   assert.equal(saved.modelProtocols['gpt-stay'],'responses');
   assert.equal(saved.modelProtocols['custom-stay'],'chatCompletions');
 });
-test('column select-all stays scoped and explicit clearing restores focus without changing routes',async()=>{
+test('column select-all stays scoped and unchecking hides deletion without changing routes',async()=>{
   const ids=['gpt-one','gpt-two','claude-one','custom-one'];
   const ui=await webview([{...splitProvider(),models:ids.map(model),modelProtocols:explicitProtocols(ids)}]);
   await ui.choose('claude-one');
   await ui.choose('gpt-one');
   assert.equal(ui.get('select-all-responses').indeterminate,true);
   await ui.emit('select-all-responses','change',{checked:true});
-  assert.equal(ui.get('model-selection-count').textContent,'已选 3');
+  assert.equal(selectedModels(ui).length,3);
   await ui.emit('select-all-responses','change',{checked:false});
-  assert.equal(ui.get('model-selection-count').textContent,'已选 1');
+  assert.equal(selectedModels(ui).length,1);
   assert.equal(ui.get('model-list').querySelector('[data-select-model="claude-one"]').checked,true);
-  await ui.emit('clear-model-selection','click');
-  assert.equal(ui.get('model-selection').hidden,true);
-  assert.equal(ui.get('model-selection-status').textContent,'已选 0 个模型');
+  await ui.emit('select-all-messages','change',{checked:false});
+  assert.equal(ui.get('delete-selected-models').hidden,true);
   assert.equal(ui.get('model-list').querySelectorAll('input:checked').length,0);
-  assert.equal(ui.activeElement,ui.get('model-scroll'));
   for(const apiType of vendors.apiTypes)assert.equal(ui.get(`move-to-${apiType}`).hidden,true);
   const saved=await ui.saved();
   assert.equal(saved.modelProtocols['gpt-one'],'responses');
   assert.equal(saved.modelProtocols['claude-one'],'messages');
 });
-test('unified selection supports indeterminate select-all, clearing and focus without transfer controls',async()=>{
+test('unified selection supports select-all and unchecking without a selection toolbar',async()=>{
   const input={...provider(),modelProtocols:{'unknown-id':'messages','another-id':'responses'}};
   const ui=await webview([input]);
   const checkbox=ui.get('model-list').querySelector('[data-select-model="unknown-id"]');
   await ui.emit('model-list','click',{},checkbox);
   await ui.choose('unknown-id');
   assert.equal(ui.get('model-dialog').open,false);
-  assert.equal(ui.get('model-selection-count').textContent,'已选 1');
+  assert.equal(selectedModels(ui).length,1);
+  assert.equal(ui.get('delete-selected-models').hidden,false);
   assert.equal(ui.get('select-all-unified').indeterminate,true);
   assert.equal(ui.get('select-all-unified').checked,false);
-  assert.equal(ui.get('model-selection-target').hidden,true);
   assert.equal(ui.get('model-list').querySelectorAll('[data-move-to]').length,0);
   await ui.emit('select-all-unified','change',{checked:true});
-  assert.equal(ui.get('model-selection-count').textContent,'已选 2');
+  assert.equal(selectedModels(ui).length,2);
   assert.equal(ui.get('select-all-unified').checked,true);
   assert.equal(ui.get('select-all-unified').indeterminate,false);
   await ui.emit('select-all-unified','change',{checked:false});
-  assert.equal(ui.get('model-selection').hidden,true);
+  assert.equal(ui.get('delete-selected-models').hidden,true);
   assert.equal(ui.get('delete-selected-models').disabled,true);
   await ui.choose('unknown-id');
-  await ui.emit('clear-model-selection','click');
-  assert.equal(ui.activeElement,ui.get('model-scroll'));
-  assert.equal(ui.get('model-selection-status').textContent,'已选 0 个模型');
+  await ui.choose('unknown-id',false);
+  assert.equal(ui.get('delete-selected-models').hidden,true);
   assert.equal(ui.get('select-all-unified').indeterminate,false);
   assert.equal(ui.get('model-list').querySelectorAll('input:checked').length,0);
   assert.deepEqual((await ui.saved()).modelProtocols,input.modelProtocols);
@@ -805,7 +807,7 @@ for(const mode of ['unified','split']){
     await ui.emit('api-key','input',{value:'KEEP-DRAFT-KEY'});
     await ui.choose('gpt-remove');
     await ui.choose('claude-remove');
-    assert.equal(ui.get('model-selection-target').hidden,mode==='unified');
+    assert.equal(ui.get('delete-selected-models').hidden,false);
     const beforeModels=shownModels(ui);
     const beforeState=ui.state;
     ui.get('delete-selected-models').focus();
@@ -816,13 +818,13 @@ for(const mode of ['unified','split']){
     await ui.emit('confirm-cancel','click');
     assert.equal(ui.get('confirm-dialog').open,false);
     assert.equal(ui.activeElement,ui.get('delete-selected-models'));
-    assert.equal(ui.get('model-selection-count').textContent,'已选 2');
+    assert.equal(selectedModels(ui).length,2);
     assert.deepEqual(shownModels(ui),beforeModels);
     await ui.emit('delete-selected-models','click');
     await ui.emit('confirm-action','click');
     assert.deepEqual(shownModels(ui),['custom-keep','last-keep']);
     assert.equal(ui.get('model-total').textContent,'2');
-    assert.equal(ui.get('model-selection').hidden,true);
+    assert.equal(ui.get('delete-selected-models').hidden,true);
     assert.equal(ui.get('delete-selected-models').disabled,true);
     assert.equal(ui.get('model-list').querySelectorAll('input:checked').length,0);
     assert.equal(ui.activeElement,ui.get('model-scroll'));
@@ -844,14 +846,14 @@ for(const mode of ['unified','split']){
     assert.equal(ui.get('confirm-dialog').open,false);
     if(mode==='unified')await ui.emit('select-all-unified','change',{checked:true});
     else for(const apiType of vendors.apiTypes)await ui.emit(`select-all-${apiType}`,'change',{checked:true});
-    assert.equal(ui.get('model-selection-count').textContent,'已选 3');
+    assert.equal(selectedModels(ui).length,3);
     await ui.emit('delete-selected-models','click');
     assert.match(ui.get('confirm-message').textContent,/3 个模型/);
     await ui.emit('confirm-action','click');
     assert.deepEqual(shownModels(ui),[]);
     assert.equal(ui.get('model-total').textContent,'0');
     assert.equal(ui.get('delete-selected-models').disabled,true);
-    assert.equal(ui.get('model-selection').hidden,true);
+    assert.equal(ui.get('delete-selected-models').hidden,true);
     const selectIds=mode==='unified'?['select-all-unified']:vendors.apiTypes.map(apiType=>`select-all-${apiType}`);
     for(const id of selectIds){
       assert.equal(ui.get(id).disabled,true);
@@ -871,23 +873,23 @@ test('batch selections cannot bleed across suppliers or protocol modes',async()=
   const ui=await webview([provider('one'),splitProvider('two')]);
   await ui.choose('unknown-id');
   await ui.select('two');
-  assert.equal(ui.get('model-selection').hidden,true);
+  assert.equal(ui.get('delete-selected-models').hidden,true);
   await ui.choose('another-id');
   await ui.mode('unified');
-  assert.equal(ui.get('model-selection').hidden,true);
+  assert.equal(ui.get('delete-selected-models').hidden,true);
   await ui.choose('unknown-id');
   await ui.mode('split');
-  assert.equal(ui.get('model-selection').hidden,true);
+  assert.equal(ui.get('delete-selected-models').hidden,true);
   await ui.choose('another-id');
   await ui.select('one');
-  assert.equal(ui.get('model-selection').hidden,true);
+  assert.equal(ui.get('delete-selected-models').hidden,true);
   await ui.emit('delete-selected-models','click');
   assert.equal(ui.get('confirm-dialog').open,false);
   await ui.choose('unknown-id');
   await ui.emit('delete-selected-models','click');
   await ui.emit('confirm-action','click');
   await ui.select('two');
-  assert.equal(ui.get('model-selection').hidden,true);
+  assert.equal(ui.get('delete-selected-models').hidden,true);
   assert.deepEqual(shownModels(ui),['unknown-id','another-id']);
   await ui.select('one');
   assert.deepEqual(shownModels(ui),['another-id']);
@@ -900,7 +902,7 @@ test('editing selected IDs preserves other selections and assigned protocols',as
   await ui.editModel('custom-one');
   await ui.emit('model-id','input',{value:'renamed-one'});
   await ui.emit('model-form','submit');
-  assert.equal(ui.get('model-selection-count').textContent,'已选 2');
+  assert.equal(selectedModels(ui).length,2);
   assert.equal(ui.get('model-list').querySelector('[data-select-model="renamed-one"]').checked,true);
   assert.equal(ui.get('model-list').querySelector('[data-select-model="custom-two"]').checked,true);
   assert.deepEqual(inProtocol(ui,'messages'),['renamed-one']);
@@ -983,7 +985,7 @@ test('first split can seed empty endpoints but never overwrites partial or subse
   assert.equal(empty.get('unified-url').value,'');
 });
 test('split refresh resets family assignments and preserves matching settings, addresses and key',async()=>{
-  const retained={...model('gpt-retained'),name:'Saved name',overrides:{contextWindow:100000,maxInputTokens:80000,maxOutputTokens:16000,defaultOutputTokens:4000,vision:true,thinking:true,supportsReasoningEffort:['low','high']},reasoningEffort:'high'};
+  const retained={...model('gpt-retained'),name:'Saved name',overrides:{contextWindow:100000,maxOutputTokens:4000,vision:true,thinking:true,supportsReasoningEffort:['low','high']},reasoningEffort:'high'};
   const input={...splitProvider(),models:[retained,model('claude-retained'),model('unknown-retained'),model('gpt-removed')],modelProtocols:{'gpt-retained':'messages','claude-retained':'chatCompletions','unknown-retained':'responses','gpt-removed':'chatCompletions'}};
   const discovered=['unknown-retained','gpt-new','gpt-retained','claude-retained','claude-new','unknown-new'];
   const ui=await webview([input],database,{discovery:{models:discovered.map(id=>({id,name:`Upstream ${id}`}))}});
@@ -1039,7 +1041,7 @@ test('failed split refresh keeps routes, overrides, endpoints, key and selected 
     assert.deepEqual(inProtocol(ui,'messages'),['gpt-retained']);
     assert.deepEqual(inProtocol(ui,'responses'),['claude-retained']);
     assert.equal(ui.get('model-list').querySelector('[data-select-model="gpt-retained"]').checked,true);
-    assert.equal(ui.get('model-selection-count').textContent,'已选 1');
+    assert.equal(selectedModels(ui).length,1);
     assert.equal(ui.get('api-key').value,'  KEEP-KEY  ');
     assert.equal(ui.get('provider-error').hidden,false);
     assert.equal(ui.get('toast').hidden,true);
@@ -1076,13 +1078,13 @@ test('switching clears selections while deleting a different model and failed re
   const remove=ui.get('model-list').querySelector('[data-model-id="another-id"]').querySelector('.remove-model');
   await ui.emit('model-list','click',{},remove);
   assert.equal(ui.get('model-list').querySelector('[data-select-model="unknown-id"]').checked,true);
-  assert.equal(ui.get('model-selection-count').textContent,'已选 1');
+  assert.equal(selectedModels(ui).length,1);
   assert.equal(ui.get('confirm-dialog').open,false);
   assert.deepEqual(shownModels(ui),['unknown-id']);
   await ui.choose('unknown-id');
   await ui.emit('refresh-models','click');
   assert.equal(ui.get('model-list').querySelector('[data-select-model="unknown-id"]').checked,true);
-  assert.equal(ui.get('model-selection-count').textContent,'已选 1');
+  assert.equal(selectedModels(ui).length,1);
   assert.deepEqual(shownModels(ui),['unknown-id']);
   assert.equal(ui.messages.some(message=>message.command==='saveProvider'),false);
 });
@@ -1115,14 +1117,14 @@ test('retired model budgets are excluded from supplier saves while capability ov
   for(const contextSize of [128000,200000,1000000]){
     const db=structuredClone(database);
     db.models['gpt-ui']={...db.defaults,contextWindow:1000001};
-    const ui=await webview([{...provider(),models:[{...model('gpt-ui'),contextSize,overrides:{defaultOutputTokens:4096}}]}],db);
+    const ui=await webview([{...provider(),models:[{...model('gpt-ui'),contextSize,overrides:{maxOutputTokens:4096}}]}],db);
     await ui.editModel('gpt-ui');
     await ui.emit('model-name','input',{value:'My label'});
     await ui.emit('model-form','submit');
     await ui.emit('provider-form','submit');
     const saved=ui.state.providers[0].models[0];
     assert.equal(Object.hasOwn(saved,'contextSize'),false);
-    assert.equal(saved.overrides.defaultOutputTokens,4096);
+    assert.equal(saved.overrides.maxOutputTokens,4096);
     assert.equal(saved.name,'My label');
   }
 });
@@ -1164,7 +1166,6 @@ test('reasoning picker hides declarative controls that native configuration cann
   await ui.editModel('fixture');
   assert.deepEqual(ui.get('reasoning-effort').children.map(option=>option.value),['','low','high']);
   assert.equal(ui.get('reasoning-effort').value,'');
-  assert.match(ui.get('reasoning-note').textContent,/unsupported/);
   await ui.emit('reasoning-effort','change',{value:'high'});
   await ui.emit('model-form','submit');
   assert.equal((await ui.saved()).models[0].reasoningEffort,'high');
@@ -1175,13 +1176,12 @@ test('English UI supports editing, validation and protocol transfer without tran
   const ui=await webview([{...splitProvider(),name:'我的供应商',models:[custom,model('other')]}],database,{language:'en'});
   assert.equal(ui.get('provider-name').value,'我的供应商');
   await ui.choose('custom-id');
-  assert.match(ui.get('model-selection-count').textContent,/1/);
-  assert.doesNotMatch(ui.get('model-selection-count').textContent,/[\p{Script=Han}]/u);
+  assert.equal(selectedModels(ui).length,1);
+  assert.doesNotMatch(ui.get('move-to-responses').attributes.get('aria-label'),/[\p{Script=Han}]/u);
   await ui.move('responses');
-  assert.doesNotMatch(ui.get('model-selection-status').textContent,/[\p{Script=Han}]/u);
   await ui.editModel('custom-id');
   assert.equal(ui.get('model-name').value,custom.name);
-  for(const id of ['model-title','apply-model','reasoning-note'])assert.doesNotMatch(ui.get(id).textContent,/[\p{Script=Han}]/u,id);
+  for(const id of ['model-title','apply-model'])assert.doesNotMatch(ui.get(id).textContent,/[\p{Script=Han}]/u,id);
   await ui.emit('max-output','input',{value:'0'});
   await ui.emit('model-form','submit');
   assert.equal(ui.get('model-error').hidden,false);
@@ -1211,66 +1211,17 @@ test('retired retention flags are ignored across discovery, protocol changes and
   }
 });
 
-test('one-click preset update preserves provider drafts and sends no credentials',async()=>{
-  const updated=structuredClone(database);
-  updated.models['new-model']={...updated.defaults,name:'New model',contextWindow:200000};
-  const ui=await webview([provider()],database,{language:'en',updatedCatalog:updated});
-  await ui.emit('provider-name','input',{value:'Unsaved provider'});
-  await ui.emit('api-key','input',{value:'draft-secret-must-stay-local'});
-  await ui.emit('update-catalog','click');
-  const request=ui.messages.find(message=>message.command==='updateCatalog');
-  assert.ok(request);
-  assert.equal(JSON.stringify(request).includes('draft-secret'),false);
-  assert.equal(Object.keys(request.payload||{}).length,0);
-  assert.equal(ui.get('provider-name').value,'Unsaved provider');
-  assert.equal(ui.get('api-key').value,'draft-secret-must-stay-local');
-  assert.equal(ui.get('toast').hidden,true);
-  assert.match(ui.get('update-catalog').title,/Last updated:/);
-  await ui.emit('add-model','click');
-  await ui.emit('model-id','input',{value:'new-model'});
-  assert.equal(ui.get('context-window').value,'200000');
-  await ui.emit('model-form','submit');
-  assert.equal((await ui.saved()).models.at(-1).id,'new-model');
-});
-
-test('preset update failures retain state and drafts and the action can be retried',async()=>{
-  let release;
-  const options={catalogError:'models.dev unavailable',beforeUpdate:()=>new Promise(resolve=>{release=resolve;})};
-  const ui=await webview([provider()],database,options);
-  await ui.emit('api-key','input',{value:'local-key'});
-  const before=ui.state;
-  await ui.emit('update-catalog','click');
-  assert.equal(ui.get('update-catalog').disabled,true);
-  await ui.emit('update-catalog','click');
-  assert.equal(ui.messages.filter(message=>message.command==='updateCatalog').length,1);
-  release();await ui.flush();
-  assert.deepEqual(ui.state,before);
-  assert.equal(ui.get('api-key').value,'local-key');
-  assert.equal(ui.get('update-catalog').disabled,false);
-  assert.match(ui.get('toast').textContent,/models.dev unavailable/);
-  delete options.catalogError;delete options.beforeUpdate;
-  await ui.emit('update-catalog','click');
-  assert.equal(ui.get('toast').hidden,true);
-  assert.equal(ui.messages.filter(message=>message.command==='updateCatalog').length,2);
-});
-
-test('preset updates keep an open model edit and allow explicitly restoring new preset values',async()=>{
+test('model limits change only when edits are applied, with no reset action',async()=>{
   const db=structuredClone(database);
   db.models.sample={...db.defaults,name:'Sample',contextWindow:200000};
-  const updated=structuredClone(db);updated.models.sample.contextWindow=300000;
-  const ui=await webview([{...provider(),models:[model('sample')]}],db,{updatedCatalog:updated});
+  const ui=await webview([{...provider(),models:[{...model('sample'),overrides:{contextWindow:250000}}]}],db);
   await ui.editModel('sample');
-  await ui.emit('context-window','input',{value:'250000'});
-  const remote=ui.state;remote.database=updated;remote.revision++;
-  await ui.pushState(remote);
-  assert.equal(ui.get('model-dialog').open,true);
   assert.equal(ui.get('context-window').value,'250000');
-  assert.equal(ui.get('model-update').hidden,false);
-  await ui.emit('model-form','submit');
-  assert.equal((await ui.saved()).models[0].overrides.contextWindow,250000);
-  await ui.editModel('sample');
-  await ui.emit('reset-model','click');
-  assert.equal(ui.get('context-window').value,'300000');
+  await ui.emit('context-window','input',{value:'200000'});
+  ui.get('model-dialog').close();await ui.flush();await ui.editModel('sample');
+  assert.equal(ui.get('context-window').value,'250000');
+  assert.deepEqual(ui.messages.map(message=>message.command),['getState']);
+  await ui.emit('context-window','input',{value:'200000'});
   await ui.emit('model-form','submit');
   assert.equal(Object.hasOwn((await ui.saved()).models[0].overrides,'contextWindow'),false);
 });
@@ -1301,7 +1252,6 @@ test('model protocol choices apply only with the dialog and survive model ID edi
   assert.equal(ui.get('model-protocol').value,'responses');
   assert.equal(ui.get('model-protocol').disabled,false);
   assert.equal(ui.get('model-protocol-field').hidden,false);
-  assert.match(ui.get('model-protocol-note').textContent,/模型默认归入 Responses/);
   await ui.emit('model-protocol','change',{value:'messages'});
   ui.get('model-dialog').close();await ui.flush();
   assert.deepEqual((await ui.saved()).modelProtocols,{'gpt-model':'responses'});

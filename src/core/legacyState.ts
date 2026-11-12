@@ -7,7 +7,7 @@ import { normalizeRouting, routeForModel } from '../../resources/shared/routing.
 const formats = new Map<string, ProtocolProfile['effortFormat']>([
   ['reasoning_effort', 'chat-completions'], ['reasoning.effort', 'responses'], ['output_config.effort', 'messages']
 ]);
-const overrideKeys = ['contextWindow', 'maxInputTokens', 'maxOutputTokens', 'defaultOutputTokens', 'toolCalling', 'vision', 'thinking', 'supportsReasoningEffort'] as const;
+const overrideKeys = ['contextWindow', 'maxOutputTokens', 'toolCalling', 'vision', 'thinking', 'supportsReasoningEffort'] as const;
 
 /** Only translate behavior the native compiler previously supported; never restore request injection. */
 export function upgradeDatabase(value: unknown): ModelDatabase {
@@ -75,12 +75,7 @@ export function upgradeProvider(value: unknown, previous: ModelDatabase, current
     }
     if (!model.name && before.name && before.name !== base.name) model.name = before.name;
     const after = effectiveParameters(current, model);
-    for (const key of ['contextWindowMode', 'protocols'] as const) {
-      if (!isDeepStrictEqual(before[key], after[key])) throw new Error(t('模型 {0} 的旧预设无法转换为供应商覆盖参数；原始数据未修改。', model.id));
-    }
-    for (const key of ['maxInputTokens', 'defaultOutputTokens'] as const) {
-      if (before[key] === undefined && after[key] !== undefined) throw new Error(t('模型 {0} 的旧预设无法转换为供应商覆盖参数；原始数据未修改。', model.id));
-    }
+    if (!isDeepStrictEqual(before.protocols, after.protocols)) throw new Error(t('模型 {0} 的旧预设无法转换为供应商覆盖参数；原始数据未修改。', model.id));
   }
   return validateProvider(provider, current);
 }

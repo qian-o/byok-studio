@@ -1,13 +1,9 @@
-import { isDeepStrictEqual } from 'node:util';
-import { object, text, validId, validateDatabase, validateProvider } from './configuration';
+import { object, text, validId, validateCatalogSnapshot, validateDatabase, validateProvider } from './configuration';
 import { compileOfficialModel } from './officialConfig';
-import { validateCatalogSnapshot } from './modelCatalog';
 import { upgradeDatabase, upgradeProvider } from './legacyState';
-import type { CatalogSnapshot, ExportBundle, ExportedProvider, ModelDatabase, ProviderConfig, StudioState } from './types';
+import type { ExportBundle, ExportedProvider, ModelDatabase, ProviderConfig, StudioState } from './types';
 import { t } from '../../resources/shared/i18n.js';
 import { modelRules, normalizeRouting, type ModelRules } from '../../resources/shared/routing.js';
-
-export { validateCatalogSnapshot };
 
 export interface StateStorage {
   get<T>(key: string): T | undefined;
@@ -21,7 +17,6 @@ export interface SecretStorage {
 export interface UiState {
   providers: Array<ProviderConfig & { hasKey: boolean }>;
   database: ModelDatabase;
-  catalog?: Pick<CatalogSnapshot, 'source' | 'updatedAt'>;
   revision: number;
   modelRules: ModelRules;
 }
@@ -76,7 +71,6 @@ export class StudioStore {
   private readonly bundled: ModelDatabase;
   private state: StudioState;
   private revision = 0;
-  private migrationPending = false;
   private queue: Promise<unknown> = Promise.resolve();
 
   constructor(private readonly storage: StateStorage, private readonly secrets: SecretStorage, seed: ModelDatabase, private readonly changed: () => void) {
@@ -98,29 +92,21 @@ export class StudioStore {
     });
     if (new Set(providers.map(p => p.id)).size !== providers.length) throw new Error(t('保存的供应商标识重复；原始数据未修改。'));
     this.state = { version: 1, providers, ...(catalog ? { catalog } : {}) };
-    this.migrationPending = !isDeepStrictEqual(raw, this.state);
   }
 
   snapshot(): StudioState { return structuredClone(this.state); }
   database(): ModelDatabase { return structuredClone(this.state.catalog?.database ?? this.bundled); }
 
-  async uiState(): Promise<UiState> {
-    await this.serialize(async () => {
-      if (this.migrationPending) {
-        await this.storage.update(STATE_KEY, this.snapshot());
-        this.migrationPending = false;
-      }
+  uiState(): Promise<UiState> {
+    return this.serialize(async () => {
+      const snapshot = this.snapshot();
+      return {
+        providers: await Promise.all(snapshot.providers.map(async p => ({ ...p, hasKey: Boolean(await this.key(p.id)) }))),
+        database: this.database(),
+        revision: this.revision,
+        modelRules: modelRules()
+      };
     });
-    const snapshot = this.snapshot();
-    const database = this.database();
-    const revision = this.revision;
-    return {
-      providers: await Promise.all(snapshot.providers.map(async p => ({ ...p, hasKey: Boolean(await this.key(p.id)) }))),
-      database,
-      ...(snapshot.catalog ? { catalog: { source: snapshot.catalog.source, updatedAt: snapshot.catalog.updatedAt } } : {}),
-      revision,
-      modelRules: modelRules()
-    };
   }
 
   key(id: string): Promise<string | undefined> { return Promise.resolve(this.secrets.get(secretKey(id))); }
@@ -134,7 +120,6 @@ export class StudioStore {
   private async commit(next: StudioState): Promise<void> {
     await this.storage.update(STATE_KEY, next);
     this.state = next;
-    this.migrationPending = false;
     this.revision++;
     this.changed();
   }
@@ -224,22 +209,4 @@ export class StudioStore {
     });
   }
 
-  updateCatalog(snapshot: CatalogSnapshot): Promise<void> {
-    return this.serialize(async () => {
-      const incoming = validateCatalogSnapshot(snapshot);
-      if (this.state.catalog && Date.parse(incoming.updatedAt) < Date.parse(this.state.catalog.updatedAt)) {
-        throw new Error(t('目录更新早于当前缓存，未保存任何更改。'));
-      }
-      const next = this.snapshot();
-      for (const provider of next.providers) {
-        try { checkedProvider(provider, incoming.database); }
-        catch (error) {
-          throw new Error(t('目录更新与供应商 {0} 的模型配置不兼容，未保存任何更改：{1}', provider.name, error instanceof Error ? error.message : t('操作失败。')));
-        }
-      }
-      next.catalog = incoming;
-      if (isDeepStrictEqual(next, this.state) && !this.migrationPending) return;
-      await this.commit(next);
-    });
-  }
 }

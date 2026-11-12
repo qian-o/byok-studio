@@ -7,14 +7,13 @@
   const clone = value => JSON.parse(JSON.stringify(value));
   const equal = (left, right) => JSON.stringify(left) === JSON.stringify(right);
   const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
-  const PARAMETER_FIELDS = ['contextWindow', 'maxInputTokens', 'maxOutputTokens', 'defaultOutputTokens', 'toolCalling', 'vision', 'thinking', 'supportsReasoningEffort'];
+  const PARAMETER_FIELDS = ['contextWindow', 'maxOutputTokens', 'toolCalling', 'vision', 'thinking', 'supportsReasoningEffort'];
   const EFFORTS = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
   const vendors = globalThis.ByokModelVendors;
   const API_TYPES = vendors.apiTypes;
   const ENDPOINT_FIELDS = { responses: 'responses-url', chatCompletions: 'chat-completions-url', messages: 'messages-url' };
   const PROTOCOL_NAMES = { responses: 'Responses', chatCompletions: 'Chat Completions', messages: 'Messages' };
   const modelPolicy = globalThis.ByokModelPolicy;
-  const { inputCeiling } = modelPolicy;
   const pendingRequests = new Map();
   const drafts = new Map();
   const dialogFocus = new WeakMap();
@@ -131,7 +130,6 @@
     for (const element of document.querySelectorAll('button, input, select, textarea')) {
       element.disabled = Boolean(busy) || element.dataset.unavailable === 'true' || (!state && !element.hasAttribute('data-initial-action'));
     }
-    for (const summary of document.querySelectorAll('summary')) summary.setAttribute('aria-disabled', String(Boolean(busy)));
     $('studio').setAttribute('aria-busy', String(Boolean(busy) || !state));
     $('request-status').textContent = busy || '';
   }
@@ -209,7 +207,6 @@
   function applyState(next, acknowledgement = {}) {
     validateState(next);
     const previousActive = currentDraft();
-    const previousDatabase = state?.database;
     if (!state || next.revision >= state.revision) {
       if (next.modelRules) vendors.configure(next.modelRules);
       state = clone(next);
@@ -244,8 +241,7 @@
     }
     for (const provider of state.providers) if (!drafts.has(provider.id)) drafts.set(provider.id, makeDraft(provider));
     if (!drafts.has(activeId)) activeId = drafts.keys().next().value || null;
-    if (modelSession && (drafts.get(modelSession.providerId)?.conflict || (previousDatabase && !equal(previousDatabase, state.database)))) {
-      modelSession.stale = true;
+    if (modelSession && drafts.get(modelSession.providerId)?.conflict) {
       $('model-update').hidden = false;
     }
     $('loading-state').hidden = true;
@@ -280,7 +276,6 @@
 
   function renderStatus() {
     const draft = currentDraft();
-    $('update-catalog').title = t('从 models.dev 更新预设，保留模型手动覆盖。') + (state?.catalog?.updatedAt ? ` ${t('上次更新：{0}', new Date(state.catalog.updatedAt).toLocaleString())}` : '');
     unavailable($('import-providers'), !state);
     unavailable($('export-providers'), !state?.providers.length);
     unavailable($('save-provider'), !draft);
@@ -316,7 +311,7 @@
     return row;
   }
 
-  function syncSelections(announcement) {
+  function syncSelections() {
     const draft = currentDraft();
     if (!draft) return;
     const split = draft.provider.routingMode === 'split';
@@ -324,10 +319,7 @@
     const lists = split ? vendors.protocolLists(draft.provider) : [];
     const selected = lists.map(list => ({ ...list, count: list.models.filter(model => draft.selectedModels.has(model.id)).length }));
     const total = draft.provider.models.filter(model => draft.selectedModels.has(model.id)).length;
-    $('model-selection').hidden = !total;
-    $('model-selection-count').textContent = t('已选 {0}', total);
-    $('model-selection-status').textContent = announcement || t('已选 {0} 个模型', total);
-    $('model-selection-target').hidden = !split;
+    $('delete-selected-models').hidden = !total;
     unavailable($('delete-selected-models'), !total);
     const unifiedSelectAll = $('select-all-unified');
     unifiedSelectAll.checked = !split && total > 0 && total === draft.provider.models.length;
@@ -341,8 +333,8 @@
       const incoming = draft.provider.models.filter(model => draft.selectedModels.has(model.id) && vendors.routeForModel(draft.provider, model.id, routing).apiType !== apiType).length;
       const target = $(`move-to-${apiType}`);
       target.hidden = !total;
-      target.querySelector('span').textContent = incoming ? t('移到这里 · {0}', incoming) : t('已在这里');
-      const label = incoming ? t('将 {0} 个已选模型移到 {1}', incoming, PROTOCOL_NAMES[apiType]) : t('已选模型均在 {0}', PROTOCOL_NAMES[apiType]);
+      target.querySelector('span').textContent = t('移到这里');
+      const label = t('移到 {0}', PROTOCOL_NAMES[apiType]);
       target.setAttribute('aria-label', label);
       target.title = label;
       unavailable(target, !incoming);
@@ -453,7 +445,6 @@
         $('unified-api-type').value = provider.unified.apiType;
         $('unified-url').value = provider.unified.url;
         $('api-key').value = draft.apiKey;
-        hideKey();
         clearValidation('provider-form');
         message('provider-error');
       }
@@ -461,18 +452,10 @@
       renderModels();
     } else {
       $('api-key').value = '';
-      hideKey();
     }
     renderStatus();
     renderUpdateBanner();
     syncControls();
-  }
-
-  function hideKey() {
-    $('api-key').type = 'password';
-    $('toggle-key').setAttribute('aria-label', t('显示 API Key'));
-    $('toggle-key').setAttribute('aria-pressed', 'false');
-    $('toggle-key').title = t('显示 API Key');
   }
 
   function changed() {
@@ -491,7 +474,6 @@
     message(target, text);
     if (fieldId) {
       const field = $(fieldId);
-      for (let parent = field.parentElement; parent; parent = parent.parentElement) if (parent.tagName === 'DETAILS') parent.open = true;
       field.setAttribute('aria-invalid', 'true');
       field.focus();
     }
@@ -504,18 +486,9 @@
     return null;
   }
   function tokenError(parameters) {
-    if (!Number.isSafeInteger(parameters.contextWindow) || !Number.isSafeInteger(parameters.maxOutputTokens) || parameters.contextWindow <= 0 || parameters.maxOutputTokens <= 0 || parameters.contextWindow > 100000000 || parameters.maxOutputTokens > 100000000) return t('上下文窗口和最大输出必须是 1–100000000 的整数。');
-    if (parameters.maxInputTokens !== undefined && (!Number.isSafeInteger(parameters.maxInputTokens) || parameters.maxInputTokens <= 0 || parameters.maxInputTokens > 100000000)) return t('最大输入必须是 1–100000000 的整数，或留空自动计算。');
-    if (parameters.defaultOutputTokens !== undefined && (!Number.isSafeInteger(parameters.defaultOutputTokens) || parameters.defaultOutputTokens <= 0 || parameters.defaultOutputTokens > 100000000)) return t('单次输出预算必须是 1–100000000 的整数，或留空使用默认值。');
-    if ((parameters.contextWindowMode !== 'input' && parameters.maxOutputTokens > parameters.contextWindow) || (parameters.maxInputTokens !== undefined && parameters.maxInputTokens > parameters.contextWindow)) return t('最大输入和最大输出不能超过上下文窗口。');
-    if (parameters.contextWindowMode !== 'input' && parameters.maxInputTokens === undefined && parameters.maxOutputTokens >= parameters.contextWindow
-      && !(parameters.defaultOutputTokens !== undefined && parameters.defaultOutputTokens < parameters.contextWindow)) return t('最大输出必须小于上下文窗口，或设置较小的单次输出预算或有效输入上限。');
+    if (!Number.isSafeInteger(parameters.contextWindow) || !Number.isSafeInteger(parameters.maxOutputTokens) || parameters.contextWindow <= 0 || parameters.maxOutputTokens <= 0 || parameters.contextWindow > 100000000 || parameters.maxOutputTokens > 100000000) return t('Context 和 Output 必须是 1–100000000 的整数。');
+    if (parameters.maxOutputTokens >= parameters.contextWindow) return t('Output 必须小于 Context。');
     return null;
-  }
-
-  function optionalInput(fieldId, key = 'maxInputTokens') {
-    const value = $(fieldId).value.trim();
-    return value ? { [key]: Number(value) } : {};
   }
 
   function urlError(value) {
@@ -605,7 +578,6 @@
     });
   }
   for (const button of document.querySelectorAll('[data-close]')) button.addEventListener('click', () => { if (!busy) $(button.dataset.close).close(); });
-  for (const summary of document.querySelectorAll('summary')) summary.addEventListener('click', event => { if (busy) event.preventDefault(); });
   $('confirm-action').addEventListener('click', () => {
     const action = pendingConfirm;
     pendingConfirm = null;
@@ -637,7 +609,6 @@
       const next = await request('saveProvider', payload);
       applyState(next, { savedIds: [id] });
       $('api-key').value = currentDraft()?.apiKey || '';
-      hideKey();
       successToast(t('供应商已保存。'));
     }, 'provider-error');
   }
@@ -741,13 +712,6 @@
   }
   $('model-list').addEventListener('input', endpointChanged);
   $('api-key').addEventListener('input', event => { if (currentDraft()) { currentDraft().apiKey = event.target.value; changed(); } });
-  $('toggle-key').addEventListener('click', () => {
-    const visible = $('api-key').type === 'password';
-    $('api-key').type = visible ? 'text' : 'password';
-    $('toggle-key').setAttribute('aria-pressed', String(visible));
-    $('toggle-key').setAttribute('aria-label', visible ? t('隐藏 API Key') : t('显示 API Key'));
-    $('toggle-key').title = visible ? t('隐藏 API Key') : t('显示 API Key');
-  });
   function selectionChanged(event) {
     endpointChanged(event);
     const draft = currentDraft();
@@ -770,13 +734,6 @@
   }
   $('model-list').addEventListener('change', selectionChanged);
   $('select-all-unified').addEventListener('change', selectionChanged);
-  $('clear-model-selection').addEventListener('click', () => {
-    const draft = currentDraft();
-    if (!draft || busy) return;
-    draft.selectedModels.clear();
-    syncSelections();
-    focusModelList();
-  });
   function focusModelList() {
     const scroller = $('model-scroll');
     scroller.focus();
@@ -827,16 +784,14 @@
     $(containerId).replaceChildren(content);
   }
 
-  function readEfforts(containerId, extraId) {
-    const checked = [...$(containerId).querySelectorAll('input:checked')].map(input => input.value);
-    const extra = $(extraId).value.split(/[,，]/).map(value => value.trim()).filter(Boolean);
-    return [...new Set([...checked, ...extra])];
+  function readEfforts() {
+    return [...$('effort-options').querySelectorAll('input:checked')].map(input => input.value);
   }
 
   function syncReasoning(selected = $('reasoning-effort').value) {
-    const declared = readEfforts('effort-options', 'model-extra-efforts').filter(validEffort);
+    const declared = readEfforts().filter(validEffort);
     const id = $('model-id').value.trim();
-    const parameters = { ...baseParameters(id, modelSession.database), thinking: $('cap-thinking').checked, supportsReasoningEffort: declared };
+    const parameters = { ...baseParameters(id), thinking: $('cap-thinking').checked, supportsReasoningEffort: declared };
     const provider = drafts.get(modelSession.providerId).provider;
     const apiType = provider.routingMode === 'unified' ? provider.unified.apiType : $('model-protocol').value || vendors.recommendedProtocol(id);
     const projection = modelPolicy.projectEfforts(parameters, apiType);
@@ -854,37 +809,17 @@
     $('reasoning-effort').replaceChildren(content);
     $('reasoning-effort').value = thinking && values.includes(selected) ? selected : '';
     unavailable($('reasoning-effort'), !thinking || !values.length);
-    $('reasoning-note').textContent = !thinking ? t('启用思考能力后可指定实际请求档位。') : projection.rejected.length ? t('部分档位需要官方暂不支持的参数，已隐藏。') : !values.length ? t('此条目没有官方推理档位枚举，保留服务端默认。') : t('请求时使用此档位；默认由服务商决定。');
   }
 
   function fillModelParameters(parameters, selected = '') {
     $('context-window').value = parameters.contextWindow;
-    $('max-input').value = parameters.maxInputTokens ?? '';
     $('max-output').value = parameters.maxOutputTokens;
-    $('default-output').value = parameters.defaultOutputTokens ?? '';
     $('cap-tools').checked = parameters.toolCalling;
     $('cap-vision').checked = parameters.vision;
     $('cap-thinking').checked = parameters.thinking;
     renderEfforts('effort-options', parameters.supportsReasoningEffort);
-    $('model-extra-efforts').value = '';
     syncReasoning(selected);
     syncControls();
-  }
-
-  function renderModelMatch() {
-    if (!modelSession) return;
-    const id = $('model-id').value.trim();
-    const matched = own(modelSession.database.models, id);
-    $('model-match').textContent = !id ? t('在高级选项中设置请求模型 ID。') : matched ? t('已精确匹配模型参数') : t('使用初始配置，可按需调整');
-    $('model-match').classList.toggle('match-ok', matched);
-    const provider = drafts.get(modelSession.providerId).provider;
-    const split = provider.routingMode === 'split';
-    $('model-protocol-field').hidden = !split;
-    if (split) {
-      $('model-protocol-note').textContent = id
-        ? t('模型默认归入 {0}，可按服务商支持单独修改。', PROTOCOL_NAMES[vendors.recommendedProtocol(id)])
-        : t('按模型系列自动选择默认协议，可按服务商支持单独修改。');
-    }
   }
 
   function openModel(id = null) {
@@ -893,14 +828,14 @@
     const model = id ? draft.provider.models.find(item => item.id === id) : { id: '', name: '', discoveredName: '', overrides: {} };
     if (!model) return;
     const initialProtocol = id && own(draft.provider.modelProtocols, id) ? draft.provider.modelProtocols[id] : vendors.recommendedProtocol(model.id);
-    modelSession = { providerId: draft.provider.id, original: clone(model), editingId: id, database: clone(state.database), requestId: model.id, automaticName: model.name ? null : (model.id ? modelName(model) : ''), protocolTouched: Boolean(id && own(draft.provider.modelProtocols, id)), stale: false };
+    modelSession = { providerId: draft.provider.id, original: clone(model), editingId: id, requestId: model.id, automaticName: model.name ? null : (model.id ? modelName(model) : ''), protocolTouched: Boolean(id && own(draft.provider.modelProtocols, id)) };
     $('model-title').textContent = id ? t('模型设置') : t('添加模型');
     $('apply-model').textContent = id ? t('应用到草稿') : t('添加');
-    $('advanced-options').open = !id;
     $('model-update').hidden = true;
     $('model-id').value = model.id;
     $('model-name').value = model.id ? modelName(model) : '';
     $('model-protocol').value = initialProtocol;
+    $('model-protocol-field').hidden = draft.provider.routingMode === 'unified';
     unavailable($('model-protocol'), draft.provider.routingMode === 'unified');
     clearValidation('model-form');
     message('model-error');
@@ -914,8 +849,7 @@
       content.append(option);
     }
     $('model-id-options').replaceChildren(content);
-    fillModelParameters({ ...baseParameters(model.id, modelSession.database), ...model.overrides }, model.reasoningEffort || '');
-    renderModelMatch();
+    fillModelParameters({ ...baseParameters(model.id), ...model.overrides }, model.reasoningEffort || '');
     showDialog('model-dialog', id ? 'model-name' : 'model-id');
   }
 
@@ -929,14 +863,13 @@
     const discoveredName = sourceModel?.discoveredName || (id === original.id ? original.discoveredName : '');
     const automatic = !$('model-name').value.trim() || $('model-name').value === modelSession.automaticName;
     if (automatic) {
-      const name = id ? modelName({ id, name: '', discoveredName }, modelSession.database) : '';
+      const name = id ? modelName({ id, name: '', discoveredName }) : '';
       $('model-name').value = name;
       modelSession.automaticName = name;
     }
     if (!modelSession.protocolTouched) $('model-protocol').value = vendors.recommendedProtocol(id);
-    const parameters = { ...baseParameters(id, modelSession.database), ...(id === original.id ? original.overrides : {}) };
+    const parameters = { ...baseParameters(id), ...(id === original.id ? original.overrides : {}) };
     fillModelParameters(parameters, id === original.id ? original.reasoningEffort || '' : '');
-    renderModelMatch();
     message('model-error');
     clearValidation('model-form');
   }
@@ -955,7 +888,6 @@
       draft.provider.modelProtocols = vendors.assignModels(draft.provider, ids, target);
       renderModels();
       changed();
-      syncSelections(t('已将 {0} 个模型移到 {1}，已选 {2} 个模型', ids.length, PROTOCOL_NAMES[target], draft.selectedModels.size));
       const firstMoved = [...$('model-list').querySelectorAll('[data-select-model]')].find(checkbox => checkbox.dataset.selectModel === ids[0]);
       firstMoved?.focus();
       return;
@@ -981,16 +913,7 @@
     syncReasoning();
   });
   $('effort-options').addEventListener('change', () => syncReasoning());
-  $('model-extra-efforts').addEventListener('input', () => syncReasoning());
   $('cap-thinking').addEventListener('change', () => syncReasoning());
-  $('reset-model').addEventListener('click', () => {
-    if (!modelSession) return;
-    modelSession.database = clone(state.database);
-    fillModelParameters(baseParameters($('model-id').value.trim()));
-    renderModelMatch();
-    message('model-error');
-    clearValidation('model-form');
-  });
   $('model-form').addEventListener('submit', event => {
     event.preventDefault();
     if (!modelSession || busy) return;
@@ -1006,23 +929,20 @@
     if (!modelSession.editingId && draft.provider.models.length >= 5000) { formError('model-error', t('每个供应商最多支持 5000 个模型。')); return; }
     if (draft.provider.models.some(model => model.id === id && model.id !== modelSession.editingId)) { formError('model-error', t('此请求模型 ID 已添加，请直接编辑现有模型。'), 'model-id'); return; }
     const parameters = {
-      contextWindow: Number($('context-window').value), contextWindowMode: baseParameters(id).contextWindowMode, maxOutputTokens: Number($('max-output').value), ...optionalInput('max-input'), ...optionalInput('default-output', 'defaultOutputTokens'),
+      contextWindow: Number($('context-window').value), maxOutputTokens: Number($('max-output').value),
       toolCalling: $('cap-tools').checked, vision: $('cap-vision').checked, thinking: $('cap-thinking').checked,
-      supportsReasoningEffort: readEfforts('effort-options', 'model-extra-efforts')
+      supportsReasoningEffort: readEfforts()
     };
     const problem = tokenError(parameters);
     if (problem) { formError('model-error', problem, 'max-output'); return; }
     const invalidEfforts = effortError(parameters.supportsReasoningEffort);
-    if (invalidEfforts) { formError('model-error', invalidEfforts, 'model-extra-efforts'); return; }
+    if (invalidEfforts) { formError('model-error', invalidEfforts); return; }
     const reasoningEffort = $('reasoning-effort').value;
     if (reasoningEffort && (!parameters.thinking || !parameters.supportsReasoningEffort.includes(reasoningEffort))) { formError('model-error', t('请选择可用的实际推理档位。'), 'reasoning-effort'); return; }
     const overrides = {};
     const base = baseParameters(id);
     for (const field of PARAMETER_FIELDS) {
-      if (field === 'defaultOutputTokens' && parameters[field] === undefined) continue;
-      if (field === 'maxInputTokens' && parameters[field] === undefined) {
-        if (base[field] !== undefined) overrides[field] = inputCeiling({...parameters,maxInputTokens:undefined});
-      } else if (!equal(parameters[field], base[field])) overrides[field] = parameters[field];
+      if (!equal(parameters[field], base[field])) overrides[field] = parameters[field];
     }
     const original = modelSession.original;
     const next = { id, name: automaticName ? '' : name, discoveredName: id === original.id ? original.discoveredName : '', overrides, ...(reasoningEffort ? { reasoningEffort } : {}) };
@@ -1157,13 +1077,6 @@
   $('import-from-file').addEventListener('click', () => { void loadImportSource('file'); });
   $('apply-import').addEventListener('click', () => { void applyImport(); });
 
-  $('update-catalog').addEventListener('click', () => {
-    if (!state || busy) return;
-    void runAction(t('正在更新预设库…'), async () => {
-      applyState(await request('updateCatalog'));
-    });
-  });
-
   async function loadState(reset = false) {
     const loaded = await runAction(t('正在加载配置…'), async () => {
       const next = await request('getState');
@@ -1185,7 +1098,6 @@
     for (const draft of drafts.values()) draft.apiKey = '';
     transferSession = null;
     $('api-key').value = '';
-    hideKey();
     for (const pending of pendingRequests.values()) clearTimeout(pending.timer);
     pendingRequests.clear();
   });

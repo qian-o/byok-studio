@@ -32,8 +32,8 @@ function fixture() {
   );
   const replies = [];
   const panel = { webview: { postMessage: async reply => { world.calls.push('reply'); replies.push(reply); } } };
-  const settings = new exports.SettingsPanel({}, store, () => ({ dispose() {} }), async id => {
-    world.calls.push({ nativeWrite: id });
+  const settings = new exports.SettingsPanel({}, store, () => ({ dispose() {} }), async (ids, changedKeyId) => {
+    world.calls.push({ nativeWrite: ids, changedKeyId });
     if (world.nativeError) throw Error(world.nativeError);
   });
   settings.panel = panel;
@@ -76,7 +76,7 @@ test('both import sources validate before saving and the acknowledgement contain
   assert.deepEqual(result.data.importedIds, ['local-id', 'new-id']);
   assert.deepEqual(result.data.state.providers.map(p => p.id), ['local-id', 'new-id']);
   assert.equal(JSON.stringify(result).includes('new-key'), false);
-  assert.deepEqual(w.calls.slice(-2), [{ nativeWrite: undefined }, 'reply']);
+  assert.deepEqual(w.calls.slice(-2), [{ nativeWrite: ['local-id', 'new-id'], changedKeyId: undefined }, 'reply']);
   assert.equal(await w.store.key('local-id'), 'new-key');
 });
 
@@ -92,4 +92,18 @@ test('native write errors report the saved local state and redact every imported
   assert.deepEqual(w.store.snapshot().providers.map(p => p.id), ['one', 'two']);
   w.nativeError = undefined;
   assert.equal((await w.request('saveProvider', { provider: w.store.snapshot().providers[0] })).ok, true);
+});
+
+test('state reads and removed catalog commands cannot write native configuration', async () => {
+  const w = fixture();
+  await w.store.saveProvider(provider('one'));
+  const before = w.store.snapshot();
+  assert.equal((await w.request('getState')).ok, true);
+  assert.equal((await w.request('updateCatalog')).ok, false);
+  assert.deepEqual(w.store.snapshot(), before);
+  assert.equal(w.calls.some(call => typeof call === 'object'), false);
+  assert.equal((await w.request('saveProvider', { provider: provider('one'), apiKey: 'fixture-key' })).ok, true);
+  assert.deepEqual(w.calls.at(-2), { nativeWrite: ['one'], changedKeyId: 'one' });
+  assert.equal((await w.request('deleteProvider', { id: 'one' })).ok, true);
+  assert.deepEqual(w.calls.at(-2), { nativeWrite: ['one'], changedKeyId: undefined });
 });

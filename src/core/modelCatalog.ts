@@ -1,5 +1,5 @@
 import type { ApiType, CatalogSnapshot, ModelDatabase, ModelParameters, ProtocolProfile } from './types';
-import { validateDatabase, validateParameters, validateProtocols, validId } from './configuration';
+import { validateCatalogSnapshot, validateParameters, validateProtocols, validId } from './configuration';
 import { excludedKind } from '../../resources/shared/routing.js';
 import { validDate } from '../../resources/shared/model-policy.js';
 import { t } from '../../resources/shared/i18n.js';
@@ -8,8 +8,8 @@ const SOURCE_URL = 'https://models.dev/catalog.json';
 const MAX_BYTES = 16 * 1024 * 1024;
 const TIMEOUT_MS = 30_000;
 type Json = Record<string, unknown>;
-type ProviderPolicy = { families: string[]; canonicalProviders: string[]; contextWindowMode?: 'input' | 'shared'; nativeMessages?: boolean };
-type Patch = { contextWindowMode?: 'input' | 'shared'; protocols?: Partial<Record<ApiType, ProtocolProfile>> };
+type ProviderPolicy = { families: string[]; canonicalProviders: string[]; nativeMessages?: boolean };
+type Patch = { protocols?: Partial<Record<ApiType, ProtocolProfile>> };
 type Policy = { providers: string[]; providerDefaults: Record<string, ProviderPolicy>; models: Record<string, Patch> };
 type Candidate = { id: string; provider: string; model: Json; canonicalId?: string };
 
@@ -21,19 +21,6 @@ function positive(value: unknown): value is number { return Number.isSafeInteger
 function strings(value: unknown): value is string[] { return Array.isArray(value) && value.length > 0 && value.every(item => typeof item === 'string' && item.length > 0 && item.length <= 200); }
 function own(value: Json, key: string): unknown { return Object.hasOwn(value, key) ? value[key] : undefined; }
 function keys(value: Json, allowed: string[]): void { if (Object.keys(value).some(key => !allowed.includes(key))) fail(); }
-function mode(value: unknown): value is 'input' | 'shared' | undefined { return value === undefined || value === 'input' || value === 'shared'; }
-
-export function validateCatalogSnapshot(value: unknown): CatalogSnapshot {
-  const raw = object(value);
-  if (raw.source !== 'models.dev') throw new Error(t('模型目录来源必须是 models.dev。'));
-  const timestamp = raw.updatedAt;
-  if (typeof timestamp !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(timestamp)
-    || !Number.isFinite(Date.parse(timestamp))
-    || new Date(timestamp).toISOString() !== timestamp.replace(/(?:\.(\d{1,3}))?Z$/, (_, fraction: string | undefined) => `.${(fraction ?? '').padEnd(3, '0')}Z`)) {
-    throw new Error(t('模型目录更新时间必须是有效的 UTC ISO 8601 时间戳。'));
-  }
-  return { source: 'models.dev', updatedAt: timestamp, database: validateDatabase(raw.database) };
-}
 
 function readPolicy(value: unknown): Policy {
   try {
@@ -46,8 +33,8 @@ function readPolicy(value: unknown): Policy {
     for (const id of raw.providers) {
       if (validId(id) !== id) fail();
       const entry = object(own(defaults, id));
-      keys(entry, ['families', 'canonicalProviders', 'contextWindowMode', 'nativeMessages']);
-      if (!strings(entry.families) || !strings(entry.canonicalProviders) || !mode(entry.contextWindowMode)
+      keys(entry, ['families', 'canonicalProviders', 'nativeMessages']);
+      if (!strings(entry.families) || !strings(entry.canonicalProviders)
         || (entry.nativeMessages !== undefined && typeof entry.nativeMessages !== 'boolean')) fail();
       providerDefaults[id] = entry as ProviderPolicy;
     }
@@ -62,12 +49,9 @@ function readPolicy(value: unknown): Policy {
     for (const [id, item] of Object.entries(patches)) {
       if (validId(id) !== id) fail();
       const patch = object(item);
-      keys(patch, ['contextWindowMode', 'profile']);
-      if (!mode(patch.contextWindowMode)) fail();
-      if (patch.profile !== undefined && (typeof patch.profile !== 'string' || !Object.hasOwn(profiles, patch.profile))) fail();
-      const profile = typeof patch.profile === 'string' ? profiles[patch.profile] : undefined;
-      if (!profile && patch.contextWindowMode === undefined) fail();
-      models[id] = { ...profile, ...(patch.contextWindowMode ? { contextWindowMode: patch.contextWindowMode } : {}) };
+      keys(patch, ['profile']);
+      if (typeof patch.profile !== 'string' || !Object.hasOwn(profiles, patch.profile)) fail();
+      models[id] = { ...profiles[patch.profile] };
     }
     return { providers: raw.providers, providerDefaults, models };
   } catch { return fail(t('模型目录兼容配置无效。')); }
@@ -136,23 +120,18 @@ function normalize(candidate: Candidate, canonical: Json, updatedAt: string): Mo
   const { id, model, provider } = candidate, defaults = policy.providerDefaults[provider]!;
   const patch = policy.models[id], limit = object(model.limit);
   if (!positive(limit.context)) fail();
-  for (const field of ['input', 'output']) if (limit[field] !== undefined && limit[field] !== null && !positive(limit[field])) fail();
-  const contextWindow = limit.context, contextWindowMode = patch?.contextWindowMode ?? defaults.contextWindowMode ?? 'shared';
-  const reportedOutput = positive(limit.output) ? limit.output : undefined;
-  const maxOutputTokens = contextWindowMode === 'input' ? reportedOutput ?? 16000 : Math.min(reportedOutput ?? 16000, contextWindow);
+  if (limit.output !== undefined && limit.output !== null && !positive(limit.output)) fail();
+  const contextWindow = limit.context;
   const canonicalModel = candidate.canonicalId ? object(canonical[candidate.canonicalId]) : undefined;
   const canonicalOutput = canonicalModel ? object(canonicalModel.limit).output : undefined;
-  const reservation = Math.min(maxOutputTokens, 131072, Math.max(1, Math.floor(contextWindow / 4)));
-  const defaultOutputTokens = positive(canonicalOutput) && canonicalOutput < maxOutputTokens ? Math.min(canonicalOutput, reservation) : reservation;
+  const maxOutputTokens = Math.min(positive(limit.output) ? limit.output : 16000,
+    positive(canonicalOutput) ? canonicalOutput : Infinity, 131072, Math.max(1, Math.floor(contextWindow / 4)));
   const modalities = object(model.modalities);
   const releaseDate = validDate(model.release_date) && (model.release_date as string) <= updatedAt.slice(0, 10) ? model.release_date as string : undefined;
   return {
     name: model.name as string,
     contextWindow,
-    ...(contextWindowMode === 'input' ? { contextWindowMode: 'input' } : {}),
     maxOutputTokens,
-    defaultOutputTokens,
-    ...(positive(limit.input) ? { maxInputTokens: Math.min(limit.input, contextWindow) } : {}),
     toolCalling: model.tool_call === true,
     vision: (modalities.input as string[]).some(input => input === 'image' || input.startsWith('image/')),
     thinking: model.reasoning === true,

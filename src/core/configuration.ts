@@ -1,10 +1,10 @@
-import type { ApiType, ModelConfig, ModelDatabase, ModelParameters, OfficialProtocol, ParameterOverrides, ProtocolProfile, ProviderConfig } from './types';
+import type { ApiType, CatalogSnapshot, ModelConfig, ModelDatabase, ModelParameters, OfficialProtocol, ParameterOverrides, ProtocolProfile, ProviderConfig } from './types';
 import { t } from '../../resources/shared/i18n.js';
 import { validDate } from '../../resources/shared/model-policy.js';
 import { apiTypes, vendors, normalizeRouting, routeForModel, excludedKind } from '../../resources/shared/routing.js';
 
 const unsafeKeys = new Set(['__proto__', 'constructor', 'prototype']);
-const parameterKeys = ['contextWindow', 'maxInputTokens', 'maxOutputTokens', 'defaultOutputTokens', 'toolCalling', 'vision', 'thinking', 'supportsReasoningEffort'] as const;
+const parameterKeys = ['contextWindow', 'maxOutputTokens', 'toolCalling', 'vision', 'thinking', 'supportsReasoningEffort'] as const;
 const effortFormats = new Set(['chat-completions', 'responses', 'messages', 'unsupported']);
 
 export function object(value: unknown, label = t('配置')): Record<string, unknown> {
@@ -89,16 +89,16 @@ export function validateParameters(value: unknown): ModelParameters {
   const v = object(value, t('模型参数'));
   const result: ModelParameters = {
     name: text(v.name ?? '', t('显示名称'), 200, true),
-    contextWindow: positiveInt(v.contextWindow, t('上下文窗口')),
-    maxOutputTokens: positiveInt(v.maxOutputTokens, t('最大输出')),
+    contextWindow: positiveInt(v.contextWindow, 'Context'),
+    maxOutputTokens: positiveInt(v.maxOutputTokens, 'Output'),
     toolCalling: bool(v.toolCalling, t('工具调用')),
     vision: bool(v.vision, t('视觉')),
     thinking: bool(v.thinking, t('思考')),
     supportsReasoningEffort: efforts(v.supportsReasoningEffort ?? [])
   };
-  if (v.contextWindowMode !== undefined) {
-    if (!['shared', 'input'].includes(String(v.contextWindowMode))) throw new Error(t('上下文窗口语义无效。'));
-    if (v.contextWindowMode === 'input') result.contextWindowMode = 'input';
+  // Read earlier presets using their effective output limit; only the two current fields are returned.
+  if (v.defaultOutputTokens != null && v.defaultOutputTokens !== '') {
+    result.maxOutputTokens = Math.min(result.maxOutputTokens, positiveInt(v.defaultOutputTokens, 'Output'));
   }
   if (v.protocols !== undefined) {
     const protocols = validateProtocols(v.protocols);
@@ -109,11 +109,7 @@ export function validateParameters(value: unknown): ModelParameters {
     if (v.releaseDate !== null && !validDate(v.releaseDate)) throw new Error(t('模型发布日期必须是有效的 YYYY-MM-DD 日期或 null。'));
     if (v.releaseDate !== null) result.releaseDate = v.releaseDate;
   }
-  if (v.maxInputTokens !== undefined && v.maxInputTokens !== null && v.maxInputTokens !== '') result.maxInputTokens = positiveInt(v.maxInputTokens, t('最大输入'));
-  if (v.defaultOutputTokens !== undefined && v.defaultOutputTokens !== null && v.defaultOutputTokens !== '') result.defaultOutputTokens = positiveInt(v.defaultOutputTokens, t('默认输出预算'));
-  if ((result.contextWindowMode !== 'input' && result.maxOutputTokens > result.contextWindow) || (result.maxInputTokens !== undefined && result.maxInputTokens > result.contextWindow)) throw new Error(t('输入或输出上限不能超过上下文窗口。'));
-  if (result.contextWindowMode !== 'input' && result.maxInputTokens === undefined && result.maxOutputTokens >= result.contextWindow
-    && !(result.defaultOutputTokens !== undefined && result.defaultOutputTokens < result.contextWindow)) throw new Error(t('最大输出必须小于上下文窗口，或设置较小的单次输出预算或有效输入上限。'));
+  if (result.maxOutputTokens >= result.contextWindow) throw new Error(t('Output 必须小于 Context。'));
   return result;
 }
 export function validateDatabase(value: unknown): ModelDatabase {
@@ -123,15 +119,29 @@ export function validateDatabase(value: unknown): ModelDatabase {
   if (entries.length > 20_000) throw new Error(t('参数库最多包含 20000 个模型。'));
   return { schemaVersion: 1, defaults: validateParameters(v.defaults), models: Object.fromEntries(entries.map(([id, record]) => [validId(id), validateParameters(record)])) };
 }
+export function validateCatalogSnapshot(value: unknown): CatalogSnapshot {
+  const raw = object(value);
+  if (raw.source !== 'models.dev') throw new Error(t('模型目录来源必须是 models.dev。'));
+  const timestamp = raw.updatedAt;
+  if (typeof timestamp !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(timestamp)
+    || !Number.isFinite(Date.parse(timestamp))
+    || new Date(timestamp).toISOString() !== timestamp.replace(/(?:\.(\d{1,3}))?Z$/, (_, fraction: string | undefined) => `.${(fraction ?? '').padEnd(3, '0')}Z`)) {
+    throw new Error(t('模型目录更新时间必须是有效的 UTC ISO 8601 时间戳。'));
+  }
+  return { source: 'models.dev', updatedAt: timestamp, database: validateDatabase(raw.database) };
+}
 export function validateOverrides(value: unknown): ParameterOverrides {
   const v = object(value ?? {}, t('覆盖参数'));
   const result: ParameterOverrides = {};
   for (const key of parameterKeys) {
     if (!Object.hasOwn(v, key)) continue;
-    if ((key === 'maxInputTokens' || key === 'defaultOutputTokens') && (v[key] == null || v[key] === '')) continue;
-    if (key === 'contextWindow' || key === 'maxOutputTokens' || key === 'maxInputTokens' || key === 'defaultOutputTokens') result[key] = positiveInt(v[key], key);
+    if (key === 'contextWindow' || key === 'maxOutputTokens') result[key] = positiveInt(v[key], key);
     else if (key === 'supportsReasoningEffort') result[key] = efforts(v[key]);
     else result[key] = bool(v[key], key);
+  }
+  if (v.defaultOutputTokens != null && v.defaultOutputTokens !== '') {
+    const output = positiveInt(v.defaultOutputTokens, 'Output');
+    result.maxOutputTokens = Math.min(result.maxOutputTokens ?? output, output);
   }
   return result;
 }

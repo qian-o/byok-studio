@@ -1,7 +1,7 @@
 import { effectiveParameters, modelName } from './configuration';
 import { resolveEndpoint } from './endpoints';
-import type { ApiType, ModelConfig, ModelDatabase, ModelParameters, OfficialProtocol, ProviderConfig } from './types';
-import { inputCeiling, projectEfforts } from '../../resources/shared/model-policy.js';
+import type { ApiType, ModelConfig, ModelDatabase, OfficialProtocol, ProviderConfig } from './types';
+import { projectEfforts } from '../../resources/shared/model-policy.js';
 import { t } from '../../resources/shared/i18n.js';
 import { normalizeRouting, routeForModel } from '../../resources/shared/routing.js';
 
@@ -13,7 +13,7 @@ export interface OfficialModel {
   apiType: OfficialProtocol;
   toolCalling: boolean;
   vision: boolean;
-  maxInputTokens: number;
+  contextWindow: number;
   maxOutputTokens: number;
   thinking?: true;
   adaptiveThinking?: boolean;
@@ -35,16 +35,6 @@ export function officialProtocol(apiType: ApiType): OfficialProtocol {
   return apiType === 'chatCompletions' ? 'chat-completions' : apiType;
 }
 
-function tokenBudgets(parameters: ModelParameters): { maxInputTokens: number; maxOutputTokens: number } {
-  const shared = parameters.contextWindowMode !== 'input';
-  if (shared && parameters.contextWindow < 2) throw new Error(t('共享上下文窗口必须至少容纳一个输入 token 和一个输出 token。'));
-  const outputReservation = parameters.defaultOutputTokens ?? (!shared || parameters.maxOutputTokens < parameters.contextWindow
-    ? parameters.maxOutputTokens : Math.min(16384, Math.floor(parameters.contextWindow / 4)));
-  const maxOutputTokens = Math.max(1, Math.min(outputReservation, parameters.maxOutputTokens, shared ? parameters.contextWindow - 1 : Infinity));
-  const maxInputTokens = Math.max(1, Math.min(inputCeiling(parameters), shared ? parameters.contextWindow - maxOutputTokens : Infinity));
-  return { maxInputTokens, maxOutputTokens };
-}
-
 export function compileOfficialModel(provider: ProviderConfig, database: ModelDatabase, model: ModelConfig, routing = normalizeRouting(provider)): OfficialModel {
   const route = routeForModel(provider, model.id, routing);
   const apiType = officialProtocol(route.apiType);
@@ -57,7 +47,8 @@ export function compileOfficialModel(provider: ProviderConfig, database: ModelDa
     apiType,
     toolCalling: parameters.toolCalling,
     vision: parameters.vision,
-    ...tokenBudgets(parameters)
+    contextWindow: parameters.contextWindow,
+    maxOutputTokens: parameters.maxOutputTokens
   };
   if (parameters.thinking) result.thinking = true;
   const efforts = projectEfforts(parameters, route.apiType);
@@ -68,7 +59,7 @@ export function compileOfficialModel(provider: ProviderConfig, database: ModelDa
   if (route.apiType === 'messages' && parameters.thinking) {
     if (profile?.adaptiveThinking) result.adaptiveThinking = true;
     else if (profile?.thinkingBudget) {
-      if (result.maxOutputTokens <= profile.thinkingBudget.min) throw new Error(t('单次输出预算必须大于该模型的最小思考预算。'));
+      if (result.maxOutputTokens <= profile.thinkingBudget.min) throw new Error(t('Output 必须大于该模型的最小思考预算。'));
       result.maxThinkingBudget = Math.min(profile.thinkingBudget.max, result.maxOutputTokens - 1);
       result.minThinkingBudget = profile.thinkingBudget.min;
     }

@@ -10,11 +10,11 @@ A visual editor for Copilot's **Custom Endpoint** configuration in `chatLanguage
 
 - Provider names, endpoint URLs, and API keys.
 - **Chat Completions**, **Responses**, or **Messages** protocol settings, shared by all models or assigned per model.
-- Model lists, display names, token limits, capability declarations, and reasoning defaults.
+- Model lists, display names, Context, Output, capabilities, and reasoning defaults.
 
-Model presets come from [models.dev](https://models.dev). Click **Update presets** at the top of the page, then adjust individual models in **Advanced options**. Per-model overrides are retained. [Parameter sources](docs/SOURCES.md).
+Model presets come from [models.dev](https://models.dev) and ship with extension releases. Adjust parameters in **Model settings**. [Parameter sources and release maintenance](docs/SOURCES.md).
 
-BYOK Studio does not generate or manage `zeroDataRetentionEnabled` or `statefulResponses`. Existing values in the official JSON are preserved for retained models; new models use Copilot's defaults unless you edit the JSON yourself.
+Context and Output are written directly as `contextWindow` and `maxOutputTokens` in the official JSON. Saving a provider removes its old `maxInputTokens`, `zeroDataRetentionEnabled`, and `statefulResponses` model fields. Providers outside that operation remain unchanged.
 
 ## Usage
 
@@ -25,11 +25,13 @@ Requires **VS Code 1.145+** and **GitHub Copilot Chat**.
 3. Refresh or manually add models and adjust their settings.
 4. Click **Save provider** to write the native configuration and refresh Copilot Chat's model list. Select the corresponding **Custom Endpoint** model in Copilot Chat.
 
+The extension loads on command. Starting VS Code, opening settings, and reading configuration do not write data. Only explicitly saving, importing, or deleting providers updates their corresponding official configuration groups.
+
 **One protocol** mode uses a single protocol and URL for all models. **Per-model protocols** mode has no provider default: GPT / OpenAI models (including Codex) go to **Responses**, Claude models go to **Messages**, and other models go to **Chat Completions**. Change an individual model's **Request protocol**, or select models and move them to another protocol column. Switching modes preserves manual assignments.
 
 **Refresh** replaces the model list and resets protocol assignments using these model family rules. Matching IDs keep their names, token overrides, and reasoning settings; endpoint URLs and the API key are retained. Models follow discovery order. Failed refreshes leave the draft unchanged.
 
-Select models in either mode to **Delete selected**, then confirm the count. Use **Select all** for the unified list or an individual protocol column, or clear the selection. Deletion changes only the current draft until you save the provider. A green confirmation appears after writing the native configuration and refreshing the Chat model list both complete; failures remain visible as errors.
+Selecting models shows **Delete** immediately left of **Refresh**; deselecting all models hides it. **Select all** works on the unified list or an individual protocol column. Model deletion changes the draft until the provider is saved. Completed saves show a green confirmation; failures show an error.
 
 Use **Export** to select providers (all selected by default), then copy them to the clipboard or save a JSON file. Saved API keys are always included. **Import** reads from the clipboard or a JSON file and saves the selected providers; matching IDs or names update existing providers. Close either dialog using its top-right close button or Esc. Transfer configurations between devices with manual import and export.
 
@@ -52,7 +54,7 @@ Successful saves show **Provider saved.** and successful imports show **Imported
         "apiType": "chat-completions",
         "toolCalling": true,
         "vision": true,
-        "maxInputTokens": 917504,
+        "contextWindow": 1048576,
         "maxOutputTokens": 131072,
         "thinking": true,
         "supportsReasoningEffort": ["low", "high", "max"],

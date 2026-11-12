@@ -3,6 +3,8 @@
 src/**
 resources/**/*.d.ts
 dist/hostTest.*
+dist/core/modelCatalog.*
+resources/catalog/compatibility.json
 test/**
 scripts/**
 releases/**

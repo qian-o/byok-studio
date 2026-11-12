@@ -10,10 +10,6 @@
     return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
   }
 
-  function inputCeiling(parameters) {
-    return parameters.maxInputTokens === undefined ? Math.max(1, parameters.contextWindow - (parameters.contextWindowMode === 'input' ? 0 : 1)) : parameters.maxInputTokens;
-  }
-
   function projectEfforts(parameters, apiType) {
     const profile = parameters.protocols?.[apiType];
     const defaultFormat = apiType === 'chatCompletions' ? 'chat-completions' : apiType;
@@ -31,5 +27,5 @@
     return { levels, nativeLevels, mapping, rejected, format };
   }
 
-  return { validDate, inputCeiling, projectEfforts };
+  return { validDate, projectEfforts };
 });

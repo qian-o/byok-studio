@@ -33,6 +33,9 @@ class MockUri {
   with(changes) { return Object.assign(new MockUri(this.path, this.scheme), changes); }
   static joinPath(uri, ...parts) { return uri.with({ path: path.posix.join(uri.path, ...parts) }); }
 }
+class MockFileSystemError extends Error {
+  constructor(code) { super(code); this.code = code; }
+}
 
 async function fixture({ providers = [provider()], groups = [group('owned', OLD_REFERENCE)], bindings = {}, key } = {}) {
   const globals = new Map([[BINDINGS_KEY, structuredClone(bindings)]]);
@@ -70,7 +73,7 @@ async function fixture({ providers = [provider()], groups = [group('owned', OLD_
     }
   };
   const vscode = {
-    Uri: MockUri, FileType: { File: 1 },
+    Uri: MockUri, FileType: { File: 1 }, FileSystemError: MockFileSystemError,
     Range: class { constructor(start, end) { this.start = start; this.end = end; } },
     WorkspaceEdit: class { set(uri, edits) { this.uri = uri; this.text = edits[0].newText; } },
     TextEdit: { replace: (range, newText) => ({ range, newText }), setEndOfLine: newEol => ({ newEol }) },
@@ -96,7 +99,10 @@ async function fixture({ providers = [provider()], groups = [group('owned', OLD_
       }
     },
     workspace: {
-      textDocuments: [document], openTextDocument: async () => document,
+      textDocuments: [document], openTextDocument: async () => {
+        if (world.missingFile) throw new MockFileSystemError('FileNotFound');
+        return document;
+      },
       applyEdit: async edit => {
         assert.equal(edit.uri.path, nativeUri.path);
         if (world.refuseEdit) return false;
@@ -107,6 +113,7 @@ async function fixture({ providers = [provider()], groups = [group('owned', OLD_
         return true;
       },
       fs: {
+        stat: async () => { if (world.missingFile) throw new MockFileSystemError('FileNotFound'); return {}; },
         readFile: async uri => {
           assert.equal(uri.path, nativeUri.path);
           return Buffer.from(world.text);
@@ -125,7 +132,7 @@ async function fixture({ providers = [provider()], groups = [group('owned', OLD_
         delete: async uri => { backups.delete(uri.path); }
       }
     },
-    window: { showTextDocument: async () => {} }
+    window: { showTextDocument: async () => { world.opened = true; } }
   };
   const modulePath = path.join(__dirname, '../dist/officialManager.js');
   const localRequire = createRequire(modulePath);
@@ -141,6 +148,7 @@ async function fixture({ providers = [provider()], groups = [group('owned', OLD_
     world.manager = new exports.OfficialConfigurationManager(context, world.store);
   };
   world.restart();
+  world.closeDocuments = () => { vscode.workspace.textDocuments = []; };
   for (const item of providers) await world.store.saveProvider(item, key);
   world.events.length = 0;
   world.bindings = () => globals.get(BINDINGS_KEY);
@@ -150,6 +158,16 @@ async function fixture({ providers = [provider()], groups = [group('owned', OLD_
 
 beforeEach(() => setLocale('en'));
 
+test('viewing official JSON does not create or change configuration files', async () => {
+  const world = await fixture();
+  const before = world.text;
+  await world.manager.openConfiguration();
+  assert.equal(world.opened, true); assert.equal(world.text, before); assert.deepEqual(world.events, []);
+  world.closeDocuments(); world.missingFile = true;
+  await assert.rejects(world.manager.openConfiguration(), /Save a provider first/);
+  assert.deepEqual(world.events, []); assert.equal(world.text, before);
+});
+
 test('legacy cleanup removes only current provider IDs or persisted bindings', async () => {
   const foreignLegacy = { ...legacyGroup('untracked'), apiKey: 'opaque-manual-value', custom: { keep: true } };
   const foreignNative = { ...group('untracked-native', MANUAL_REFERENCE), custom: { keep: true } };
@@ -158,7 +176,7 @@ test('legacy cleanup removes only current provider IDs or persisted bindings', a
     groups: [legacyGroup('owned'), legacyGroup('retired'), foreignLegacy, foreignNative, incompleteLegacy],
     bindings: { retired: {} }
   });
-  await world.manager.synchronize();
+  await world.manager.applyProviders(['owned', 'retired']);
   const groups = JSON.parse(world.text);
   assert.equal(groups.some(item => item.vendor === 'byok-studio' && ['owned', 'retired'].includes(item.providerId) && item.byokStudioGroupName), false);
   assert.deepEqual(groups.find(item => item.providerId === 'untracked'), foreignLegacy);
@@ -170,13 +188,36 @@ test('legacy cleanup removes only current provider IDs or persisted bindings', a
   assert.equal(world.bindings().retired, undefined);
 });
 
+test('explicit saves and deletions leave every unselected provider and binding untouched', async () => {
+  const untouched = { ...group('other', MANUAL_REFERENCE), models: [{ id: 'sample', name: 'Manual name', futureField: true, statefulResponses: false, zeroDataRetentionEnabled: true }] };
+  const world = await fixture({
+    providers: [provider('owned'), provider('other')],
+    groups: [group('owned', OLD_REFERENCE), untouched, legacyGroup('retired')],
+    bindings: { other: { secretReference: MANUAL_REFERENCE, keyFingerprint: 'keep' }, retired: {} }
+  });
+  const otherBinding = structuredClone(world.bindings().other);
+  await world.manager.applyProviders([]);
+  assert.deepEqual(world.events, []);
+  await world.manager.applyProviders(['owned']);
+  assert.equal(JSON.stringify(world.nativeGroup('other')), JSON.stringify(untouched));
+  assert.deepEqual(world.bindings().other, otherBinding);
+  assert.ok(listGroups(world.text).some(item => item.providerId === 'retired'));
+  assert.ok(world.text.includes(JSON.stringify(untouched)));
+  await world.store.deleteProvider('owned');
+  await world.manager.applyProviders(['owned']);
+  assert.equal(world.nativeGroup('owned'), undefined);
+  assert.equal(JSON.stringify(world.nativeGroup('other')), JSON.stringify(untouched));
+  assert.deepEqual(world.bindings().other, otherBinding);
+  assert.deepEqual(world.bindings().retired, {});
+});
+
 test('clearing a key survives a dirty native file and an extension restart', async () => {
   const world = await fixture({ key: 'old-fixture-key', bindings: {
     owned: { keyFingerprint: fingerprint('old-fixture-key'), secretReference: OLD_REFERENCE }
   } });
   await world.store.saveProvider(provider(), undefined, true);
   world.dirty = true;
-  await assert.rejects(world.manager.synchronize('owned'), /unsaved changes/);
+  await assert.rejects(world.manager.applyProviders(['owned'], 'owned'), /unsaved changes/);
   assert.equal(await world.store.key('owned'), undefined);
   assert.equal(world.bindings().owned.clearKeyPending, true);
   assert.equal(world.events.find(event => event.type === 'ready').bindings.owned.clearKeyPending, true);
@@ -184,7 +225,7 @@ test('clearing a key survives a dirty native file and an extension restart', asy
 
   world.restart();
   world.dirty = false;
-  await world.manager.synchronize();
+  await world.manager.applyProviders(['owned']);
   assert.equal(world.nativeGroup('owned').apiKey, undefined);
   assert.equal(world.bindings().owned.clearKeyPending, undefined);
   assert.equal(world.bindings().owned.keyFingerprint, undefined);
@@ -193,7 +234,7 @@ test('clearing a key survives a dirty native file and an extension restart', asy
   assert.equal(world.additions, 0);
 
   world.restart();
-  await world.manager.synchronize();
+  await world.manager.applyProviders(['owned']);
   assert.equal(world.nativeGroup('owned').apiKey, undefined);
 });
 
@@ -201,13 +242,13 @@ test('clear intent is recorded before checking whether Copilot is available', as
   const world = await fixture({ groups: [group('owned', MANUAL_REFERENCE)] });
   await world.store.saveProvider(provider(), undefined, true);
   world.ready = false;
-  await assert.rejects(world.manager.synchronize('owned'), /Install or enable/);
+  await assert.rejects(world.manager.applyProviders(['owned'], 'owned'), /Install or enable/);
   assert.equal(world.bindings().owned.clearKeyPending, true);
   assert.equal(world.nativeGroup('owned').apiKey, MANUAL_REFERENCE);
 
   world.restart();
   world.ready = true;
-  await world.manager.synchronize();
+  await world.manager.applyProviders(['owned']);
   assert.equal(world.nativeGroup('owned').apiKey, undefined);
   assert.equal(world.bindings().owned.clearKeyPending, undefined);
 });
@@ -217,26 +258,26 @@ test('failed native writes keep clear intent until a restart can finish the writ
     owned: { keyFingerprint: fingerprint('removed-fixture-key'), secretReference: OLD_REFERENCE }
   } });
   world.failNativeWrite = true;
-  await assert.rejects(world.manager.synchronize('owned'), /fixture native write failure/);
+  await assert.rejects(world.manager.applyProviders(['owned'], 'owned'), /fixture native write failure/);
   assert.equal(world.bindings().owned.clearKeyPending, true);
   assert.equal(world.nativeGroup('owned').apiKey, OLD_REFERENCE);
 
   world.restart();
   world.failNativeWrite = false;
-  await world.manager.synchronize();
+  await world.manager.applyProviders(['owned']);
   assert.equal(world.nativeGroup('owned').apiKey, undefined);
   assert.equal(world.bindings().owned.clearKeyPending, undefined);
 });
 
 test('ordinary synchronization preserves a native key never managed by Studio', async () => {
   const world = await fixture({ groups: [group('owned', MANUAL_REFERENCE)] });
-  await world.manager.synchronize();
+  await world.manager.applyProviders(['owned']);
   assert.equal(world.nativeGroup('owned').apiKey, MANUAL_REFERENCE);
   assert.equal(world.bindings().owned.keyFingerprint, undefined);
   assert.equal(world.bindings().owned.clearKeyPending, undefined);
 
   world.restart();
-  await world.manager.synchronize();
+  await world.manager.applyProviders(['owned']);
   assert.equal(world.nativeGroup('owned').apiKey, MANUAL_REFERENCE);
   assert.equal(world.additions, 0);
 });
@@ -246,13 +287,13 @@ test('a replacement saved after a pending clear is published instead of being er
     owned: { keyFingerprint: fingerprint('removed-fixture-key'), secretReference: OLD_REFERENCE }
   } });
   world.dirty = true;
-  await assert.rejects(world.manager.synchronize('owned'), /unsaved changes/);
+  await assert.rejects(world.manager.applyProviders(['owned'], 'owned'), /unsaved changes/);
   assert.equal(world.bindings().owned.clearKeyPending, true);
   await world.store.saveProvider(provider(), 'replacement-fixture-key');
 
   world.restart();
   world.dirty = false;
-  await world.manager.synchronize();
+  await world.manager.applyProviders(['owned']);
   assert.equal(world.nativeGroup('owned').apiKey, '${input:chat.lm.secret.new-fixture-1}');
   assert.equal(world.bindings().owned.keyFingerprint, fingerprint('replacement-fixture-key'));
   assert.equal(world.bindings().owned.clearKeyPending, undefined);
@@ -263,57 +304,57 @@ test('a replacement saved after a pending clear is published instead of being er
 test('disabling a provider with a pending clear removes its group before discarding intent', async () => {
   const world = await fixture();
   world.dirty = true;
-  await assert.rejects(world.manager.synchronize('owned'), /unsaved changes/);
+  await assert.rejects(world.manager.applyProviders(['owned'], 'owned'), /unsaved changes/);
   await world.store.saveProvider({ ...provider(), enabled: false });
 
   world.restart();
   world.dirty = false;
-  await world.manager.synchronize();
+  await world.manager.applyProviders(['owned']);
   assert.equal(world.nativeGroup('owned'), undefined);
   assert.equal(world.bindings().owned, undefined);
   assert.equal(world.events.find(event => event.type === 'write').bindings.owned.clearKeyPending, true);
 });
 
-test('creation, update and protocol switches omit both Responses fields unless already present', async () => {
+test('creation, update and protocol switches omit both retired Responses fields', async () => {
   const world = await fixture({ groups: [] });
   for (const apiType of ['responses', 'chatCompletions', 'messages', 'responses']) {
     await world.store.saveProvider({ ...provider(), name: `Updated ${apiType}`, apiType,
       zeroDataRetentionEnabled: true, statefulResponses: false });
-    await world.manager.synchronize();
+    await world.manager.applyProviders(['owned']);
     const native = world.nativeGroup('owned').models[0];
     for (const field of ['zeroDataRetentionEnabled', 'statefulResponses']) assert.equal(Object.hasOwn(native, field), false);
     const text = world.text, writes = world.events.filter(item => item.type === 'write').length;
-    await world.manager.synchronize();
+    await world.manager.applyProviders(['owned']);
     assert.equal(world.text, text); assert.equal(world.events.filter(item => item.type === 'write').length, writes);
   }
 });
 
 test('saving updates the text model before publishing and refreshing native chat models', async () => {
   const world = await fixture({ groups: [] });
-  await world.manager.synchronize();
+  await world.manager.applyProviders(['owned']);
   assert.deepEqual(world.chatModels.map(({ id, name }) => ({ id, name })), [{ id: 'sample', name: 'sample' }]);
   assert.ok(world.events.findIndex(event => event.type === 'edit') < world.events.findIndex(event => event.type === 'write'));
   assert.equal(world.events.at(-1).type, 'refresh');
 
   await world.store.saveProvider({ ...provider(), models: [{ id: 'second', name: 'Renamed', overrides: {} }] });
-  await world.manager.synchronize();
+  await world.manager.applyProviders(['owned']);
   assert.deepEqual(world.chatModels.map(({ id, name }) => ({ id, name })), [{ id: 'second', name: 'Renamed' }]);
   await world.store.deleteProvider('owned');
-  await world.manager.synchronize();
+  await world.manager.applyProviders(['owned']);
   assert.deepEqual(world.chatModels, []);
 });
 
 test('imported keys are detected by fingerprint without forcing repeated provisioning', async () => {
   const world = await fixture({ providers: [provider('one'), provider('two')], groups: [], key: 'old-key' });
-  await world.manager.synchronize();
+  await world.manager.applyProviders(['one', 'two']);
   const before = world.additions;
   const incoming = [provider('one'), provider('two')].map(p => ({ ...p, apiKey: `updated-${p.id}` }));
   assert.deepEqual(await world.store.importProviders(incoming), ['one', 'two']);
-  await world.manager.synchronize();
+  await world.manager.applyProviders(['one', 'two']);
   assert.equal(world.additions, before + 2);
   for (const p of incoming) assert.equal(world.bindings()[p.id].keyFingerprint, fingerprint(p.apiKey));
   await world.store.importProviders(incoming);
-  await world.manager.synchronize();
+  await world.manager.applyProviders(['one', 'two']);
   assert.equal(world.additions, before + 2);
 });
 
@@ -322,7 +363,7 @@ test('failed edits, saves and refreshes never report a successful synchronizatio
     const world = await fixture();
     const before = world.text;
     world[flag] = true;
-    await assert.rejects(world.manager.synchronize(), /save the official|refresh failure/);
+    await assert.rejects(world.manager.applyProviders(['owned']), /save the official|refresh failure/);
     if (flag !== 'failRefresh') {
       assert.equal(world.text, before);
       assert.equal(world.events.some(event => event.type === 'refresh'), false);
@@ -330,21 +371,25 @@ test('failed edits, saves and refreshes never report a successful synchronizatio
   }
 });
 
-test('manual Responses fields survive updates, protocol switches, restart and idempotent synchronization', async () => {
+test('explicit saves remove retired token and Responses fields while preserving unrelated settings', async () => {
   for (const manual of [{ zeroDataRetentionEnabled: true }, { statefulResponses: false },
     { zeroDataRetentionEnabled: false, statefulResponses: true }, { zeroDataRetentionEnabled: true, statefulResponses: false }]) {
-    const owned = { ...group(), models: [{ id: 'sample', ...manual, futureOption: 'keep' }] };
+    const owned = { ...group(), ...manual, models: [{ id: 'sample', ...manual, maxInputTokens: 112000, defaultOutputTokens: 8192, contextWindowMode: 'input', futureOption: 'keep' }], settings: { sample: { ...manual, futureSetting: 'keep' } } };
     const world = await fixture({ groups: [owned] });
     for (const apiType of ['responses', 'messages', 'chatCompletions', 'responses']) {
       await world.store.saveProvider({ ...provider(), apiType });
-      world.restart(); await world.manager.synchronize();
+      world.restart(); await world.manager.applyProviders(['owned']);
       const native = world.nativeGroup('owned').models[0];
       for (const field of ['zeroDataRetentionEnabled', 'statefulResponses']) {
-        assert.equal(Object.hasOwn(native, field), Object.hasOwn(manual, field));
-        assert.equal(native[field], manual[field]);
+        assert.equal(Object.hasOwn(native, field), false);
+        assert.equal(Object.hasOwn(world.nativeGroup('owned'), field), false);
+        assert.equal(Object.hasOwn(world.nativeGroup('owned').settings.sample, field), false);
       }
+      assert.equal(native.contextWindow, 128000); assert.equal(native.maxOutputTokens, 16000);
+      for (const field of ['maxInputTokens', 'defaultOutputTokens', 'contextWindowMode']) assert.equal(Object.hasOwn(native, field), false);
       assert.equal(native.futureOption, 'keep');
-      const text = world.text; await world.manager.synchronize(); assert.equal(world.text, text);
+      assert.equal(world.nativeGroup('owned').settings.sample.futureSetting, 'keep');
+      const text = world.text; await world.manager.applyProviders(['owned']); assert.equal(world.text, text);
     }
   }
 });
@@ -352,9 +397,9 @@ test('manual Responses fields survive updates, protocol switches, restart and id
 test('native write failure preserves manual Responses settings until a retry succeeds', async () => {
   const world = await fixture({ groups: [{ ...group(), models: [{ id: 'sample', zeroDataRetentionEnabled: false, statefulResponses: true }] }] });
   const before = world.text; world.failNativeWrite = true;
-  await assert.rejects(world.manager.synchronize(), /fixture native write failure/);
+  await assert.rejects(world.manager.applyProviders(['owned']), /fixture native write failure/);
   assert.equal(world.text, before);
-  world.restart(); world.failNativeWrite = false; await world.manager.synchronize();
+  world.restart(); world.failNativeWrite = false; await world.manager.applyProviders(['owned']);
   const native = world.nativeGroup('owned').models[0];
-  assert.equal(native.zeroDataRetentionEnabled, false); assert.equal(native.statefulResponses, true);
+  assert.equal(Object.hasOwn(native, 'zeroDataRetentionEnabled'), false); assert.equal(Object.hasOwn(native, 'statefulResponses'), false);
 });

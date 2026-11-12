@@ -80,7 +80,6 @@ const server = http.createServer(async(req,res)=>{
         else if(m.command==='exportProviders'){const bundle=await store.exportProviders(p.ids);const content=JSON.stringify(bundle,null,2)+'\n';output={exported:bundle.providers.length,target:p.target,content,filename:`byok-providers-${new Date().toISOString().slice(0,10)}.json`};}
         else if(m.command==='readImportSource'){output={providers:parseExportBundle(p.rawText,store.database())};}
         else if(m.command==='importProviders'){const importedIds=await store.importProviders({version:1,providers:p.providers});output={state:await store.uiState(),importedIds};}
-        else if(m.command==='updateCatalog'){await store.updateCatalog(require('../resources/catalog/models.json'));output=await store.uiState();}
         else if(m.command==='discoverModels'){const provider=validateProvider(p.provider,store.database(),true);output=await discoverProviderModels(provider,p.apiKey||await store.key(provider.id)||'',AbortSignal.timeout(15000));}
         else if(m.command==='openModels')output=null;
         else throw Error('Preview operation unavailable');

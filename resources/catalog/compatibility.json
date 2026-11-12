@@ -65,8 +65,7 @@
       ],
       "canonicalProviders": [
         "google"
-      ],
-      "contextWindowMode": "input"
+      ]
     },
     "deepseek": {
       "families": [
@@ -184,9 +183,6 @@
     }
   },
   "models": {
-    "gemini-4-argon": {
-      "contextWindowMode": "shared"
-    },
     "claude-fable-5": {
       "profile": "messages-adaptive"
     },
