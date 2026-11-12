@@ -7,7 +7,8 @@ const root=path.resolve(__dirname,'..');
 
 test('the VSIX includes runtime resources and excludes catalog maintenance and evidence',async()=>{
   const files=new Set((await listFiles({cwd:root,packageManager:PackageManager.None})).map(file=>file.replaceAll('\\','/')));
-  for(const file of ['dist/extension.js','dist/panel.js','dist/officialManager.js','resources/icon.png','resources/catalog/models.json','resources/catalog/rules.json','resources/catalog/migrations.json','resources/shared/model-policy.js','resources/shared/routing.js','resources/shared/i18n.js','resources/shared/messages.en.js'])assert.ok(files.has(file),file);
+  for(const file of ['dist/extension.js','dist/panel.js','dist/officialManager.js','resources/icon.png','resources/catalog/models.json','resources/catalog/rules.json','resources/catalog/compatibility.json','resources/shared/model-policy.js','resources/shared/routing.js','resources/shared/i18n.js','resources/shared/messages.en.js'])assert.ok(files.has(file),file);
+  assert.equal(files.has('resources/catalog/migrations.json'),false);
   for(const file of ['dist/core/modelCatalog.js','dist/stateStorage.js','resources/catalog/compatibility.json','THIRD_PARTY_NOTICES.txt'])assert.ok(files.has(file),file);
   const html=fs.readFileSync(path.join(root,'resources/webview/index.html'),'utf8');
   for(const match of html.matchAll(/\{\{resource:([^}]+)\}\}/g))assert.ok(files.has('resources/'+match[1]),match[1]);

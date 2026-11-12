@@ -10,10 +10,9 @@ const modelRules=require('../resources/catalog/rules.json');
 const vendorScript=fs.readFileSync(path.join(__dirname,'..','resources','shared','routing.js'),'utf8');
 const i18n=require('../resources/shared/i18n.js');
 i18n.setLocale('zh-CN');
-const contextPolicy=require('../resources/shared/model-policy.js');
 const database={
   schemaVersion:1,
-  defaults:{name:'',contextWindow:128000,maxOutputTokens:8192,toolCalling:true,vision:false,thinking:false,supportsReasoningEffort:[],source:'Panel test fixture',verifiedAt:null},
+  defaults:{name:'',contextWindow:128000,maxOutputTokens:8192,toolCalling:true,vision:false,thinking:false,supportsReasoningEffort:[]},
   models:{}
 };
 const htmlTemplate=fs.readFileSync(path.join(__dirname,'..','resources','webview','index.html'),'utf8');
@@ -21,17 +20,19 @@ const html=i18n.renderHtml(htmlTemplate);
 const script=fs.readFileSync(path.join(__dirname,'..','resources','webview','app.js'),'utf8');
 const css=fs.readFileSync(path.join(__dirname,'..','resources','webview','style.css'),'utf8');
 const model=id=>({id,name:'',discoveredName:'',overrides:{}});
-const provider=(id='gateway')=>({id,name:'Gateway',routingMode:'unified',unified:{apiType:'chatCompletions',url:'https://chat.example.com/v1'},endpoints:{responses:'https://responses.example.com/v1',chatCompletions:'https://chat.example.com/v1',messages:'https://messages.example.com/v1'},modelProtocols:{},enabled:true,zeroDataRetentionEnabled:false,models:[model('unknown-id'),model('another-id')]});
+const provider=(id='gateway')=>({id,name:'Gateway',routingMode:'unified',unified:{apiType:'chatCompletions',url:'https://chat.example.com/v1'},endpoints:{responses:'https://responses.example.com/v1',chatCompletions:'https://chat.example.com/v1',messages:'https://messages.example.com/v1'},modelProtocols:{},enabled:true,models:[model('unknown-id'),model('another-id')]});
 const splitProvider=(id='gateway')=>({...provider(id),routingMode:'split'});
+const explicitProtocols=ids=>Object.fromEntries(ids.map(id=>[id,vendors.recommendedProtocol(id)]));
 const inProtocol=(ui,apiType)=>ui.get('model-list').querySelector(`[data-protocol="${apiType}"]`).querySelectorAll('[data-model-id]').map(row=>row.dataset.modelId);
 const shownModels=ui=>ui.elements.get('model-list').querySelectorAll('[data-model-id]').map(row=>row.dataset.modelId);
 const shownGroups=ui=>ui.elements.get('model-list').querySelectorAll('[data-vendor]').map(group=>group.dataset.vendor);
-const pricing=(kind,thresholds=[],extra={})=>({kind,scope:'direct-api',thresholds,source:'https://pricing.example.com/models',checkedAt:null,note:'按服务端实际输入计数。',...extra});
-function pricingDatabase(policy,parameters={}){
-  const db=structuredClone(database);
-  db.models['gpt-ui']={...db.defaults,name:'Policy model',contextWindow:1000001,...parameters};
-  if(policy!==undefined)db.models['gpt-ui'].contextPricing=structuredClone(policy);
-  return db;
+function assertSaveToast(ui) {
+  const toast=ui.get('toast');
+  assert.equal(toast.hidden,false,'A successful save confirms completion');
+  assert.equal(toast.attributes.get('role'),'status');
+  assert.equal(toast.attributes.get('aria-live'),'polite');
+  assert.match(toast.className,/success-toast/);
+  assert.doesNotMatch(toast.className,/error-toast/);
 }
 
 async function webview(providers, modelDatabase = database, options = {}) {
@@ -42,7 +43,7 @@ async function webview(providers, modelDatabase = database, options = {}) {
   localeContext.ByokI18n.setLocale(options.language || 'zh-CN');
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'..','resources','shared','model-policy.js'),'utf8'),localeContext);
   let state={providers:structuredClone(providers.map(item=>({hasKey:false,...item}))),database:structuredClone(modelDatabase),modelRules:structuredClone(options.modelRules||modelRules),revision:0};
-  const elements=new Map(),listeners=new Map(),messages=[];
+  const elements=new Map(),listeners=new Map(),messages=[],deferredCloses=[];
   const descendants=item=>item.children.flatMap(child=>[child,...descendants(child)]);
   const dataKey=name=>name.replace(/^data-/,'').replace(/-([a-z])/g,(_match,char)=>char.toUpperCase());
   function matches(item,selector) {
@@ -77,7 +78,7 @@ async function webview(providers, modelDatabase = database, options = {}) {
       closest(selector){for(let item=this;item;item=item.parentElement)if(matches(item,selector))return item;return null;},
       contains(child){return descendants(this).includes(child);},
       focus(){document.activeElement=this;},select(){},
-      showModal(){this.open=true;},close(){this.open=false;this.dispatch('close',{});}
+      showModal(){this.open=true;},close(){this.open=false;if(options.deferClose)deferredCloses.push(()=>this.dispatch('close',{}));else this.dispatch('close',{});}
     };
     item.classList={toggle(name,enabled){const classes=new Set(item.className.split(/\s+/).filter(Boolean));if(enabled)classes.add(name);else classes.delete(name);item.className=[...classes].join(' ');}};
     return item;
@@ -85,6 +86,8 @@ async function webview(providers, modelDatabase = database, options = {}) {
   for(const match of html.matchAll(/<([a-z][\w-]*)\b[^>]*\bid="([^"]+)"[^>]*>/gi)){
     const item=element(match[1],match[2]);
     item.hidden=/\bhidden\b/.test(match[0]);
+    item.className=match[0].match(/\bclass="([^"]*)"/)?.[1]||'';
+    for(const [,name,value] of match[0].matchAll(/\s(data-[\w-]+)="([^"]*)"/g))item.dataset[dataKey(name)]=value;
     elements.set(match[2],item);
   }
   const allElements=()=>[...new Set([...elements.values()].flatMap(item=>[item,...descendants(item)]))];
@@ -106,22 +109,44 @@ async function webview(providers, modelDatabase = database, options = {}) {
           const hasKey=message.payload.clearKey?false:Boolean(message.payload.apiKey)||state.providers[index]?.hasKey===true;
           const saved={...validateProvider(message.payload.provider,state.database),hasKey};
           if(index<0)state.providers.push(saved);else state.providers[index]=saved;
-          state.revision++;data=state;
+          state.revision++;
+          if(options.afterSave)await options.afterSave(message);
+          data=state;
         }else if(message.command==='discoverModels'){
           if(options.discoveryError)throw new Error(options.discoveryError);
           data=options.discover?await options.discover(message):options.discovery||{models:[{id:'discovered-id',name:'Discovered Model'}]};
         }else if(message.command==='updateCatalog'){
+          if(options.beforeUpdate)await options.beforeUpdate(message);
           if(options.catalogError)throw new Error(options.catalogError);
           if(options.updatedCatalog)state.database=validateDatabase(options.updatedCatalog);
           state.catalog={source:'models.dev',updatedAt:'2026-11-09T00:00:00.000Z'};
           state.revision++;data=state;
-        }else if(message.command==='saveDatabase'){
-          state.database=validateDatabase(message.payload.database);state.revision++;data=state;
-        }else if(message.command==='importDatabase'){
-          if(options.importedDatabase){state.database=validateDatabase(options.importedDatabase);state.revision++;}data=state;
         }else if(message.command==='deleteProvider'){
           state.providers=state.providers.filter(item=>item.id!==message.payload.id);state.revision++;data=state;
-        }
+        }else if(message.command==='exportProviders'){
+          if(options.exportError)throw new Error(options.exportError);
+          if(options.exportCanceled)data={canceled:true};
+          else data={exported:message.payload.ids.length,target:message.payload.target};
+        }else if(message.command==='readImportSource'){
+          if(options.importSourceError)throw new Error(options.importSourceError);
+          if(options.importSourceCanceled)data={canceled:true};
+          else data={providers:structuredClone(options.importSource||[])};
+        }else if(message.command==='importProviders'){
+          if(options.importError)throw new Error(options.importError);
+          const importedIds=[];
+          for(const entry of message.payload.providers){
+            const {apiKey,...rest}=entry;
+            const valid=validateProvider(rest,state.database);
+            let index=state.providers.findIndex(item=>item.id===valid.id);
+            let targetId=valid.id;
+            if(index<0){index=state.providers.findIndex(item=>item.name===valid.name);if(index>=0)targetId=state.providers[index].id;}
+            const hasKey=Boolean(apiKey)||state.providers[index]?.hasKey===true;
+            const saved={...valid,id:targetId,hasKey};
+            if(index<0)state.providers.push(saved);else state.providers[index]=saved;
+            importedIds.push(targetId);
+          }
+          state.revision++;data={state,importedIds};
+        }else throw new Error(`Unsupported command: ${message.command}`);
         listeners.get('message')({data:{id:message.id,ok:true,data:data===undefined?undefined:structuredClone(data)}});
       }catch(error){listeners.get('message')({data:{id:message.id,ok:false,error:error.message}});}
     });
@@ -132,6 +157,7 @@ async function webview(providers, modelDatabase = database, options = {}) {
   assert.equal(elements.get('load-error').hidden,true,elements.get('load-error-message').textContent);
   return {
     elements,messages,flush,get state(){return structuredClone(state);},get:document.getElementById,
+    async flushCloseEvents(){for(const close of deferredCloses.splice(0))close();await flush();},
     async emit(id,type,fields={},target){const item=document.getElementById(id);Object.assign(item,fields);const event={target:target||item,preventDefault(){}};for(let current=item;current;current=current.parentElement)current.dispatch(type,event);await flush();},
     async select(id){await this.emit('provider-list','click',{}, {closest:()=>({dataset:{providerId:id}})});},
     async mode(mode){await this.emit(`routing-${mode}`,'change',{checked:true});},
@@ -144,7 +170,7 @@ async function webview(providers, modelDatabase = database, options = {}) {
       assert.equal(saves.length,before+1,this.get('provider-error').textContent);
       assert.equal(this.get('provider-error').hidden,true,this.get('provider-error').textContent);
       assert.equal(this.get('save-provider').disabled,false);
-      assert.equal(this.get('toast').hidden,true,'Successful actions must stay quiet');
+      assertSaveToast(this);
       const saved=saves.at(-1).payload.provider;
       const acknowledged=this.state.providers.find(provider=>provider.id===saved.id);
       assert.deepEqual(saved,validateProvider(acknowledged,this.state.database));
@@ -152,11 +178,6 @@ async function webview(providers, modelDatabase = database, options = {}) {
     },
     get activeElement(){return document.activeElement;},
     async editModel(id){await this.emit('model-list','click',{},document.getElementById('model-list').querySelectorAll('[data-model-id]').find(row=>row.dataset.modelId===id).querySelector('.model-open'));},
-    async editRecord(id){
-      const record=document.getElementById('database-list').querySelectorAll('[data-database-action]').find(item=>item.dataset.entryId===id&&item.dataset.databaseAction==='edit');
-      assert.ok(record,`Missing catalog entry: ${id}`);
-      await this.emit('database-list','click',{},record);
-    },
     async pushState(next){state=structuredClone(next);listeners.get('message')({data:{event:'state',data:structuredClone(next)}});await flush();}
   };
 }
@@ -164,7 +185,7 @@ test('exported provider shape strips secret and unexpected incoming fields',()=>
   const result=validateProvider({...provider(),zeroDataRetentionEnabled:true,zdr:false,apiKey:'DO-NOT-EXPORT',hasKey:true,models:[{id:'unknown-id',name:'Private Model',overrides:{apiKey:'DO-NOT-EXPORT'},zdr:false}]},database);
   assert.ok(!JSON.stringify(result).includes('DO-NOT-EXPORT'));
   assert.equal(Object.hasOwn(result,'hasKey'),false);
-  assert.equal(result.zeroDataRetentionEnabled,true);
+  assert.equal(Object.hasOwn(result,'zeroDataRetentionEnabled'),false);
   assert.equal(Object.hasOwn(result,'zdr'),false);
   assert.equal(Object.hasOwn(result.models[0],'zdr'),false);
 });
@@ -177,7 +198,8 @@ test('compact main panel removes help, duplicate headings and secondary footer a
   assert.doesNotMatch(main,/page-footnote|provider-header|class="source-note|密钥由 VS Code|管理自定义模型供应商/);
   assert.match(main,/class="field compact-field"/);
   assert.match(main,/class="provider-options"/);
-  assert.match(main,/id="open-database" class="database-entry"/);
+  assert.match(main,/id="update-catalog" class="catalog-action"/);
+  assert.doesNotMatch(html,/id="(?:database-|open-database|provider-zdr)|context-pricing/);
   assert.match(main,/id="request-status" class="visually-hidden" role="status"/);
   assert.match(main,/id="model-list" class="model-list" role="region" aria-labelledby="models-heading" tabindex="-1"/);
   assert.doesNotMatch(script,/clearKey|refreshStatus|\btoast\(/);
@@ -236,7 +258,8 @@ test('save always submits unchanged suppliers and preserves saved keys without r
     assert.equal(ui.get('save-provider').disabled,false,'Save remains clickable with no edits');
     await ui.emit('provider-form','submit');
     assert.equal(ui.get('save-provider').disabled,false,'Save becomes available again after success');
-    assert.equal(ui.get('toast').hidden,true);
+    assertSaveToast(ui);
+    assert.equal(ui.get('toast').textContent,'供应商已保存。');
     assert.equal(ui.get('request-status').textContent,'');
     assert.equal(ui.get('api-key').value,'');
     assert.equal(ui.get('api-key').placeholder,'留空保持已存密钥');
@@ -273,19 +296,61 @@ test('save is temporarily blocked only while a request is outstanding and is ret
   assert.equal(ui.get('save-provider').disabled,true);
   assert.equal(ui.get('request-status').textContent,'正在保存供应商…');
   assert.equal(ui.get('studio').attributes.get('aria-busy'),'true');
+  assert.equal(ui.get('toast').hidden,true);
   await ui.emit('provider-form','submit');assert.equal(ui.messages.filter(m=>m.command==='saveProvider').length,1);
   release();await ui.flush();assert.equal(ui.get('save-provider').disabled,false);
   assert.equal(ui.get('request-status').textContent,'');
   assert.equal(ui.get('studio').attributes.get('aria-busy'),'false');
+  assertSaveToast(ui);
   rejectOnce=true;await ui.emit('provider-form','submit');
   assert.equal(ui.get('provider-error').hidden,false);assert.equal(ui.get('save-provider').disabled,false);
   assert.equal(ui.get('toast').hidden,true);
   assert.equal(ui.get('request-status').textContent,'');
   await ui.emit('provider-form','submit');assert.equal(ui.get('provider-error').hidden,true);
-  assert.equal(ui.get('toast').hidden,true);
+  assertSaveToast(ui);
   assert.equal(ui.messages.filter(m=>m.command==='saveProvider').length,3);
 });
-test('supplier URLs and ZDR stay outside the advanced model editor',()=>{
+test('save confirmation waits for native sync after interim state updates and stays hidden on sync failure',async()=>{
+  for(const fail of [false,true]){
+    let finishSync;
+    const nativeSync=new Promise((resolve,reject)=>{finishSync=()=>fail?reject(Error('native sync failed')):resolve();});
+    const ui=await webview([provider()],database,{afterSave:()=>nativeSync});
+    await ui.emit('provider-name','input',{value:'Saved draft'});
+    await ui.emit('provider-form','submit');
+    assert.equal(ui.state.providers[0].name,'Saved draft','Local state can be saved before native sync completes');
+    await ui.pushState(ui.state);
+    assert.equal(ui.get('toast').hidden,true,'An interim state event must not announce success');
+    assert.equal(ui.get('save-provider').disabled,true);
+    finishSync();await ui.flush();
+    assert.equal(ui.get('save-provider').disabled,false);
+    if(fail){
+      assert.equal(ui.get('toast').hidden,true);
+      assert.equal(ui.get('provider-error').hidden,false);
+      assert.match(ui.get('provider-error').textContent,/native sync failed/);
+      assert.match(css,/\.inline-error, \.dialog-error \{ color: var\(--error\)/);
+    }else{
+      assertSaveToast(ui);
+      assert.equal(ui.get('provider-error').hidden,true);
+    }
+  }
+});
+test('save success uses green polite status while other errors retain red alerts',async()=>{
+  const ui=await webview([provider()],database,{language:'en',catalogError:'catalog unavailable'});
+  await ui.saved();
+  assert.equal(ui.get('toast').textContent,'Provider saved.');
+  await ui.emit('update-catalog','click');
+  const toast=ui.get('toast');
+  assert.equal(toast.hidden,false);
+  assert.equal(toast.attributes.get('role'),'alert');
+  assert.equal(toast.attributes.get('aria-live'),'assertive');
+  assert.match(toast.className,/error-toast/);
+  assert.doesNotMatch(toast.className,/success-toast/);
+  assert.match(toast.textContent,/catalog unavailable/);
+  assert.match(css,/\.toast\.error-toast \{ border-color: var\(--error\); color: var\(--error\)/);
+  assert.match(css,/\.toast\.success-toast \{ border-color: var\(--good\); color: var\(--good\)/);
+  await ui.saved();
+});
+test('supplier URLs stay outside the model editor and retired controls are absent',()=>{
   const form=html.match(/<form id="provider-form"[\s\S]*?<\/form>/)[0];
   const editor=html.match(/<form id="model-form"[\s\S]*?<\/form>/)[0];
   for(const id of ['routing-unified','routing-split','unified-api-type','unified-url'])assert.match(form,new RegExp(`id="${id}"`));
@@ -293,76 +358,13 @@ test('supplier URLs and ZDR stay outside the advanced model editor',()=>{
   assert.match(script,/input\.dataset\.endpoint = apiType/);
   assert.doesNotMatch(script,/data-vendor-protocol|vendor-protocol-/);
   assert.doesNotMatch(editor,/id="context-size"/);
-  assert.match(editor,/id="context-pricing-details"/);
-  assert.doesNotMatch(editor,/id="database-pricing-/);
+  assert.doesNotMatch(html,/context-pricing|database-pricing/);
   assert.match(editor,/id="max-input" type="number"/);
-  assert.match(html,/id="database-input" type="number"/);
-  assert.ok(form.indexOf('id="provider-zdr-enabled"')<form.indexOf('class="model-box"'));
-  assert.match(form,/<input id="provider-zdr-enabled" type="checkbox">/);
-  assert.equal((html.match(/id="provider-zdr-enabled"/g)||[]).length,1);
-  assert.doesNotMatch(editor,/zdr|ZDR|零数据保留/);
-  assert.doesNotMatch(script,/\$\('zdr-enabled'\)/);
+  assert.doesNotMatch(html,/zdr|ZDR|零数据保留/);
+  assert.doesNotMatch(script,/zeroDataRetentionEnabled|statefulResponses|\bzdr\b/);
   assert.ok(editor.indexOf('id="model-name"')<editor.indexOf('<details'));
   assert.match(editor,/<details[\s\S]*<input id="model-id"[^>]*list="model-id-options"/);
   assert.doesNotMatch(editor,/<select[^>]*id="model-id"/);
-});
-test('webview migrates legacy supplier flags before editing or saving',async()=>{
-  const cases=[
-    {flags:[true,true],expected:true},
-    {flags:[false,false],expected:false},
-    {flags:[true,false],expected:false},
-    {flags:[true,undefined],expected:false},
-    {flags:[],expected:false},
-    {flags:[false,false],legacy:true,expected:true},
-    {flags:[true,true],legacy:false,expected:false},
-    {flags:[true,true],legacy:true,current:false,expected:false}
-  ];
-  for(const {flags,legacy,current,expected} of cases){
-    const input={...provider(),enabled:flags.length>0,zeroDataRetentionEnabled:current,zdr:legacy,models:flags.map((zdr,index)=>({...model(`unknown-${index}`),...(zdr===undefined?{}:{zdr})}))};
-    const ui=await webview([input]);
-    assert.equal(ui.elements.get('provider-zdr-enabled').checked,expected);
-    assert.equal(ui.get('save-provider').disabled,false);
-    const exported=await ui.saved();
-    assert.equal(exported.zeroDataRetentionEnabled,expected);
-    assert.equal(Object.hasOwn(exported,'zdr'),false);
-    assert.ok(exported.models.every(item=>!Object.hasOwn(item,'zdr')));
-    assert.deepEqual(exported,validateProvider(input,database));
-  }
-});
-test('supplier checkbox survives drafts, model discovery, saving and reloading',async()=>{
-  const ui=await webview([provider('first'),{...provider('second'),zeroDataRetentionEnabled:true}]);
-  assert.equal(ui.elements.get('provider-zdr-enabled').checked,false);
-  await ui.emit('provider-zdr-enabled','change',{checked:true});
-  assert.equal(ui.get('save-provider').disabled,false);
-  assert.equal(ui.elements.get('save-provider').disabled,false);
-  await ui.select('second');
-  assert.equal(ui.elements.get('provider-zdr-enabled').checked,true);
-  await ui.emit('provider-zdr-enabled','change',{checked:false});
-  await ui.select('first');
-  assert.equal(ui.elements.get('provider-zdr-enabled').checked,true);
-  await ui.emit('refresh-models','click');
-  assert.equal(ui.messages.find(item=>item.command==='discoverModels').payload.provider.zeroDataRetentionEnabled,true);
-  await ui.emit('provider-form','submit');
-  assert.equal(ui.get('save-provider').disabled,false);
-  const saved=ui.state.providers.find(item=>item.id==='first');
-  assert.equal(saved.zeroDataRetentionEnabled,true);
-  assert.equal(saved.models.length,1);
-  assert.ok(saved.models.every(item=>!Object.hasOwn(item,'zdr')));
-  assert.equal(saved.models.find(item=>item.id==='discovered-id').name,'');
-  await ui.select('second');
-  assert.equal(ui.elements.get('provider-zdr-enabled').checked,false);
-  assert.equal(ui.get('save-provider').disabled,false);
-  await ui.emit('api-key','input',{value:'DO-NOT-EXPORT'});
-  const exported=await ui.saved();
-  assert.equal(exported.zeroDataRetentionEnabled,false);
-  assert.ok(!JSON.stringify(exported).includes('DO-NOT-EXPORT'));
-  await ui.emit('provider-form','submit');
-  const reloaded=await webview(ui.state.providers);
-  assert.equal(reloaded.elements.get('provider-zdr-enabled').checked,true);
-  await reloaded.select('second');
-  assert.equal(reloaded.elements.get('provider-zdr-enabled').checked,false);
-  await reloaded.emit('add-provider','click');
-  assert.equal(reloaded.elements.get('provider-zdr-enabled').checked,false);
 });
 test('model insertion and discovery order survive edits, additions, saving and reloading',async()=>{
   const ids=['z-model','a-model','m-model'];
@@ -394,7 +396,8 @@ test('unified models retain provider order across manufacturers without group he
   assert.equal(ui.get('model-list').querySelectorAll('h4').length,0);
   assert.equal(ui.get('routing-unified').checked,true);
   assert.equal(ui.get('model-list').querySelectorAll('select').length,0);
-  assert.equal(ui.get('model-list').querySelectorAll('input').length,0);
+  assert.equal(ui.get('model-list').querySelectorAll('[data-select-model]').length,10);
+  assert.equal(ui.get('unified-model-selection').hidden,false);
   await ui.emit('unified-api-type','change',{value:'messages'});
   await ui.emit('unified-url','input',{value:'  https://new.example.com/v1  '});
   assert.equal(ui.get('confirm-dialog').open,false);
@@ -404,9 +407,7 @@ test('unified models retain provider order across manufacturers without group he
   assert.equal(saved.routingMode,'unified');
   assert.equal(saved.unified.apiType,'messages');
   assert.equal(saved.unified.url,'https://new.example.com/v1');
-  assert.equal(saved.modelProtocols['gpt-ui-new'],'responses');
-  assert.equal(saved.modelProtocols['claude-ui'],'messages');
-  assert.equal(saved.modelProtocols['grok-ui'],'chatCompletions');
+  assert.deepEqual(saved.modelProtocols,explicitProtocols(ids.slice(0,10)));
   for(const key of ['apiType','url','vendorProtocols','manufacturerProtocols'])assert.equal(Object.hasOwn(saved,key),false);
   const restored=await webview([saved],db);
   assert.equal(restored.get('unified-api-type').value,'messages');
@@ -591,199 +592,6 @@ test('preset input limits survive unrelated edits and blank model input derives 
   await ui.emit('reset-model','click');
   assert.equal(ui.elements.get('max-input').value,'900');
 });
-test('catalog input and release date survive unrelated edits, import, export and save',async()=>{
-  const imported=structuredClone(database);
-  imported.models['gpt-ui']={...imported.defaults,name:'Input preset',contextWindow:1000,maxInputTokens:800,maxOutputTokens:1000,releaseDate:'2026-01-01'};
-  const ui=await webview([provider()],database,{importedDatabase:imported});
-  await ui.emit('open-database','click');
-  await ui.emit('database-import','click');
-  assert.equal(ui.elements.get('confirm-dialog').open,true);
-  await ui.emit('confirm-action','click');
-  assert.equal(ui.elements.get('database-error').hidden,true,ui.elements.get('database-error').textContent);
-  assert.deepEqual(ui.state.database.models['gpt-ui'],imported.models['gpt-ui']);
-  await ui.editRecord('gpt-ui');
-  assert.equal(ui.elements.get('database-input').value,'800');
-  await ui.emit('database-name','input',{value:'Changed name only'});
-  await ui.emit('database-form','submit');
-  assert.equal(ui.elements.get('database-editor').open,false);
-  await ui.emit('database-export','click');
-  const exported=ui.messages.find(message=>message.command==='exportDatabase').payload.database.models['gpt-ui'];
-  assert.equal(exported.maxInputTokens,800);
-  assert.equal(exported.releaseDate,'2026-01-01');
-  await ui.emit('database-save','click');
-  assert.deepEqual(ui.state.database.models['gpt-ui'],exported);
-  await ui.emit('open-database','click');
-  await ui.editRecord('gpt-ui');
-  await ui.emit('database-input','input',{value:''});
-  await ui.emit('database-form','submit');
-  assert.equal(ui.elements.get('database-editor').open,true);
-  await ui.emit('database-output','input',{value:'200'});
-  await ui.emit('database-form','submit');
-  await ui.emit('database-save','click');
-  assert.equal(Object.hasOwn(ui.state.database.models['gpt-ui'],'maxInputTokens'),false);
-  assert.equal(ui.state.database.models['gpt-ui'].releaseDate,'2026-01-01');
-});
-test('catalog unrelated edits and renames retain context pricing and unknown optional metadata in the outgoing record',async()=>{
-  const policy=pricing('tiered',[128000,200000],{checkedAt:'2026-10-01',futurePricingField:{retain:true}});
-  const controls={note:'Declared protocol settings',protocols:{messages:{budgetPath:['thinking','budget_tokens'],budget:{min:1024,max:8192,default:2048},parameters:{thinking:{type:'enabled'}},toolCallMetadataPaths:[['opaque']]}}};
-  const db=pricingDatabase(policy,{defaultOutputTokens:4000,reasoningControls:controls,futureRecordField:{retain:['all','optional','metadata']}});
-  db.defaults.futureDefaultField={retain:true};
-  const ui=await webview([provider()],db);
-  await ui.emit('open-database','click');
-  await ui.editRecord('gpt-ui');
-  assert.equal(ui.get('database-pricing-kind').value,'tiered');
-  assert.equal(ui.get('database-pricing-thresholds').value,'128000, 200000');
-  await ui.emit('database-name','input',{value:'Updated name'});
-  await ui.emit('database-id','input',{value:'renamed-model'});
-  await ui.emit('database-form','submit');
-  assert.equal(ui.get('database-editor').open,false);
-  await ui.editRecord();
-  await ui.emit('database-name','input',{value:'Updated defaults'});
-  await ui.emit('database-form','submit');
-  await ui.emit('database-export','click');
-  const exported=ui.messages.filter(message=>message.command==='exportDatabase').at(-1).payload.database;
-  assert.equal(Object.hasOwn(exported.models,'gpt-ui'),false);
-  assert.deepEqual(exported.models['renamed-model'].contextPricing,policy);
-  assert.deepEqual(exported.models['renamed-model'].reasoningControls,controls);
-  assert.equal(exported.models['renamed-model'].defaultOutputTokens,4000);
-  assert.deepEqual(exported.models['renamed-model'].futureRecordField,db.models['gpt-ui'].futureRecordField);
-  assert.deepEqual(exported.defaults.futureDefaultField,db.defaults.futureDefaultField);
-  await ui.emit('database-save','click');
-  const sent=ui.messages.filter(message=>message.command==='saveDatabase').at(-1).payload.database;
-  assert.deepEqual(sent,exported);
-  assert.deepEqual(ui.state.database,validateDatabase(exported));
-});
-test('legacy records keep absent pricing while new records explicitly default to unknown without a checked date',async()=>{
-  const db=pricingDatabase(undefined);
-  const ui=await webview([provider()],db);
-  await ui.emit('open-database','click');
-  await ui.editRecord('gpt-ui');
-  assert.equal(ui.get('database-pricing-kind').value,'');
-  for(const field of ['scope','thresholds','source','note','checked'])assert.equal(ui.get(`database-pricing-${field}`).disabled,true);
-  await ui.emit('database-name','input',{value:'Legacy renamed'});
-  await ui.emit('database-form','submit');
-  await ui.emit('database-add','click');
-  assert.equal(ui.get('database-pricing-kind').value,'unknown');
-  assert.equal(ui.get('database-pricing-thresholds').disabled,true);
-  assert.equal(ui.get('database-pricing-source').disabled,false);
-  assert.equal(ui.get('database-pricing-checked').value,'');
-  await ui.emit('database-name','input',{value:'New model'});
-  await ui.emit('database-id','input',{value:'new-model'});
-  await ui.emit('database-form','submit');
-  await ui.emit('database-save','click');
-  assert.equal(Object.hasOwn(ui.state.database.models['gpt-ui'],'contextPricing'),false);
-  assert.deepEqual(ui.state.database.models['new-model'].contextPricing,{kind:'unknown',scope:'direct-api',thresholds:[],source:'',note:'',checkedAt:null});
-});
-test('catalog pricing controls parse multiple ceilings, preserve deliberate dates and clear optional policies',async()=>{
-  const ui=await webview([provider()],pricingDatabase(undefined));
-  await ui.emit('open-database','click');
-  await ui.editRecord('gpt-ui');
-  await ui.emit('database-pricing-kind','change',{value:'tiered'});
-  assert.equal(ui.get('database-pricing-thresholds').disabled,false);
-  assert.equal(ui.get('database-pricing-source').required,true);
-  await ui.emit('database-pricing-thresholds','input',{value:' 600000, 128000，200000 '});
-  await ui.emit('database-pricing-source','input',{value:'https://pricing.example.com/verified'});
-  await ui.emit('database-pricing-scope','change',{value:'copilot'});
-  await ui.emit('database-pricing-note','input',{value:'人工维护渠道规则'});
-  assert.equal(ui.get('database-pricing-checked').value,'');
-  await ui.emit('database-form','submit');
-  await ui.emit('database-export','click');
-  let policy=ui.messages.filter(message=>message.command==='exportDatabase').at(-1).payload.database.models['gpt-ui'].contextPricing;
-  assert.deepEqual(policy,{kind:'tiered',scope:'copilot',thresholds:[128000,200000,600000],source:'https://pricing.example.com/verified',note:'人工维护渠道规则',checkedAt:null});
-  await ui.editRecord('gpt-ui');
-  await ui.emit('database-pricing-kind','change',{value:'flat'});
-  assert.equal(ui.get('database-pricing-thresholds').disabled,true);
-  await ui.emit('database-pricing-scope','change',{value:'custom'});
-  await ui.emit('database-pricing-checked','input',{value:'2026-10-02'});
-  await ui.emit('database-form','submit');
-  await ui.emit('database-export','click');
-  policy=ui.messages.filter(message=>message.command==='exportDatabase').at(-1).payload.database.models['gpt-ui'].contextPricing;
-  assert.equal(policy.kind,'flat');
-  assert.equal(policy.scope,'custom');
-  assert.equal(policy.checkedAt,'2026-10-02');
-  assert.deepEqual(policy.thresholds,[]);
-  await ui.editRecord('gpt-ui');
-  await ui.emit('database-pricing-kind','change',{value:'unknown'});
-  assert.equal(ui.get('database-pricing-source').required,false);
-  await ui.emit('database-pricing-checked','input',{value:''});
-  await ui.emit('database-form','submit');
-  await ui.emit('database-export','click');
-  policy=ui.messages.filter(message=>message.command==='exportDatabase').at(-1).payload.database.models['gpt-ui'].contextPricing;
-  assert.equal(policy.kind,'unknown');
-  assert.deepEqual(policy.thresholds,[]);
-  assert.equal(policy.checkedAt,null);
-  await ui.editRecord('gpt-ui');
-  await ui.emit('database-pricing-kind','change',{value:''});
-  await ui.emit('database-form','submit');
-  await ui.emit('database-save','click');
-  assert.equal(Object.hasOwn(ui.state.database.models['gpt-ui'],'contextPricing'),false);
-});
-test('catalog pricing rejects invalid CSV, kinds, scopes, sources, notes and checked dates before applying a draft',async()=>{
-  const cases=[
-    ...['','0','-1','1.5','100000001','9007199254740993','1,1','1,','1e3','1,2,3,4,5,6,7,8,9'].map(value=>['thresholds',value]),
-    ['kind','unrecognized'],['scope','unrecognized'],['source',''],['source','x'.repeat(4001)],['note','x'.repeat(4001)],['checked','2026-02-30']
-  ];
-  for(const [field,value] of cases){
-    const ui=await webview([provider()],pricingDatabase(pricing('tiered',[200000])));
-    await ui.emit('open-database','click');
-    await ui.editRecord('gpt-ui');
-    await ui.emit(`database-pricing-${field}`,'change',{value});
-    await ui.emit('database-form','submit');
-    assert.equal(ui.get('database-editor').open,true,`${field}: ${value}`);
-    assert.equal(ui.get('database-editor-error').hidden,false);
-    assert.equal(ui.get(`database-pricing-${field}`).attributes.get('aria-invalid'),'true');
-  }
-  const ui=await webview([provider()],pricingDatabase(pricing('unknown',[],{source:''})));
-  await ui.emit('open-database','click');
-  await ui.editRecord('gpt-ui');
-  await ui.emit('database-pricing-kind','change',{value:'flat'});
-  await ui.emit('database-form','submit');
-  assert.equal(ui.get('database-editor').open,true);
-  assert.equal(ui.get('database-pricing-source').attributes.get('aria-invalid'),'true');
-});
-test('catalog pricing imports and exports use server validation and preserve the declared channel and date',async()=>{
-  for(const policy of [pricing('tiered',[600000,128000],{scope:'copilot',checkedAt:'2026-10-03'}),pricing('flat',[],{scope:'custom'}),pricing('unknown',[],{source:'',note:''})]){
-    const imported=pricingDatabase(policy);
-    const ui=await webview([provider()],database,{importedDatabase:imported});
-    await ui.emit('open-database','click');
-    await ui.emit('database-import','click');
-    await ui.emit('confirm-action','click');
-    assert.equal(ui.get('database-error').hidden,true,ui.get('database-error').textContent);
-    assert.deepEqual(ui.state.database,validateDatabase(imported));
-    await ui.emit('database-export','click');
-    const exported=ui.messages.filter(message=>message.command==='exportDatabase').at(-1).payload.database;
-    assert.deepEqual(exported,validateDatabase(imported));
-    assert.deepEqual(validateDatabase(JSON.parse(JSON.stringify(exported))),exported);
-  }
-});
-test('invalid pricing cannot be imported, exported or saved and failed import preserves the existing draft',async()=>{
-  const invalid=[
-    pricing('unexpected'),pricing('tiered',[]),pricing('flat',[128000]),pricing('unknown',[128000]),
-    pricing('tiered',[128000,128000]),pricing('tiered',[0]),pricing('tiered',[1.5]),pricing('tiered',[100000001]),
-    pricing('tiered',[1,2,3,4,5,6,7,8,9]),pricing('flat',[],{source:''}),pricing('unknown',[],{scope:'bad'}),
-    pricing('unknown',[],{checkedAt:'2026-02-30'})
-  ];
-  for(const policy of invalid){
-    const malformed=pricingDatabase(policy);
-    const ui=await webview([provider()],database,{importedDatabase:malformed});
-    await ui.emit('open-database','click');
-    await ui.editRecord();
-    await ui.emit('database-name','input',{value:'Unsaved defaults'});
-    await ui.emit('database-form','submit');
-    await ui.emit('database-import','click');
-    await ui.emit('confirm-action','click');
-    assert.equal(ui.get('database-error').hidden,false);
-    assert.deepEqual(ui.state.database,database);
-    await ui.emit('database-export','click');
-    assert.equal(ui.messages.filter(message=>message.command==='exportDatabase').at(-1).payload.database.defaults.name,'Unsaved defaults');
-    const invalidUi=await webview([provider()],malformed);
-    await invalidUi.emit('open-database','click');
-    await invalidUi.emit('database-export','click');
-    assert.equal(invalidUi.get('database-error').hidden,false);
-    await invalidUi.emit('database-save','click');
-    assert.equal(invalidUi.messages.some(message=>['exportDatabase','saveDatabase'].includes(message.command)),false);
-  }
-});
 test('state pushes preserve dirty routing, key input and the open model editor',async()=>{
   const ui=await webview([{...splitProvider(),hasKey:true,models:[model('gpt-ui')]}]);
   await ui.emit('responses-url','input',{value:'https://draft.example.com/v1'});
@@ -843,7 +651,7 @@ test('fifty models share one viewport and repeated mode changes do not duplicate
   await ui.emit('unified-url','change',{value:'https://changed.example.com/v1'});
   assert.equal((await ui.saved()).unified.url,'https://changed.example.com/v1');
 });
-test('split columns show every chat model once with recommended assignments in provider order',async()=>{
+test('split columns group models by family in provider order with no provider protocol selector',async()=>{
   const ids=['gpt-old','claude-one','gpt-new','custom-new','gemini-one','gpt-undated','gpt-image-2','kling-v3'];
   const ui=await webview([{...splitProvider(),models:ids.map(model)}]);
   assert.deepEqual(ui.get('model-list').querySelectorAll('[data-protocol]').map(column=>column.dataset.protocol),vendors.apiTypes);
@@ -853,6 +661,9 @@ test('split columns show every chat model once with recommended assignments in p
   assert.equal(new Set(shownModels(ui)).size,6);
   assert.deepEqual(shownGroups(ui),[]);
   assert.equal(ui.get('unified-endpoint').hidden,true);
+  assert.match(html,/<div id="unified-endpoint"[^>]*>\s*<div[^>]*><label for="unified-api-type">/);
+  assert.doesNotMatch(html,/供应商默认协议|恢复继承|继承供应商默认/);
+  assert.equal(ui.get('model-list').querySelectorAll('.protocol-inheritance').length,0);
   assert.equal(ui.get('model-selection').hidden,true);
   assert.equal(ui.get('model-total').textContent,'6');
   for(const apiType of vendors.apiTypes){
@@ -870,7 +681,7 @@ test('split columns show every chat model once with recommended assignments in p
 });
 test('checkboxes select independently of model editing and transfers preserve settings and endpoints',async()=>{
   const custom={...model('gpt-one'),name:'My model',overrides:{vision:true}};
-  const ui=await webview([{...splitProvider(),models:[custom,model('gpt-two'),model('claude-one')]}]);
+  const ui=await webview([{...splitProvider(),modelProtocols:explicitProtocols(['gpt-one','gpt-two','claude-one']),models:[custom,model('gpt-two'),model('claude-one')]}]);
   const before=await ui.saved();
   const checkbox=ui.get('model-list').querySelector('[data-select-model="gpt-one"]');
   await ui.emit('model-list','click',{},checkbox);
@@ -909,10 +720,10 @@ test('checkboxes select independently of model editing and transfers preserve se
 });
 test('one destination moves selected IDs across sources, skips resident models and preserves order and focus',async()=>{
   const models=['custom-selected','gpt-stay','claude-selected','gpt-selected','custom-stay'].map(id=>({...model(id),name:`Name ${id}`,overrides:{maxOutputTokens:16000,defaultOutputTokens:4000,thinking:true,supportsReasoningEffort:['low','high']},reasoningEffort:'high'}));
-  const ui=await webview([{...splitProvider(),models}]);
+  const ui=await webview([{...splitProvider(),models,modelProtocols:explicitProtocols(models.map(model=>model.id))}]);
   for(const id of ['gpt-selected','claude-selected','custom-selected'])await ui.choose(id);
   assert.equal(ui.get('model-selection-count').textContent,'已选 3');
-  assert.match(ui.get('move-to-messages').attributes.get('aria-label'),/2.*Chat Completions 1.*Messages/);
+  assert.match(ui.get('move-to-messages').attributes.get('aria-label'),/2.*Messages/);
   assert.equal(ui.get('move-to-messages').querySelector('span').textContent,'移到这里 · 2');
   await ui.move('messages');
   assert.deepEqual(inProtocol(ui,'messages'),['custom-selected','claude-selected','gpt-selected']);
@@ -939,7 +750,8 @@ test('one destination moves selected IDs across sources, skips resident models a
   assert.equal(saved.modelProtocols['custom-stay'],'chatCompletions');
 });
 test('column select-all stays scoped and explicit clearing restores focus without changing routes',async()=>{
-  const ui=await webview([{...splitProvider(),models:['gpt-one','gpt-two','claude-one','custom-one'].map(model)}]);
+  const ids=['gpt-one','gpt-two','claude-one','custom-one'];
+  const ui=await webview([{...splitProvider(),models:ids.map(model),modelProtocols:explicitProtocols(ids)}]);
   await ui.choose('claude-one');
   await ui.choose('gpt-one');
   assert.equal(ui.get('select-all-responses').indeterminate,true);
@@ -958,6 +770,129 @@ test('column select-all stays scoped and explicit clearing restores focus withou
   assert.equal(saved.modelProtocols['gpt-one'],'responses');
   assert.equal(saved.modelProtocols['claude-one'],'messages');
 });
+test('unified selection supports indeterminate select-all, clearing and focus without transfer controls',async()=>{
+  const input={...provider(),modelProtocols:{'unknown-id':'messages','another-id':'responses'}};
+  const ui=await webview([input]);
+  const checkbox=ui.get('model-list').querySelector('[data-select-model="unknown-id"]');
+  await ui.emit('model-list','click',{},checkbox);
+  await ui.choose('unknown-id');
+  assert.equal(ui.get('model-dialog').open,false);
+  assert.equal(ui.get('model-selection-count').textContent,'已选 1');
+  assert.equal(ui.get('select-all-unified').indeterminate,true);
+  assert.equal(ui.get('select-all-unified').checked,false);
+  assert.equal(ui.get('model-selection-target').hidden,true);
+  assert.equal(ui.get('model-list').querySelectorAll('[data-move-to]').length,0);
+  await ui.emit('select-all-unified','change',{checked:true});
+  assert.equal(ui.get('model-selection-count').textContent,'已选 2');
+  assert.equal(ui.get('select-all-unified').checked,true);
+  assert.equal(ui.get('select-all-unified').indeterminate,false);
+  await ui.emit('select-all-unified','change',{checked:false});
+  assert.equal(ui.get('model-selection').hidden,true);
+  assert.equal(ui.get('delete-selected-models').disabled,true);
+  await ui.choose('unknown-id');
+  await ui.emit('clear-model-selection','click');
+  assert.equal(ui.activeElement,ui.get('model-scroll'));
+  assert.equal(ui.get('model-selection-status').textContent,'已选 0 个模型');
+  assert.equal(ui.get('select-all-unified').indeterminate,false);
+  assert.equal(ui.get('model-list').querySelectorAll('input:checked').length,0);
+  assert.deepEqual((await ui.saved()).modelProtocols,input.modelProtocols);
+});
+for(const mode of ['unified','split']){
+  test(`${mode} batch deletion confirms its count, supports cancellation and changes only selected draft models`,async()=>{
+    const kept={...model('custom-keep'),name:'My model',overrides:{thinking:true,supportsReasoningEffort:['high'],maxOutputTokens:16000},reasoningEffort:'high'};
+    const input={...provider(),routingMode:mode,models:[kept,model('gpt-remove'),model('claude-remove'),model('last-keep')],modelProtocols:{'custom-keep':'messages','gpt-remove':'chatCompletions','claude-remove':'responses','last-keep':'messages'}};
+    const ui=await webview([input]);
+    await ui.emit('api-key','input',{value:'KEEP-DRAFT-KEY'});
+    await ui.choose('gpt-remove');
+    await ui.choose('claude-remove');
+    assert.equal(ui.get('model-selection-target').hidden,mode==='unified');
+    const beforeModels=shownModels(ui);
+    const beforeState=ui.state;
+    ui.get('delete-selected-models').focus();
+    await ui.emit('delete-selected-models','click');
+    assert.equal(ui.get('confirm-dialog').open,true);
+    assert.match(ui.get('confirm-message').textContent,/2 个模型.*保存供应商后生效/);
+    assert.deepEqual(shownModels(ui),beforeModels);
+    await ui.emit('confirm-cancel','click');
+    assert.equal(ui.get('confirm-dialog').open,false);
+    assert.equal(ui.activeElement,ui.get('delete-selected-models'));
+    assert.equal(ui.get('model-selection-count').textContent,'已选 2');
+    assert.deepEqual(shownModels(ui),beforeModels);
+    await ui.emit('delete-selected-models','click');
+    await ui.emit('confirm-action','click');
+    assert.deepEqual(shownModels(ui),['custom-keep','last-keep']);
+    assert.equal(ui.get('model-total').textContent,'2');
+    assert.equal(ui.get('model-selection').hidden,true);
+    assert.equal(ui.get('delete-selected-models').disabled,true);
+    assert.equal(ui.get('model-list').querySelectorAll('input:checked').length,0);
+    assert.equal(ui.activeElement,ui.get('model-scroll'));
+    assert.equal(ui.get('api-key').value,'KEEP-DRAFT-KEY');
+    assert.deepEqual(ui.state,beforeState);
+    assert.deepEqual(ui.messages.map(message=>message.command),['getState'],'Deletion must not call the backend');
+    if(mode==='split')for(const apiType of vendors.apiTypes)assert.equal(ui.get(`move-to-${apiType}`).hidden,true);
+    const saved=await ui.saved();
+    assert.deepEqual(saved.models,[kept,model('last-keep')]);
+    assert.deepEqual(saved.modelProtocols,{'custom-keep':'messages','last-keep':'messages'});
+    assert.deepEqual(saved.endpoints,input.endpoints);
+    assert.deepEqual(saved.unified,input.unified);
+    assert.equal(ui.messages.at(-1).payload.apiKey,'KEEP-DRAFT-KEY');
+    assert.deepEqual(shownModels(await webview(ui.state.providers)),['custom-keep','last-keep']);
+  });
+  test(`${mode} batch deletion can remove all models and empty selections do nothing`,async()=>{
+    const ui=await webview([{...provider(),routingMode:mode,models:['gpt-one','claude-one','custom-one'].map(model)}]);
+    await ui.emit('delete-selected-models','click');
+    assert.equal(ui.get('confirm-dialog').open,false);
+    if(mode==='unified')await ui.emit('select-all-unified','change',{checked:true});
+    else for(const apiType of vendors.apiTypes)await ui.emit(`select-all-${apiType}`,'change',{checked:true});
+    assert.equal(ui.get('model-selection-count').textContent,'已选 3');
+    await ui.emit('delete-selected-models','click');
+    assert.match(ui.get('confirm-message').textContent,/3 个模型/);
+    await ui.emit('confirm-action','click');
+    assert.deepEqual(shownModels(ui),[]);
+    assert.equal(ui.get('model-total').textContent,'0');
+    assert.equal(ui.get('delete-selected-models').disabled,true);
+    assert.equal(ui.get('model-selection').hidden,true);
+    const selectIds=mode==='unified'?['select-all-unified']:vendors.apiTypes.map(apiType=>`select-all-${apiType}`);
+    for(const id of selectIds){
+      assert.equal(ui.get(id).disabled,true);
+      assert.equal(ui.get(id).checked,false);
+      assert.equal(ui.get(id).indeterminate,false);
+    }
+    await ui.emit('delete-selected-models','click');
+    assert.equal(ui.get('confirm-dialog').open,false);
+    assert.equal(ui.messages.some(message=>message.command==='saveProvider'),false);
+    const saved=await ui.saved();
+    assert.deepEqual(saved.models,[]);
+    assert.deepEqual(saved.modelProtocols,{});
+    assert.equal(saved.enabled,true);
+  });
+}
+test('batch selections cannot bleed across suppliers or protocol modes',async()=>{
+  const ui=await webview([provider('one'),splitProvider('two')]);
+  await ui.choose('unknown-id');
+  await ui.select('two');
+  assert.equal(ui.get('model-selection').hidden,true);
+  await ui.choose('another-id');
+  await ui.mode('unified');
+  assert.equal(ui.get('model-selection').hidden,true);
+  await ui.choose('unknown-id');
+  await ui.mode('split');
+  assert.equal(ui.get('model-selection').hidden,true);
+  await ui.choose('another-id');
+  await ui.select('one');
+  assert.equal(ui.get('model-selection').hidden,true);
+  await ui.emit('delete-selected-models','click');
+  assert.equal(ui.get('confirm-dialog').open,false);
+  await ui.choose('unknown-id');
+  await ui.emit('delete-selected-models','click');
+  await ui.emit('confirm-action','click');
+  await ui.select('two');
+  assert.equal(ui.get('model-selection').hidden,true);
+  assert.deepEqual(shownModels(ui),['unknown-id','another-id']);
+  await ui.select('one');
+  assert.deepEqual(shownModels(ui),['another-id']);
+  assert.deepEqual(ui.messages.map(message=>message.command),['getState']);
+});
 test('editing selected IDs preserves other selections and assigned protocols',async()=>{
   const ui=await webview([{...splitProvider(),models:['custom-one','custom-two'].map(model),modelProtocols:{'custom-one':'messages','custom-two':'responses'}}]);
   await ui.choose('custom-one');
@@ -974,7 +909,7 @@ test('editing selected IDs preserves other selections and assigned protocols',as
   assert.equal(saved.modelProtocols['renamed-one'],'messages');
   assert.equal(Object.hasOwn(saved.modelProtocols,'custom-one'),false);
 });
-test('browser initializes routing from state rules before constructing drafts and applies later rule updates',async()=>{
+test('browser applies exclusions and saved assignments survive changes to family rules',async()=>{
   const rules=structuredClone(modelRules);
   rules.models['custom-one']={protocol:'messages'};
   rules.models['custom-hidden']={excludedKind:'non-chat'};
@@ -982,12 +917,13 @@ test('browser initializes routing from state rules before constructing drafts an
   const ui=await webview([input],database,{modelRules:rules});
   assert.deepEqual(inProtocol(ui,'messages'),['custom-one']);
   assert.deepEqual(shownModels(ui),['custom-one']);
+  await ui.saved();
   const next=ui.state;
   next.revision++;
   next.modelRules.models['custom-one'].protocol='responses';
   await ui.pushState(next);
-  assert.deepEqual(inProtocol(ui,'responses'),['custom-one']);
-  assert.deepEqual(inProtocol(ui,'messages'),[]);
+  assert.deepEqual(inProtocol(ui,'messages'),['custom-one']);
+  assert.deepEqual(inProtocol(ui,'responses'),[]);
 });
 test('mode toggles preserve custom model routes, all addresses and the common key',async()=>{
   const input={...splitProvider(),modelProtocols:{'gpt-one':'messages','claude-one':'responses'},models:[model('gpt-one'),model('claude-one'),model('custom-one')]};
@@ -1004,6 +940,7 @@ test('mode toggles preserve custom model routes, all addresses and the common ke
   assert.equal(ui.get('model-list').querySelectorAll('input:checked').length,0);
   assert.deepEqual(inProtocol(ui,'messages'),['gpt-one']);
   assert.deepEqual(inProtocol(ui,'responses'),['claude-one']);
+  assert.deepEqual(inProtocol(ui,'chatCompletions'),['custom-one']);
   assert.equal(ui.get('api-key').value,'ONE-KEY');
   assert.equal(ui.get('confirm-dialog').open,false);
   await ui.mode('unified');
@@ -1020,6 +957,7 @@ test('mode toggles preserve custom model routes, all addresses and the common ke
   assert.equal(reloaded.get('unified-url').value,'https://single.example.com/v1');
   await reloaded.mode('split');
   assert.deepEqual(inProtocol(reloaded,'responses'),['claude-one']);
+  assert.deepEqual(inProtocol(reloaded,'chatCompletions'),['custom-one']);
   assert.deepEqual(inProtocol(reloaded,'messages'),['gpt-one']);
 });
 test('first split can seed empty endpoints but never overwrites partial or subsequently cleared addresses',async()=>{
@@ -1044,44 +982,88 @@ test('first split can seed empty endpoints but never overwrites partial or subse
   assert.equal(empty.get('unified-api-type').value,'chatCompletions');
   assert.equal(empty.get('unified-url').value,'');
 });
-test('split refresh replaces the set and retains same-ID settings and custom assignments',async()=>{
-  const retained={...model('gpt-retained'),name:'Saved name',overrides:{vision:true}};
-  const input={...splitProvider(),models:[retained,model('gpt-removed')],modelProtocols:{'gpt-retained':'messages','gpt-removed':'chatCompletions'}};
-  const ui=await webview([input],database,{discovery:{models:[{id:'gpt-retained',name:'Upstream name'},{id:'gpt-new',name:'New'},{id:'claude-new',name:'Claude'},{id:'unknown-new',name:'Other'}]}});
+test('split refresh resets family assignments and preserves matching settings, addresses and key',async()=>{
+  const retained={...model('gpt-retained'),name:'Saved name',overrides:{contextWindow:100000,maxInputTokens:80000,maxOutputTokens:16000,defaultOutputTokens:4000,vision:true,thinking:true,supportsReasoningEffort:['low','high']},reasoningEffort:'high'};
+  const input={...splitProvider(),models:[retained,model('claude-retained'),model('unknown-retained'),model('gpt-removed')],modelProtocols:{'gpt-retained':'messages','claude-retained':'chatCompletions','unknown-retained':'responses','gpt-removed':'chatCompletions'}};
+  const discovered=['unknown-retained','gpt-new','gpt-retained','claude-retained','claude-new','unknown-new'];
+  const ui=await webview([input],database,{discovery:{models:discovered.map(id=>({id,name:`Upstream ${id}`}))}});
+  assert.equal(ui.get('refresh-models-label').textContent,'刷新');
+  assert.match(ui.get('refresh-models').title,/按模型系列重新分配协议/);
+  await ui.emit('api-key','input',{value:'  KEEP-KEY  '});
   await ui.choose('gpt-retained');
   await ui.emit('refresh-models','click');
-  const request=ui.messages.find(message=>message.command==='discoverModels').payload.provider;
+  const payload=ui.messages.find(message=>message.command==='discoverModels').payload;
+  const request=payload.provider;
   assert.equal(request.routingMode,'split');
   assert.deepEqual(request.endpoints,input.endpoints);
   assert.equal(request.modelProtocols['gpt-retained'],'messages');
-  assert.deepEqual(inProtocol(ui,'responses'),['gpt-new']);
-  assert.deepEqual(inProtocol(ui,'messages'),['gpt-retained','claude-new']);
-  assert.deepEqual(inProtocol(ui,'chatCompletions'),['unknown-new']);
+  assert.equal(payload.apiKey,'KEEP-KEY');
+  assert.deepEqual(inProtocol(ui,'responses'),['gpt-new','gpt-retained']);
+  assert.deepEqual(inProtocol(ui,'messages'),['claude-retained','claude-new']);
+  assert.deepEqual(inProtocol(ui,'chatCompletions'),['unknown-retained','unknown-new']);
   assert.equal(ui.get('model-list').querySelectorAll('input:checked').length,0);
+  assert.equal(ui.get('api-key').value,'  KEEP-KEY  ');
+  assert.equal(ui.get('toast').hidden,true);
+  assert.equal(ui.messages.some(message=>message.command==='saveProvider'),false);
+  assert.deepEqual(ui.state.providers[0],{hasKey:false,...input});
   const next=await ui.saved();
-  assert.deepEqual(next.models.find(model=>model.id==='gpt-retained'),{...retained,discoveredName:'Upstream name'});
+  assert.deepEqual(next.models.map(model=>model.id),discovered,'Resetting routes must keep the existing discovery order');
+  assert.deepEqual(next.models.find(model=>model.id==='gpt-retained'),{...retained,discoveredName:'Upstream gpt-retained'});
+  assert.deepEqual(next.endpoints,input.endpoints);
+  assert.deepEqual(next.unified,input.unified);
   assert.equal(Object.hasOwn(next.modelProtocols,'gpt-removed'),false);
-  assert.equal(next.modelProtocols['gpt-retained'],'messages');
-  assert.equal(next.modelProtocols['gpt-new'],'responses');
-  assert.equal(next.modelProtocols['claude-new'],'messages');
-  assert.equal(next.modelProtocols['unknown-new'],'chatCompletions');
+  assert.deepEqual(next.modelProtocols,{'unknown-retained':'chatCompletions','gpt-new':'responses','gpt-retained':'responses','claude-retained':'messages','claude-new':'messages','unknown-new':'chatCompletions'});
   await ui.emit('provider-form','submit');
-  assert.deepEqual(ui.state.providers[0],{...next,hasKey:false});
+  assert.deepEqual(ui.state.providers[0],{...next,hasKey:true});
 });
-test('unified discovery sends its active route while retaining future split assignments',async()=>{
+test('split refresh applies exact-ID protocol rules',async()=>{
+  const rules=structuredClone(modelRules);
+  rules.models['custom-retained']={protocol:'responses'};
+  const input={...splitProvider(),models:[model('custom-retained')],modelProtocols:{'custom-retained':'messages'}};
+  const ui=await webview([input],database,{modelRules:rules,discovery:{models:[{id:'custom-retained',name:'Custom'}]}});
+  await ui.emit('refresh-models','click');
+  assert.deepEqual(inProtocol(ui,'responses'),['custom-retained']);
+  assert.deepEqual(inProtocol(ui,'messages'),[]);
+  assert.deepEqual(ui.state.modelRules,rules);
+});
+test('failed split refresh keeps routes, overrides, endpoints, key and selected models intact',async()=>{
+  for(const options of [{discoveryError:'Endpoint failed'},{discovery:{models:[{id:'new-model',name:'New'},{id:'bad id',name:'Invalid'}]}},{discovery:{models:[],warnings:[false]}}]){
+    const retained={...model('gpt-retained'),name:'My name',overrides:{thinking:true,supportsReasoningEffort:['high'],maxOutputTokens:16000},reasoningEffort:'high'};
+    const input={...splitProvider(),models:[retained,model('claude-retained')],modelProtocols:{'gpt-retained':'messages','claude-retained':'responses'}};
+    const ui=await webview([input],database,options);
+    await ui.emit('api-key','input',{value:'  KEEP-KEY  '});
+    await ui.choose('gpt-retained');
+    const before=ui.state;
+    await ui.emit('refresh-models','click');
+    assert.deepEqual(ui.state,before);
+    assert.deepEqual(inProtocol(ui,'messages'),['gpt-retained']);
+    assert.deepEqual(inProtocol(ui,'responses'),['claude-retained']);
+    assert.equal(ui.get('model-list').querySelector('[data-select-model="gpt-retained"]').checked,true);
+    assert.equal(ui.get('model-selection-count').textContent,'已选 1');
+    assert.equal(ui.get('api-key').value,'  KEEP-KEY  ');
+    assert.equal(ui.get('provider-error').hidden,false);
+    assert.equal(ui.get('toast').hidden,true);
+    assert.equal(ui.messages.some(message=>message.command==='saveProvider'),false);
+    assert.deepEqual(await ui.saved(),input);
+  }
+});
+test('unified discovery keeps its active route and resets future split assignments by family',async()=>{
   const input={...provider(),unified:{apiType:'messages',url:'https://unified.example.com'},models:[model('gpt-retained')],modelProtocols:{'gpt-retained':'chatCompletions'}};
   const ui=await webview([input],database,{discovery:{models:[{id:'gpt-retained',name:'Retained'},{id:'gpt-new',name:'New'}]}});
+  assert.equal(ui.get('refresh-models-label').textContent,'刷新');
+  assert.match(ui.get('refresh-models').title,/按模型系列重新分配协议/);
   await ui.emit('refresh-models','click');
   const payload=ui.messages.find(message=>message.command==='discoverModels').payload;
   assert.equal(payload.provider.routingMode,'unified');
   assert.deepEqual(payload.provider.unified,input.unified);
   assert.deepEqual(payload.provider.endpoints,input.endpoints);
-  assert.equal((await ui.saved()).modelProtocols['gpt-retained'],'chatCompletions');
+  assert.deepEqual((await ui.saved()).modelProtocols,{'gpt-retained':'responses','gpt-new':'responses'});
   await ui.mode('split');
-  assert.deepEqual(inProtocol(ui,'responses'),['gpt-new']);
-  assert.deepEqual(inProtocol(ui,'chatCompletions'),['gpt-retained']);
+  assert.deepEqual(inProtocol(ui,'responses'),['gpt-retained','gpt-new']);
+  assert.deepEqual(inProtocol(ui,'messages'),[]);
+  assert.deepEqual(inProtocol(ui,'chatCompletions'),[]);
 });
-test('switching and refresh clear selections while deleting a different model preserves them',async()=>{
+test('switching clears selections while deleting a different model and failed refresh preserve them',async()=>{
   const ui=await webview([splitProvider('one'),splitProvider('two')],database,{discoveryError:'Unavailable'});
   await ui.choose('unknown-id');
   await ui.select('two');
@@ -1099,7 +1081,8 @@ test('switching and refresh clear selections while deleting a different model pr
   assert.deepEqual(shownModels(ui),['unknown-id']);
   await ui.choose('unknown-id');
   await ui.emit('refresh-models','click');
-  assert.equal(ui.get('model-list').querySelectorAll('input:checked').length,0);
+  assert.equal(ui.get('model-list').querySelector('[data-select-model="unknown-id"]').checked,true);
+  assert.equal(ui.get('model-selection-count').textContent,'已选 1');
   assert.deepEqual(shownModels(ui),['unknown-id']);
   assert.equal(ui.messages.some(message=>message.command==='saveProvider'),false);
 });
@@ -1128,21 +1111,10 @@ test('saving validates each assigned protocol, including different routes for th
   await ui.emit('provider-form','submit');
   assert.equal(ui.get('save-provider').disabled,false);
 });
-test('model settings expose no context tier picker and retain pricing information',async()=>{
-  assert.doesNotMatch(html,/id="context-size"/);
-  assert.doesNotMatch(script,/contextSize|contextOptions|defaultContextSize/);
-  const db=pricingDatabase(pricing('tiered',[272000]));
-  const ui=await webview([{...provider(),models:[model('gpt-ui')]}],db);
-  await ui.editModel('gpt-ui');
-  assert.equal(ui.get('context-window').value,'1000001');
-  assert.equal(ui.get('context-pricing-details').hidden,false);
-  assert.equal(ui.get('context-pricing-note').textContent,contextPolicy.pricingNote(db.models['gpt-ui']));
-  await ui.emit('model-form','submit');
-  assert.equal(Object.hasOwn((await ui.saved()).models[0],'contextSize'),false);
-});
 test('retired model budgets are excluded from supplier saves while capability overrides survive',async()=>{
   for(const contextSize of [128000,200000,1000000]){
-    const db=pricingDatabase(pricing('tiered',[128000,200000]));
+    const db=structuredClone(database);
+    db.models['gpt-ui']={...db.defaults,contextWindow:1000001};
     const ui=await webview([{...provider(),models:[{...model('gpt-ui'),contextSize,overrides:{defaultOutputTokens:4096}}]}],db);
     await ui.editModel('gpt-ui');
     await ui.emit('model-name','input',{value:'My label'});
@@ -1153,39 +1125,6 @@ test('retired model budgets are excluded from supplier saves while capability ov
     assert.equal(saved.overrides.defaultOutputTokens,4096);
     assert.equal(saved.name,'My label');
   }
-});
-test('context pricing source and notes are rendered as text with an explicit checked date and channel caveat',async()=>{
-  const source='<img src=x onerror="alert(1)">';
-  const note='<script>unexpected()</script>';
-  const db=pricingDatabase(pricing('tiered',[200000],{source,note,checkedAt:'2026-10-04'}));
-  const ui=await webview([{...provider(),models:[model('gpt-ui')]}],db);
-  await ui.editModel('gpt-ui');
-  assert.equal(ui.get('context-pricing-details').hidden,false);
-  assert.equal(ui.get('context-pricing-source').textContent,source);
-  assert.equal(ui.get('context-pricing-source').children.length,0);
-  assert.match(ui.get('context-pricing-summary').textContent,/核验于 2026-10-04/);
-  assert.equal(ui.get('context-pricing-note').textContent,contextPolicy.pricingNote(db.models['gpt-ui']));
-  assert.match(ui.get('context-pricing-note').textContent,/原厂直连 API/);
-  assert.match(ui.get('context-pricing-note').textContent,/代理/);
-  assert.equal(ui.get('context-pricing-note').children.length,0);
-  assert.doesNotMatch(script,/\.innerHTML\s*=/);
-});
-test('changing model IDs selects the catalog policy and model overrides never carry pricing metadata',async()=>{
-  const db=pricingDatabase(pricing('tiered',[200000]));
-  db.models['claude-ui']={...db.models['gpt-ui'],contextPricing:pricing('tiered',[128000])};
-  const input={...provider(),models:[{...model('gpt-ui'),overrides:{contextPricing:pricing('tiered',[16])}}]};
-  const ui=await webview([input],db);
-  await ui.editModel('gpt-ui');
-  assert.equal(ui.get('context-pricing-note').textContent,contextPolicy.pricingNote(db.models['gpt-ui']));
-  await ui.emit('model-id','input',{value:'claude-ui'});
-  assert.equal(ui.get('context-pricing-note').textContent,contextPolicy.pricingNote(db.models['claude-ui']));
-  await ui.emit('model-id','input',{value:'unlisted-ui'});
-  assert.equal(ui.get('context-pricing-details').hidden,true);
-  await ui.emit('model-form','submit');
-  const exported=(await ui.saved()).models[0];
-  assert.equal(exported.id,'unlisted-ui');
-  assert.equal(Object.hasOwn(exported.overrides,'contextPricing'),false);
-  assert.equal(Object.hasOwn(exported,'contextSize'),false);
 });
 test('obsolete context budgets clear on supplier save and model ID changes retain the selected route',async()=>{
   const ui=await webview([{...splitProvider(),models:[{...model('gpt-ui'),contextSize:500000,overrides:{contextWindow:100000}}],modelProtocols:{'gpt-ui':'messages'}}]);
@@ -1200,15 +1139,17 @@ test('obsolete context budgets clear on supplier save and model ID changes retai
   assert.equal(Object.hasOwn(next.modelProtocols,'gpt-ui'),false);
   assert.deepEqual(inProtocol(ui,'messages'),['custom-new']);
 });
-test('new models use recommended routes independently of existing IDs and deletion prunes assignments',async()=>{
+test('new models get family protocols independently of existing IDs and deletion prunes assignments',async()=>{
   const ui=await webview([{...splitProvider(),models:[model('null')],modelProtocols:{null:'messages'}}]);
   for(const [id,apiType] of [['gpt-added','responses'],['claude-added','messages'],['custom-added','chatCompletions']]){
     await ui.choose('null');
     await ui.emit('add-model','click');
     await ui.emit('model-id','input',{value:id});
+    assert.equal(ui.get('model-protocol').value,apiType);
     await ui.emit('model-form','submit');
     assert.equal(ui.get('model-dialog').open,false);
     assert.equal((await ui.saved()).modelProtocols[id],apiType);
+    assert.ok(inProtocol(ui,apiType).includes(id));
     assert.equal(ui.get('model-list').querySelectorAll('input:checked').length,0);
   }
   const remove=ui.get('model-list').querySelector('[data-model-id="gpt-added"]').querySelector('.remove-model');
@@ -1218,7 +1159,7 @@ test('new models use recommended routes independently of existing IDs and deleti
 });
 test('reasoning picker hides declarative controls that native configuration cannot express',async()=>{
   const db=structuredClone(database);
-  db.models.fixture={...db.defaults,thinking:true,supportsReasoningEffort:['none','low','high'],reasoningControls:{note:'',protocols:{chatCompletions:{modePath:['thinking','type'],enabledValue:'enabled',disabledValue:'disabled',disabledEfforts:['none']}}}};
+  db.models.fixture={...db.defaults,thinking:true,supportsReasoningEffort:['none','low','high'],protocols:{chatCompletions:{effortValues:{none:null}}}};
   const ui=await webview([{...provider(),models:[{...model('fixture'),reasoningEffort:'none'}]}],db,{language:'en'});
   await ui.editModel('fixture');
   assert.deepEqual(ui.get('reasoning-effort').children.map(option=>option.value),['','low','high']);
@@ -1240,7 +1181,7 @@ test('English UI supports editing, validation and protocol transfer without tran
   assert.doesNotMatch(ui.get('model-selection-status').textContent,/[\p{Script=Han}]/u);
   await ui.editModel('custom-id');
   assert.equal(ui.get('model-name').value,custom.name);
-  for(const id of ['model-title','apply-model','reasoning-note','context-pricing-note'])assert.doesNotMatch(ui.get(id).textContent,/[\p{Script=Han}]/u,id);
+  for(const id of ['model-title','apply-model','reasoning-note'])assert.doesNotMatch(ui.get(id).textContent,/[\p{Script=Han}]/u,id);
   await ui.emit('max-output','input',{value:'0'});
   await ui.emit('model-form','submit');
   assert.equal(ui.get('model-error').hidden,false);
@@ -1254,39 +1195,288 @@ test('English UI supports editing, validation and protocol transfer without tran
   assert.equal(saved.modelProtocols['custom-id'],'responses');
 });
 
-test('catalog updates use the extension bridge, refresh the open library and send no provider credentials',async()=>{
-  const updated=structuredClone(database);updated.models['new-model']={...updated.defaults,name:'New model'};
+test('retired retention flags are ignored across discovery, protocol changes and saves',async()=>{
+  for(const flag of [true,false,'ignored',null]){
+    const input={...provider(),zeroDataRetentionEnabled:flag,statefulResponses:flag,zdr:flag};
+    input.models[0].zdr=flag;
+    const ui=await webview([input]);
+    await ui.emit('refresh-models','click');
+    const discovered=ui.messages.find(message=>message.command==='discoverModels').payload.provider;
+    for(const key of ['zeroDataRetentionEnabled','statefulResponses','zdr'])assert.equal(Object.hasOwn(discovered,key),false);
+    await ui.emit('unified-api-type','change',{value:'responses'});
+    const saved=await ui.saved();
+    for(const key of ['zeroDataRetentionEnabled','statefulResponses','zdr'])assert.equal(Object.hasOwn(saved,key),false);
+    const reloaded=await webview(ui.state.providers);
+    assert.deepEqual(await reloaded.saved(),saved);
+  }
+});
+
+test('one-click preset update preserves provider drafts and sends no credentials',async()=>{
+  const updated=structuredClone(database);
+  updated.models['new-model']={...updated.defaults,name:'New model',contextWindow:200000};
   const ui=await webview([provider()],database,{language:'en',updatedCatalog:updated});
+  await ui.emit('provider-name','input',{value:'Unsaved provider'});
   await ui.emit('api-key','input',{value:'draft-secret-must-stay-local'});
-  await ui.emit('open-database','click');
-  await ui.emit('database-refresh','click');
+  await ui.emit('update-catalog','click');
   const request=ui.messages.find(message=>message.command==='updateCatalog');
   assert.ok(request);
   assert.equal(JSON.stringify(request).includes('draft-secret'),false);
   assert.equal(Object.keys(request.payload||{}).length,0);
-  assert.equal(ui.get('database-dialog').open,true);
-  assert.equal(ui.get('database-error').hidden,true);
-  assert.match(ui.get('database-refresh').title,/Last updated:/);
-  assert.ok(ui.state.database.models['new-model']);
+  assert.equal(ui.get('provider-name').value,'Unsaved provider');
   assert.equal(ui.get('api-key').value,'draft-secret-must-stay-local');
+  assert.equal(ui.get('toast').hidden,true);
+  assert.match(ui.get('update-catalog').title,/Last updated:/);
+  await ui.emit('add-model','click');
+  await ui.emit('model-id','input',{value:'new-model'});
+  assert.equal(ui.get('context-window').value,'200000');
+  await ui.emit('model-form','submit');
+  assert.equal((await ui.saved()).models.at(-1).id,'new-model');
 });
-test('catalog refresh protects unsaved library drafts and leaves data intact on network failure',async()=>{
-  const ui=await webview([provider()],database,{catalogError:'models.dev unavailable'});
-  await ui.emit('open-database','click');
-  await ui.emit('database-add','click');
-  await ui.emit('database-id','input',{value:'custom-preset'});
-  await ui.emit('database-name','input',{value:'Custom preset'});
-  await ui.emit('database-form','submit');
-  await ui.emit('database-refresh','click');
-  assert.equal(ui.messages.some(message=>message.command==='updateCatalog'),false);
-  assert.match(ui.get('database-error').textContent,/请先保存/);
-  const clean=await webview([provider()],database,{catalogError:'models.dev unavailable'});
-  await clean.emit('open-database','click');
-  const before=clean.state;
-  await clean.emit('database-refresh','click');
-  assert.deepEqual(clean.state,before);
-  assert.equal(clean.get('database-dialog').open,true);
-  assert.match(clean.get('database-error').textContent,/models.dev unavailable/);
+
+test('preset update failures retain state and drafts and the action can be retried',async()=>{
+  let release;
+  const options={catalogError:'models.dev unavailable',beforeUpdate:()=>new Promise(resolve=>{release=resolve;})};
+  const ui=await webview([provider()],database,options);
+  await ui.emit('api-key','input',{value:'local-key'});
+  const before=ui.state;
+  await ui.emit('update-catalog','click');
+  assert.equal(ui.get('update-catalog').disabled,true);
+  await ui.emit('update-catalog','click');
+  assert.equal(ui.messages.filter(message=>message.command==='updateCatalog').length,1);
+  release();await ui.flush();
+  assert.deepEqual(ui.state,before);
+  assert.equal(ui.get('api-key').value,'local-key');
+  assert.equal(ui.get('update-catalog').disabled,false);
+  assert.match(ui.get('toast').textContent,/models.dev unavailable/);
+  delete options.catalogError;delete options.beforeUpdate;
+  await ui.emit('update-catalog','click');
+  assert.equal(ui.get('toast').hidden,true);
+  assert.equal(ui.messages.filter(message=>message.command==='updateCatalog').length,2);
+});
+
+test('preset updates keep an open model edit and allow explicitly restoring new preset values',async()=>{
+  const db=structuredClone(database);
+  db.models.sample={...db.defaults,name:'Sample',contextWindow:200000};
+  const updated=structuredClone(db);updated.models.sample.contextWindow=300000;
+  const ui=await webview([{...provider(),models:[model('sample')]}],db,{updatedCatalog:updated});
+  await ui.editModel('sample');
+  await ui.emit('context-window','input',{value:'250000'});
+  const remote=ui.state;remote.database=updated;remote.revision++;
+  await ui.pushState(remote);
+  assert.equal(ui.get('model-dialog').open,true);
+  assert.equal(ui.get('context-window').value,'250000');
+  assert.equal(ui.get('model-update').hidden,false);
+  await ui.emit('model-form','submit');
+  assert.equal((await ui.saved()).models[0].overrides.contextWindow,250000);
+  await ui.editModel('sample');
+  await ui.emit('reset-model','click');
+  assert.equal(ui.get('context-window').value,'300000');
+  await ui.emit('model-form','submit');
+  assert.equal(Object.hasOwn((await ui.saved()).models[0].overrides,'contextWindow'),false);
+});
+
+test('changing the unified protocol does not change split family routes or manual assignments',async()=>{
+  const input={...splitProvider(),models:['gpt-automatic','claude-automatic','pinned'].map(model),modelProtocols:{pinned:'responses'}};
+  const ui=await webview([input]);
+  assert.equal(ui.get('unified-endpoint').hidden,true);
+  assert.deepEqual(inProtocol(ui,'responses'),['gpt-automatic','pinned']);
+  assert.deepEqual(inProtocol(ui,'messages'),['claude-automatic']);
+  await ui.mode('unified');
+  assert.equal(ui.get('unified-endpoint').hidden,false);
+  await ui.emit('unified-api-type','change',{value:'messages'});
+  await ui.mode('split');
+  assert.equal(ui.get('unified-endpoint').hidden,true);
+  assert.deepEqual(inProtocol(ui,'responses'),['gpt-automatic','pinned']);
+  assert.deepEqual(inProtocol(ui,'messages'),['claude-automatic']);
+  const saved=await ui.saved();
+  assert.deepEqual(saved.modelProtocols,{'gpt-automatic':'responses','claude-automatic':'messages',pinned:'responses'});
+  const restarted=await webview([saved]);
+  assert.deepEqual(inProtocol(restarted,'responses'),['gpt-automatic','pinned']);
+  assert.deepEqual(inProtocol(restarted,'messages'),['claude-automatic']);
+});
+
+test('model protocol choices apply only with the dialog and survive model ID edits',async()=>{
+  const ui=await webview([{...splitProvider(),models:[model('gpt-model')]}]);
+  await ui.editModel('gpt-model');
+  assert.equal(ui.get('model-protocol').value,'responses');
+  assert.equal(ui.get('model-protocol').disabled,false);
+  assert.equal(ui.get('model-protocol-field').hidden,false);
+  assert.match(ui.get('model-protocol-note').textContent,/模型默认归入 Responses/);
+  await ui.emit('model-protocol','change',{value:'messages'});
+  ui.get('model-dialog').close();await ui.flush();
+  assert.deepEqual((await ui.saved()).modelProtocols,{'gpt-model':'responses'});
+  await ui.editModel('gpt-model');
+  await ui.emit('model-protocol','change',{value:'messages'});
+  await ui.emit('model-form','submit');
+  assert.deepEqual((await ui.saved()).modelProtocols,{'gpt-model':'messages'});
+  await ui.editModel('gpt-model');
+  await ui.emit('model-id','input',{value:'gpt-renamed'});
+  await ui.emit('model-form','submit');
+  const saved=await ui.saved();
+  assert.deepEqual(saved.modelProtocols,{'gpt-renamed':'messages'});
+  assert.equal(saved.models[0].id,'gpt-renamed');
+  assert.deepEqual(inProtocol(ui,'messages'),['gpt-renamed']);
+});
+
+test('batch protocol moves remain editable and persist without inheritance controls',async()=>{
+  const ui=await webview([{...splitProvider(),models:['gpt-one','claude-two'].map(model)}]);
+  await ui.choose('gpt-one');
+  assert.equal(ui.elements.has('inherit-selected-models'),false);
+  assert.equal(ui.get('move-to-responses').disabled,true);
+  assert.equal(ui.get('move-to-chatCompletions').disabled,false);
+  await ui.move('chatCompletions');
+  assert.deepEqual(inProtocol(ui,'chatCompletions'),['gpt-one']);
+  assert.deepEqual(inProtocol(ui,'messages'),['claude-two']);
+  await ui.choose('claude-two');
+  await ui.move('responses');
+  assert.deepEqual(inProtocol(ui,'responses'),['gpt-one','claude-two']);
+  assert.equal(ui.get('move-to-responses').disabled,true);
+  assert.deepEqual((await ui.saved()).modelProtocols,{'gpt-one':'responses','claude-two':'responses'});
+});
+
+test('export selects all providers without a key toggle and preserves focus when selecting',async()=>{
+  const empty=await webview([]);
+  assert.equal(empty.get('export-providers').disabled,true);
+  assert.equal(empty.get('import-providers').disabled,false);
+
+  const ui=await webview([{...provider('one'),name:'Alpha',hasKey:true},{...provider('two'),name:'Beta',hasKey:false}]);
+  assert.equal(ui.get('export-providers').disabled,false);
+  await ui.emit('export-providers','click');
+  assert.equal(ui.get('export-dialog').open,true);
+  assert.equal(ui.get('export-select-all').checked,true);
+  assert.equal(ui.elements.has('export-include-keys'),false);
+  assert.equal(ui.get('export-provider-list').querySelectorAll('[data-transfer-id]').length,2);
+
+  // Uncheck one provider
+  const second=ui.get('export-provider-list').querySelector('[data-transfer-id="two"]');
+  second.focus();
+  second.checked=false;
+  await ui.emit('export-provider-list','change',{},second);
+  assert.equal(ui.get('export-select-all').checked,false);
+  assert.equal(ui.get('export-select-all').indeterminate,true);
+  assert.equal(ui.activeElement,second);
+  assert.equal(ui.get('export-provider-list').querySelector('[data-transfer-id="two"]'),second);
+  await ui.emit('export-clipboard','click');
+  assert.equal(ui.get('export-dialog').open,false);
+  const exported=ui.messages.find(message=>message.command==='exportProviders');
+  assert.deepEqual(exported.payload,{ids:['one'],target:'clipboard'});
+  assertSaveToast(ui);
+  assert.match(ui.get('toast').textContent,/剪贴板/);
+});
+
+test('import dialog previews clipboard or file sources, selects all by default, preserves unrelated dirty drafts and scrubs imported keys',async()=>{
+  const incoming=[
+    {...provider('one'),name:'Alpha',apiKey:'IMPORTED-ALPHA-SECRET'},
+    {...provider('three'),name:'Gamma',models:[model('gamma-model')]}
+  ];
+  const ui=await webview([{...provider('one'),name:'Alpha'},{...provider('two'),name:'Beta'}],database,{importSource:incoming});
+  await ui.select('two');
+  await ui.emit('provider-name','input',{value:'Unsaved Beta Draft'});
+  await ui.emit('import-providers','click');
+  assert.equal(ui.get('import-dialog').open,true);
+  assert.equal(ui.get('apply-import').disabled,true);
+
+  await ui.emit('import-from-clipboard','click');
+  assert.equal(ui.get('import-selection-section').hidden,false);
+  assert.equal(ui.get('import-select-all').checked,true);
+  assert.equal(ui.get('apply-import').disabled,false);
+  assert.match(ui.get('import-summary').textContent,/2 \/ 2/);
+
+  // Deselect Alpha so only Gamma is imported
+  const alphaCheck=ui.get('import-provider-list').querySelector('[data-transfer-id="one"]');
+  alphaCheck.checked=false;
+  await ui.emit('import-provider-list','change',{},alphaCheck);
+  assert.equal(ui.get('import-select-all').indeterminate,true);
+  await ui.emit('apply-import','click');
+  assert.equal(ui.get('import-dialog').open,false);
+  assertSaveToast(ui);
+  assert.equal(ui.state.providers.length,3);
+  assert.equal(ui.get('provider-name').value,'Unsaved Beta Draft','Unrelated dirty draft stays intact');
+});
+
+test('transfer dialogs keep close controls without footer cancellation and file cancellation preserves selection',async()=>{
+  for(const mode of ['export','import']){
+    const dialog=html.match(new RegExp(`<dialog id="${mode}-dialog"[\\s\\S]*?</dialog>`))[0];
+    assert.match(dialog,new RegExp(`data-close="${mode}-dialog"`));
+    assert.doesNotMatch(dialog.match(/<footer[\s\S]*?<\/footer>/)[0],/取消|data-close/);
+  }
+  const options={exportCanceled:true};
+  const ui=await webview([provider()],database,options);
+  await ui.emit('export-providers','click');
+  await ui.emit('export-file','click');
+  assert.equal(ui.get('export-dialog').open,true);
+  assert.equal(ui.get('export-select-all').checked,true);
+  assert.equal(ui.get('toast').hidden,true);
+  options.exportCanceled=false;
+  await ui.emit('export-file','click');
+  assert.equal(ui.get('export-dialog').open,false);
+  assert.match(ui.get('toast').textContent,/已导出 1/);
+});
+
+test('delayed close events cannot clear a newly opened transfer dialog',async()=>{
+  const ui=await webview([provider()],database,{deferClose:true});
+  for(const previousMode of ['import','export']){
+    await ui.emit(`${previousMode}-providers`,'click');
+    ui.get(`${previousMode}-dialog`).close();
+    await ui.emit('export-providers','click');
+    await ui.flushCloseEvents();
+    assert.equal(ui.get('export-dialog').open,true);
+    const previousExports=ui.messages.filter(m=>m.command==='exportProviders').length;
+    await ui.emit('export-clipboard','click');
+    assert.equal(ui.messages.filter(m=>m.command==='exportProviders').length,previousExports+1);
+    assert.equal(ui.get('export-dialog').open,false);
+    await ui.flushCloseEvents();
+  }
+});
+
+test('import failures preserve selection and mask all keys, and same-name imports acknowledge the local draft',async()=>{
+  const entries=[{...provider('remote'),name:'Alpha',apiKey:'first-import-key'},{...provider('other'),name:'Beta',apiKey:'second-import-key'}];
+  const options={importSource:entries,importError:'failed first-import-key second-import-key'};
+  const ui=await webview([{...provider('local'),name:'Alpha'}],database,options);
+  await ui.emit('provider-name','input',{value:'Unsaved Alpha'});
+  await ui.emit('import-providers','click');
+  await ui.emit('import-from-file','click');
+  await ui.emit('apply-import','click');
+  assert.equal(ui.get('import-dialog').open,true);
+  assert.equal(ui.get('import-select-all').checked,true);
+  assert.doesNotMatch(ui.get('import-error').textContent,/first-import-key|second-import-key/);
+  assert.equal(ui.get('toast').hidden,true);
+  delete options.importError;
+  await ui.emit('apply-import','click');
+  assert.equal(ui.get('import-dialog').open,false);
+  assert.equal(ui.get('provider-name').value,'Alpha');
+  assert.equal(ui.get('update-banner').hidden,true);
+  assert.equal(ui.get('toast').textContent,'已导入 2 个供应商。');
+  assert.deepEqual(ui.state.providers.map(p=>p.id),['local','other']);
+});
+
+
+test('unified mode hides model protocol controls and keeps assignments for split mode',async()=>{
+  const input={...provider(),models:[model('existing')],modelProtocols:{existing:'messages'}};
+  const ui=await webview([input]);
+  await ui.editModel('existing');
+  assert.equal(ui.get('model-protocol').value,'messages');
+  assert.equal(ui.get('model-protocol').disabled,true);
+  assert.equal(ui.get('model-protocol-field').hidden,true);
+  await ui.emit('model-form','submit');
+  assert.deepEqual((await ui.saved()).modelProtocols,input.modelProtocols);
+  await ui.mode('split');
+  assert.deepEqual(inProtocol(ui,'messages'),['existing']);
+});
+
+test('reasoning options use the protocol selected in the unsaved model editor',async()=>{
+  const db=structuredClone(database);
+  db.models.sample={...db.defaults,thinking:true,supportsReasoningEffort:['low','high'],protocols:{chatCompletions:{effortFormat:'unsupported'}}};
+  const ui=await webview([{...splitProvider(),models:[model('sample')]}],db);
+  await ui.editModel('sample');
+  assert.equal(ui.get('reasoning-effort').disabled,true);
+  await ui.emit('model-protocol','change',{value:'responses'});
+  assert.deepEqual(ui.get('reasoning-effort').children.map(option=>option.value),['','low','high']);
+  await ui.emit('reasoning-effort','change',{value:'high'});
+  await ui.emit('model-form','submit');
+  const saved=await ui.saved();
+  assert.equal(saved.modelProtocols.sample,'responses');
+  assert.equal(saved.models[0].reasoningEffort,'high');
 });
 
 test('production webview only loads local script and stylesheet with a restrictive CSP',()=>{

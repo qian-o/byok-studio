@@ -8,10 +8,10 @@ import { t } from '../resources/shared/i18n.js';
 
 const BINDINGS_KEY = 'byokStudio.officialBindings.v1';
 const ADD_GROUP = 'lm.addLanguageModelsProviderGroup';
-const MANAGED_MODEL_FIELDS = ['id', 'name', 'url', 'apiType', 'toolCalling', 'vision', 'thinking', 'maxInputTokens', 'maxOutputTokens', 'contextWindow', 'adaptiveThinking', 'minThinkingBudget', 'maxThinkingBudget', 'supportsReasoningEffort', 'reasoningEffortFormat', 'defaultReasoningEffort', 'zeroDataRetentionEnabled', 'statefulResponses', 'streaming', 'modelOptions'];
+const MANAGED_MODEL_FIELDS = ['id', 'name', 'url', 'apiType', 'toolCalling', 'vision', 'thinking', 'maxInputTokens', 'maxOutputTokens', 'contextWindow', 'adaptiveThinking', 'minThinkingBudget', 'maxThinkingBudget', 'supportsReasoningEffort', 'reasoningEffortFormat', 'defaultReasoningEffort', 'streaming', 'modelOptions'];
 interface Binding { keyFingerprint?: string; secretReference?: string; clearKeyPending?: boolean }
 type Bindings = Record<string, Binding>;
-interface Snapshot { document: vscode.TextDocument; text: string; version: number }
+interface Snapshot { document: vscode.TextDocument; text: string }
 const fingerprint = (value: string | undefined) => value ? createHash('sha256').update(value).digest('hex') : undefined;
 const isSecretReference = (value: unknown): value is string => typeof value === 'string' && /^\$\{input:chat\.lm\.secret\.[^}]+\}$/.test(value);
 
@@ -72,7 +72,7 @@ export class OfficialConfigurationManager {
     }
     const text = Buffer.from(await vscode.workspace.fs.readFile(document.uri)).toString('utf8');
     listGroups(text);
-    return { document, text, version: document.version };
+    return { document, text };
   }
   private async backup(text: string): Promise<void> {
     const folder = vscode.Uri.joinPath(this.context.globalStorageUri, 'native-config-backups');
@@ -84,12 +84,33 @@ export class OfficialConfigurationManager {
   }
   private async write(snapshot: Snapshot, text: string): Promise<void> {
     if (snapshot.text === text) return;
-    const unchanged = async () => !snapshot.document.isDirty && Buffer.from(await vscode.workspace.fs.readFile(snapshot.document.uri)).toString('utf8') === snapshot.text;
-    if (!await unchanged()) throw new Error(t('官方模型配置在同步期间发生变化，未覆盖其他修改，请重试。'));
+    await this.waitForReload(snapshot);
+    const unchanged = async () => !snapshot.document.isDirty
+      && Buffer.from(await vscode.workspace.fs.readFile(snapshot.document.uri)).toString('utf8') === snapshot.text;
+    if (!await unchanged()) throw new Error(t('官方模型配置在写入期间发生变化，未覆盖其他修改，请重试。'));
     await this.backup(snapshot.text);
     if (!await unchanged()) throw new Error(t('官方模型配置在备份期间发生变化，请重试。'));
-    // Write the patched raw text so unrelated comments and line endings survive the editor's formatter.
-    await vscode.workspace.fs.writeFile(snapshot.document.uri, Buffer.from(text));
+    // The native watcher reads the text model, so update it before saving the file.
+    const edit = new vscode.WorkspaceEdit();
+    const range = new vscode.Range(snapshot.document.positionAt(0), snapshot.document.positionAt(snapshot.document.getText().length));
+    edit.set(snapshot.document.uri, [vscode.TextEdit.replace(range, text), vscode.TextEdit.setEndOfLine(text.includes('\r\n') ? vscode.EndOfLine.CRLF : vscode.EndOfLine.LF)]);
+    if (!await vscode.workspace.applyEdit(edit) || !await snapshot.document.save()) throw new Error(t('无法保存官方模型配置，请检查该文件后重试。'));
+    const saved = Buffer.from(await vscode.workspace.fs.readFile(snapshot.document.uri)).toString('utf8');
+    if (snapshot.document.isDirty || !isDeepStrictEqual(listGroups(saved), listGroups(text))) throw new Error(t('官方模型配置在保存期间发生变化，请检查该文件后重试。'));
+    // Save participants may format unrelated nodes. Restore their original bytes after the model is current.
+    if (saved !== text) {
+      if (snapshot.document.isDirty || Buffer.from(await vscode.workspace.fs.readFile(snapshot.document.uri)).toString('utf8') !== saved) throw new Error(t('官方模型配置在写入期间发生变化，未覆盖其他修改，请重试。'));
+      await vscode.workspace.fs.writeFile(snapshot.document.uri, Buffer.from(text));
+    }
+    await this.waitForReload({ ...snapshot, text });
+  }
+  private async waitForReload(snapshot: Snapshot): Promise<void> {
+    const normalize = (value: string) => value.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
+    const deadline = Date.now() + 3000;
+    while (normalize(snapshot.document.getText()) !== normalize(snapshot.text)) {
+      if (snapshot.document.isDirty || Date.now() >= deadline) throw new Error(t('官方配置尚未完成重新加载，请稍后保存重试。'));
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
   }
   private async provisionKey(providerId: string, key: string, snapshot: Snapshot): Promise<{ snapshot: Snapshot; originalText: string; reference: string }> {
     const stagingId = `stage-${randomUUID()}`;
@@ -98,11 +119,7 @@ export class OfficialConfigurationManager {
     if (!await current()) throw new Error(t('官方配置已变化，未创建密钥分组，请重试。'));
     await this.backup(snapshot.text);
     if (!await current()) throw new Error(t('官方配置在备份期间已变化，请重试。'));
-    const deadline = Date.now() + 3000;
-    while (snapshot.document.getText().replace(/\r\n/g, '\n') !== snapshot.text.replace(/\r\n/g, '\n')) {
-      if (snapshot.document.isDirty || Date.now() >= deadline) throw new Error(t('官方配置尚未完成重新加载，请稍后保存重试。'));
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
+    await this.waitForReload(snapshot);
     if (!await current()) throw new Error(t('官方配置已变化，请重试。'));
     await vscode.commands.executeCommand(ADD_GROUP, { name, vendor: 'customendpoint', byokStudioId: stagingId, byokStudioStageFor: providerId, models: [], apiKey: key });
     const after = await this.read();
@@ -120,6 +137,7 @@ export class OfficialConfigurationManager {
   }
   private async sync(changedKeyId?: string): Promise<void> {
     const state = this.store.snapshot();
+    const database = this.store.database();
     const bindings = structuredClone(this.bindings);
     if (changedKeyId && !await this.store.key(changedKeyId)) {
       bindings[changedKeyId] = { ...bindings[changedKeyId], clearKeyPending: true };
@@ -129,7 +147,7 @@ export class OfficialConfigurationManager {
     await this.ready();
     let snapshot = await this.read();
     const active = state.providers.filter(provider => provider.enabled && provider.models.length);
-    const planned = new Map(active.map(provider => [provider.id, compileOfficialGroup(provider, state.database)]));
+    const planned = new Map(active.map(provider => [provider.id, compileOfficialGroup(provider, database)]));
     const names = new Set<string>();
     const initialGroups = listGroups(snapshot.text);
     for (const [id, group] of planned) {
@@ -183,5 +201,6 @@ export class OfficialConfigurationManager {
     }
     for (const id of Object.keys(bindings)) if (!currentIds.has(id)) delete bindings[id];
     await this.saveBindings(bindings);
+    await vscode.lm.selectChatModels({ vendor: 'customendpoint' });
   }
 }

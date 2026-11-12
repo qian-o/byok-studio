@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
-import { object, sanitizeError, text, validId, validateDatabase, validateProvider } from './core/configuration';
-import { StudioStore } from './core/store';
+import { object, sanitizeError, text, validId, validateProvider } from './core/configuration';
+import { MAX_IMPORT_BYTES, parseExportBundle, StudioStore } from './core/store';
 import { discoverProviderModels } from './core/discovery';
 import { fetchModelCatalog } from './core/modelCatalog';
 import { renderHtml, t } from '../resources/shared/i18n.js';
@@ -10,7 +10,7 @@ export class SettingsPanel implements vscode.Disposable {
   private panel: vscode.WebviewPanel | undefined;
   private readonly pending = new Set<AbortController>();
   private readonly stateSubscription: vscode.Disposable;
-  constructor(private readonly context: vscode.ExtensionContext, private readonly store: StudioStore, changed: vscode.Event<void>, private readonly synchronizeGroups: (changedKeyId?: string) => Promise<void>) {
+  constructor(private readonly context: vscode.ExtensionContext, private readonly store: StudioStore, changed: vscode.Event<void>, private readonly applyConfiguration: (changedKeyId?: string) => Promise<void>) {
     this.stateSubscription = changed(() => { void this.broadcast(); });
   }
   async open(): Promise<void> {
@@ -38,11 +38,6 @@ export class SettingsPanel implements vscode.Disposable {
     try { await panel.webview.postMessage({ event: 'state', data: await this.store.uiState() }); }
     catch { /* A webview can be closed while its state is being prepared. */ }
   }
-  private async exportJson(value: unknown, filename: string): Promise<void> {
-    const defaultUri = vscode.Uri.joinPath(vscode.Uri.file(require('node:os').homedir()), filename);
-    const uri = await vscode.window.showSaveDialog({ defaultUri, filters: { JSON: ['json'] }, saveLabel: t('导出') });
-    if (uri) await vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify(value, null, 2) + '\n', 'utf8'));
-  }
   private async handle(message: unknown, panel: vscode.WebviewPanel): Promise<void> {
     let id: string;
     let command: string;
@@ -53,22 +48,82 @@ export class SettingsPanel implements vscode.Disposable {
       command = text(envelope.command, t('操作'), 50);
       payload = envelope.payload == null ? {} : object(envelope.payload);
     } catch { return; }
-    let sensitive: string | undefined;
+    const sensitive: string[] = [];
+    if (typeof payload.apiKey === 'string') sensitive.push(payload.apiKey);
+    if (Array.isArray(payload.providers)) for (const entry of payload.providers) {
+      if (entry && typeof entry === 'object' && typeof entry.apiKey === 'string') sensitive.push(entry.apiKey);
+    }
+    let changedKeyId: string | undefined;
+    let importedIds: string[] | undefined;
     try {
       let data: unknown = null;
       switch (command) {
         case 'getState': data = await this.store.uiState(); break;
-        case 'saveProvider':
-          sensitive = typeof payload.apiKey === 'string' ? payload.apiKey : undefined;
+        case 'saveProvider': {
           await this.store.saveProvider(payload.provider, payload.apiKey, payload.clearKey === true);
-          data = await this.store.uiState(); break;
+          if ((typeof payload.apiKey === 'string' && Boolean(payload.apiKey.trim())) || payload.clearKey === true) {
+            changedKeyId = validId(object(payload.provider).id, t('供应商标识'));
+          }
+          break;
+        }
         case 'deleteProvider':
           await this.store.deleteProvider(validId(payload.id, t('供应商标识')));
-          data = await this.store.uiState(); break;
+          break;
+        case 'exportProviders': {
+          const target = payload.target === 'file' ? 'file' : payload.target === 'clipboard' ? 'clipboard' : undefined;
+          if (!target) throw new Error(t('请选择有效的导出方式。'));
+          const bundle = await this.store.exportProviders(payload.ids);
+          for (const provider of bundle.providers) if (provider.apiKey) sensitive.push(provider.apiKey);
+          const content = JSON.stringify(bundle, null, 2) + '\n';
+          if (target === 'clipboard') {
+            await vscode.env.clipboard.writeText(content);
+            data = { exported: bundle.providers.length, target };
+          } else {
+            const defaultName = `byok-providers-${new Date().toISOString().slice(0, 10)}.json`;
+            const baseUri = vscode.workspace.workspaceFolders?.[0]?.uri;
+            const uri = await vscode.window.showSaveDialog({
+              ...(baseUri ? { defaultUri: vscode.Uri.joinPath(baseUri, defaultName) } : {}),
+              filters: { JSON: ['json'] },
+              saveLabel: t('导出 JSON')
+            });
+            if (!uri) { data = { canceled: true }; break; }
+            await vscode.workspace.fs.writeFile(uri, Buffer.from(content, 'utf8'));
+            data = { exported: bundle.providers.length, target };
+          }
+          break;
+        }
+        case 'readImportSource': {
+          const source = payload.source === 'file' ? 'file' : payload.source === 'clipboard' ? 'clipboard' : undefined;
+          if (!source) throw new Error(t('请选择有效的导入来源。'));
+          let content: string;
+          if (source === 'clipboard') {
+            content = await vscode.env.clipboard.readText();
+          } else {
+            const uris = await vscode.window.showOpenDialog({
+              canSelectMany: false,
+              filters: { JSON: ['json'] },
+              openLabel: t('选择导入文件')
+            });
+            const uri = uris?.[0];
+            if (!uri) { data = { canceled: true }; break; }
+            const stat = await vscode.workspace.fs.stat(uri);
+            if (stat.size > MAX_IMPORT_BYTES) throw new Error(t('导入内容超过 16 MiB 大小限制。'));
+            const bytes = await vscode.workspace.fs.readFile(uri);
+            if (bytes.byteLength > MAX_IMPORT_BYTES) throw new Error(t('导入内容超过 16 MiB 大小限制。'));
+            try { content = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+            catch { throw new Error(t('导入内容不是有效的 JSON。')); }
+          }
+          data = { providers: parseExportBundle(content, this.store.database()) };
+          break;
+        }
+        case 'importProviders': {
+          importedIds = await this.store.importProviders({ version: 1, providers: payload.providers });
+          break;
+        }
         case 'discoverModels': {
-          const provider = validateProvider(payload.provider, this.store.snapshot().database, true);
+          const provider = validateProvider(payload.provider, this.store.database(), true);
           const key = payload.apiKey === undefined ? await this.store.key(provider.id) ?? '' : text(payload.apiKey, 'API Key', 16000, true);
-          sensitive = key;
+          sensitive.push(key);
           const controller = new AbortController();
           this.pending.add(controller);
           try { data = await discoverProviderModels(provider, key, controller.signal); }
@@ -81,38 +136,17 @@ export class SettingsPanel implements vscode.Disposable {
           try {
             const snapshot = await fetchModelCatalog(controller.signal);
             await this.store.updateCatalog(snapshot);
-            data = await this.store.uiState();
           } finally { this.pending.delete(controller); }
           break;
-        }
-        case 'saveDatabase':
-          await this.store.saveDatabase(payload.database);
-          data = await this.store.uiState(); break;
-        case 'importDatabase': {
-          const files = await vscode.window.showOpenDialog({ canSelectMany: false, filters: { JSON: ['json'] }, openLabel: t('导入参数库') });
-          const file = files?.[0];
-          if (file) {
-            const stat = await vscode.workspace.fs.stat(file);
-            if (stat.size > 10 * 1024 * 1024) throw new Error(t('参数库文件不能超过 10 MB。'));
-            const imported = validateDatabase(JSON.parse(Buffer.from(await vscode.workspace.fs.readFile(file)).toString('utf8')));
-            const confirmed = await vscode.window.showWarningMessage(t('用文件中的 {0} 个模型替换当前参数库？现有模型手动覆盖将保留。', Object.keys(imported.models).length), { modal: true }, t('替换'));
-            if (confirmed === t('替换')) await this.store.saveDatabase(imported);
-          }
-          data = await this.store.uiState(); break;
-        }
-        case 'exportDatabase':
-          await this.exportJson(validateDatabase(payload.database ?? this.store.snapshot().database), 'byok-model-parameters.json'); break;
-        case 'exportConfig': {
-          const provider = validateProvider(payload.provider, this.store.snapshot().database);
-          await this.exportJson({ schemaVersion: 1, provider }, 'byok-provider.json'); break;
         }
         case 'openModels': await vscode.commands.executeCommand('workbench.action.chat.manageLanguageModels'); break;
         default: throw new Error(t('不支持的操作。'));
       }
-      if (['saveProvider', 'deleteProvider', 'saveDatabase', 'importDatabase', 'updateCatalog'].includes(command)) {
-        const changingKey = command === 'saveProvider' && ((typeof payload.apiKey === 'string' && Boolean(payload.apiKey.trim())) || payload.clearKey === true);
-        const changedKeyId = changingKey ? validId(object(payload.provider).id, t('供应商标识')) : undefined;
-        await this.synchronizeGroups(changedKeyId);
+      if (['saveProvider', 'deleteProvider', 'importProviders', 'updateCatalog'].includes(command)) {
+        try { await this.applyConfiguration(changedKeyId); }
+        catch (error) { throw new Error(t('配置已保存，但写入 Chat 配置失败：{0}', sanitizeError(error, sensitive))); }
+        const state = await this.store.uiState();
+        data = importedIds ? { state, importedIds } : state;
       }
       await panel.webview.postMessage({ id, ok: true, data });
     } catch (error) {

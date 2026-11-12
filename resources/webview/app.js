@@ -23,8 +23,7 @@
   let busy = null;
   let sequence = 0;
   let modelSession = null;
-  let databaseSession = null;
-  let databaseEditor = null;
+  let transferSession = null;
   let pendingConfirm = null;
   let toastTimer;
 
@@ -64,21 +63,29 @@
       if (draft.apiKey) text = text.split(draft.apiKey).join(t('[密钥已隐藏]'));
       if (draft.apiKey.trim()) text = text.split(draft.apiKey.trim()).join(t('[密钥已隐藏]'));
     }
+    for (const item of transferSession?.providers || []) {
+      if (item.apiKey) text = text.split(item.apiKey).join(t('[密钥已隐藏]'));
+      if (item.apiKey?.trim()) text = text.split(item.apiKey.trim()).join(t('[密钥已隐藏]'));
+    }
     return text;
   }
 
-  function errorToast(text) {
+  function showToast(text, error) {
     clearTimeout(toastTimer);
     const element = $('toast');
     const dialogs = [...document.querySelectorAll('dialog[open]')];
     (dialogs.at(-1) || document.body).append(element);
-    element.setAttribute('role', 'alert');
-    element.setAttribute('aria-live', 'assertive');
-    element.classList.toggle('error-toast', true);
+    element.setAttribute('role', error ? 'alert' : 'status');
+    element.setAttribute('aria-live', error ? 'assertive' : 'polite');
+    element.classList.toggle('error-toast', error);
+    element.classList.toggle('success-toast', !error);
     element.textContent = text;
     element.hidden = false;
-    toastTimer = setTimeout(() => { element.hidden = true; }, 8000);
+    toastTimer = setTimeout(() => { element.hidden = true; }, error ? 8000 : 4000);
   }
+
+  function errorToast(text) { showToast(text, true); }
+  function successToast(text) { showToast(text, false); }
 
   function request(command, payload) {
     const id = `webview-${Date.now()}-${++sequence}`;
@@ -146,7 +153,6 @@
     } finally {
       busy = null;
       renderStatus();
-      renderDatabaseStatus();
       syncControls();
     }
   }
@@ -158,8 +164,6 @@
       name: provider.name,
       ...vendors.normalizeRouting(provider),
       enabled: provider.enabled,
-      zeroDataRetentionEnabled: typeof provider.zeroDataRetentionEnabled === 'boolean' ? provider.zeroDataRetentionEnabled
-        : typeof provider.zdr === 'boolean' ? provider.zdr : provider.models.length > 0 && provider.models.every(model => model.zdr === true),
       models: provider.models.filter(model => !vendors.excludedKind(model.id)).map(model => ({
         id: model.id,
         name: model.name || '',
@@ -177,20 +181,18 @@
 
   function currentDraft() { return drafts.get(activeId); }
   function dirty(draft) { return !draft.baseline || !equal(draft.provider, draft.baseline) || Boolean(draft.apiKey.trim()); }
-  function databaseDirty() { return Boolean(databaseSession && !equal(databaseSession.database, databaseSession.baseline)); }
   function baseParameters(id, database = state.database) { return own(database.models, id) ? database.models[id] : database.defaults; }
   function modelName(model, database = state.database) {
     return model.name || (own(database.models, model.id) && database.models[model.id].name) || model.id;
   }
   function recordName(record, id) { return record.name || id; }
-  function sourceNote(record) { return `${record.source || t('未填写来源')} · ${record.verifiedAt ? t('核验于 {0}', record.verifiedAt) : record.aliasOf ? t('代理映射未核实') : t('未完整核验')}`; }
 
   function validateState(next) {
     if (!next || !Array.isArray(next.providers) || !Number.isSafeInteger(next.revision) || next.revision < 0 || !next.database || next.database.schemaVersion !== 1 || !next.database.defaults || !next.database.models || Array.isArray(next.database.models)) {
       throw new Error(t('扩展返回的配置格式无效，请重新打开 BYOK Studio。'));
     }
     for (const provider of next.providers) {
-      if (!provider || typeof provider.id !== 'string' || typeof provider.name !== 'string' || typeof provider.enabled !== 'boolean' || (provider.zeroDataRetentionEnabled !== undefined && typeof provider.zeroDataRetentionEnabled !== 'boolean') || !Array.isArray(provider.models)) {
+      if (!provider || typeof provider.id !== 'string' || typeof provider.name !== 'string' || typeof provider.enabled !== 'boolean' || !Array.isArray(provider.models)) {
         throw new Error(t('扩展返回的供应商配置无效。'));
       }
       const validEndpoints = provider.endpoints && typeof provider.endpoints === 'object' && !Array.isArray(provider.endpoints) && API_TYPES.every(type => provider.endpoints[type] === undefined || typeof provider.endpoints[type] === 'string');
@@ -212,13 +214,14 @@
       if (next.modelRules) vendors.configure(next.modelRules);
       state = clone(next);
     }
+    const remote = new Map(state.providers.map(provider => [provider.id, provider]));
     if (acknowledgement.reset) {
       for (const draft of drafts.values()) draft.apiKey = '';
       drafts.clear();
     }
-    if (acknowledgement.providerId) {
-      const saved = next.providers.find(provider => provider.id === acknowledgement.providerId);
-      const old = drafts.get(acknowledgement.providerId);
+    for (const id of acknowledgement.savedIds || []) {
+      const saved = remote.get(id);
+      const old = drafts.get(id);
       if (old) old.apiKey = '';
       if (saved) drafts.set(saved.id, makeDraft(saved));
     }
@@ -227,12 +230,6 @@
       if (removed) removed.apiKey = '';
       drafts.delete(acknowledgement.deletedId);
     }
-    if (acknowledgement.database && databaseSession) {
-      databaseSession.database = clone(next.database);
-      databaseSession.baseline = clone(next.database);
-      databaseSession.conflict = false;
-    }
-    const remote = new Map(state.providers.map(provider => [provider.id, provider]));
     for (const [id, draft] of drafts) {
       const incoming = remote.get(id);
       const protectedDraft = dirty(draft) || modelSession?.providerId === id;
@@ -247,14 +244,6 @@
     }
     for (const provider of state.providers) if (!drafts.has(provider.id)) drafts.set(provider.id, makeDraft(provider));
     if (!drafts.has(activeId)) activeId = drafts.keys().next().value || null;
-    if (databaseSession && !equal(state.database, databaseSession.baseline)) {
-      if (databaseDirty() || databaseEditor) databaseSession.conflict = true;
-      else {
-        databaseSession.database = clone(state.database);
-        databaseSession.baseline = clone(state.database);
-        databaseSession.conflict = false;
-      }
-    }
     if (modelSession && (drafts.get(modelSession.providerId)?.conflict || (previousDatabase && !equal(previousDatabase, state.database)))) {
       modelSession.stale = true;
       $('model-update').hidden = false;
@@ -263,13 +252,12 @@
     $('load-error').hidden = true;
     $('settings-card').hidden = false;
     renderMain(previousActive !== currentDraft() || Boolean(acknowledgement.reset));
-    if (databaseSession) renderDatabase();
     renderUpdateBanner();
     syncControls();
   }
 
   function renderUpdateBanner() {
-    $('update-banner').hidden = ![...drafts.values()].some(draft => draft.conflict) && !databaseSession?.conflict;
+    $('update-banner').hidden = ![...drafts.values()].some(draft => draft.conflict);
   }
 
   function renderSidebar() {
@@ -292,28 +280,30 @@
 
   function renderStatus() {
     const draft = currentDraft();
+    $('update-catalog').title = t('从 models.dev 更新预设，保留模型手动覆盖。') + (state?.catalog?.updatedAt ? ` ${t('上次更新：{0}', new Date(state.catalog.updatedAt).toLocaleString())}` : '');
+    unavailable($('import-providers'), !state);
+    unavailable($('export-providers'), !state?.providers.length);
     unavailable($('save-provider'), !draft);
     unavailable($('refresh-models'), !draft);
     if (!draft) return;
     const hasKey = state?.providers.find(item => item.id === draft.provider.id)?.hasKey === true;
     $('api-key').placeholder = hasKey ? t('留空保持已存密钥') : t('输入 API Key（可选）');
-    $('refresh-models').title = t('从当前模式的地址获取模型并替换草稿列表，保留同 ID 模型的设置与协议分配');
+    $('refresh-models-label').textContent = t('刷新');
+    $('refresh-models').title = t('获取模型并按模型系列重新分配协议，保留同 ID 模型的名称和参数设置');
   }
 
-  function modelRow(model, selectable = false) {
+  function modelRow(model) {
     const draft = currentDraft();
     const name = modelName(model);
     const row = node('div', 'model-row');
     row.dataset.modelId = model.id;
-    if (selectable) {
-      const checkbox = node('input', 'model-checkbox');
-      checkbox.type = 'checkbox';
-      checkbox.dataset.selectModel = model.id;
-      checkbox.checked = draft.selectedModels.has(model.id);
-      checkbox.setAttribute('aria-label', t('选择模型 {0}', name));
-      row.append(checkbox);
-      row.classList.toggle('selected', checkbox.checked);
-    }
+    const checkbox = node('input', 'model-checkbox');
+    checkbox.type = 'checkbox';
+    checkbox.dataset.selectModel = model.id;
+    checkbox.checked = draft.selectedModels.has(model.id);
+    checkbox.setAttribute('aria-label', t('选择模型 {0}', name));
+    row.append(checkbox);
+    row.classList.toggle('selected', checkbox.checked);
     const open = node('button', 'model-open');
     open.type = 'button';
     open.setAttribute('aria-label', t('设置模型 {0}', name));
@@ -330,23 +320,29 @@
     const draft = currentDraft();
     if (!draft) return;
     const split = draft.provider.routingMode === 'split';
+    const routing = vendors.normalizeRouting(draft.provider);
     const lists = split ? vendors.protocolLists(draft.provider) : [];
     const selected = lists.map(list => ({ ...list, count: list.models.filter(model => draft.selectedModels.has(model.id)).length }));
-    const total = selected.reduce((sum, list) => sum + list.count, 0);
+    const total = draft.provider.models.filter(model => draft.selectedModels.has(model.id)).length;
     $('model-selection').hidden = !total;
     $('model-selection-count').textContent = t('已选 {0}', total);
-    $('model-selection-status').textContent = announcement || (split ? t('已选 {0} 个模型', total) : '');
+    $('model-selection-status').textContent = announcement || t('已选 {0} 个模型', total);
+    $('model-selection-target').hidden = !split;
+    unavailable($('delete-selected-models'), !total);
+    const unifiedSelectAll = $('select-all-unified');
+    unifiedSelectAll.checked = !split && total > 0 && total === draft.provider.models.length;
+    unifiedSelectAll.indeterminate = !split && total > 0 && total < draft.provider.models.length;
+    unavailable(unifiedSelectAll, split || !draft.provider.models.length);
     for (const { apiType, models, count } of selected) {
       const selectAll = $(`select-all-${apiType}`);
       selectAll.checked = models.length > 0 && count === models.length;
       selectAll.indeterminate = count > 0 && count < models.length;
       unavailable(selectAll, !models.length);
-      const incoming = total - count;
+      const incoming = draft.provider.models.filter(model => draft.selectedModels.has(model.id) && vendors.routeForModel(draft.provider, model.id, routing).apiType !== apiType).length;
       const target = $(`move-to-${apiType}`);
       target.hidden = !total;
       target.querySelector('span').textContent = incoming ? t('移到这里 · {0}', incoming) : t('已在这里');
-      const sources = selected.filter(list => list.apiType !== apiType && list.count).map(list => t('{0} {1} 个', PROTOCOL_NAMES[list.apiType], list.count)).join(t('、'));
-      const label = incoming ? t('将 {0} 个已选模型从 {1} 移到 {2}', incoming, sources, PROTOCOL_NAMES[apiType]) : t('已选的 {0} 个模型均在 {1}', count, PROTOCOL_NAMES[apiType]);
+      const label = incoming ? t('将 {0} 个已选模型移到 {1}', incoming, PROTOCOL_NAMES[apiType]) : t('已选模型均在 {0}', PROTOCOL_NAMES[apiType]);
       target.setAttribute('aria-label', label);
       target.title = label;
       unavailable(target, !incoming);
@@ -369,6 +365,7 @@
     scroller.setAttribute('role', 'region');
     scroller.setAttribute('aria-labelledby', 'models-heading');
     const split = draft.provider.routingMode === 'split';
+    $('unified-model-selection').hidden = split;
     $('model-list').classList.toggle('split-models', split);
     const total = draft.provider.models.length;
     $('model-total').textContent = `${total}`;
@@ -418,7 +415,7 @@
         const list = node('section', 'protocol-models');
         list.dataset.protocol = apiType;
         list.setAttribute('aria-labelledby', `protocol-heading-${apiType}`);
-        for (const model of models) list.append(modelRow(model, true));
+        for (const model of models) list.append(modelRow(model));
         if (!models.length) list.append(node('p', 'empty-models', t('暂无模型')));
         const controls = node('div', 'protocol-controls');
         controls.append(header, endpoint, move);
@@ -455,7 +452,6 @@
         $('provider-name').value = provider.name;
         $('unified-api-type').value = provider.unified.apiType;
         $('unified-url').value = provider.unified.url;
-        $('provider-zdr-enabled').checked = provider.zeroDataRetentionEnabled;
         $('api-key').value = draft.apiKey;
         hideKey();
         clearValidation('provider-form');
@@ -522,28 +518,6 @@
     return value ? { [key]: Number(value) } : {};
   }
 
-  function pricingRatesText(pricing) {
-    if (!pricing?.rates) return '';
-    const { currency, bands } = pricing.rates;
-    return t('{0} / 每百万 tokens\n', currency) + bands.map(band => {
-      const priorInput = Math.max(0, ...pricing.thresholds.filter(value => band.inputUpTo == null || value < band.inputUpTo));
-      const input = band.inputUpTo == null ? priorInput ? t('输入 > {0}', priorInput.toLocaleString('en-US')) : t('全部输入') : priorInput ? t('输入 {0}–{1}', (priorInput + 1).toLocaleString('en-US'), band.inputUpTo.toLocaleString('en-US')) : t('输入 ≤ {0}', band.inputUpTo.toLocaleString('en-US'));
-      const priorOutput = Math.max(0, ...bands.filter(item => item.inputUpTo === band.inputUpTo && item.outputUpTo != null && (band.outputUpTo === null || item.outputUpTo < band.outputUpTo)).map(item => item.outputUpTo));
-      const output = band.outputUpTo === undefined ? '' : band.outputUpTo === null ? t('；输出 > {0}', priorOutput.toLocaleString('en-US')) : priorOutput ? t('；输出 {0}–{1}', (priorOutput + 1).toLocaleString('en-US'), band.outputUpTo.toLocaleString('en-US')) : t('；输出 ≤ {0}', band.outputUpTo.toLocaleString('en-US'));
-      return t('{0}{1}：输入 {2}，输出 {3}{4}{5}', input, output, band.input, band.output, band.cacheRead === undefined ? '' : t('，缓存读取 {0}', band.cacheRead), band.cacheWrite === undefined ? '' : t('，缓存写入 {0}', band.cacheWrite));
-    }).join('\n');
-  }
-
-  function syncContextPricing() {
-    if (!modelSession) return;
-    const parameters = baseParameters($('model-id').value.trim(), modelSession.database);
-    const pricing = parameters.contextPricing;
-    $('context-pricing-note').textContent = modelPolicy.pricingNote(parameters);
-    $('context-pricing-details').hidden = !pricing;
-    $('context-pricing-summary').textContent = t('计费资料 · {0}', pricing?.checkedAt ? t('核验于 {0}', pricing.checkedAt) : t('尚未核验'));
-    $('context-pricing-source').textContent = [pricing?.source || t('未填写来源'), pricingRatesText(pricing)].filter(Boolean).join('\n');
-  }
-
   function urlError(value) {
     if (value.length > 4096) return t('API Base URL 不能超过 4096 个字符。');
     try {
@@ -555,6 +529,7 @@
 
   function providerProblem(provider, discovery = false) {
     if (!provider.name.trim() || provider.name.length > 200) return { text: t('请填写供应商名称，最多 200 个字符。'), field: 'provider-name' };
+    const routing = vendors.normalizeRouting(provider);
     const split = provider.routingMode === 'split';
     const routes = split ? API_TYPES.map(apiType => ({ apiType, url: provider.endpoints[apiType], field: ENDPOINT_FIELDS[apiType] }))
       : [{ ...provider.unified, field: 'unified-url' }];
@@ -566,7 +541,7 @@
       : { text: split ? t('请至少填写一个协议的基础 URL，再刷新模型。') : t('请填写统一协议的基础 URL，再刷新模型。'), field: routes[0].field };
     if (provider.enabled) {
       for (const model of provider.models) {
-        const route = vendors.routeForModel(provider, model.id);
+        const route = vendors.routeForModel(provider, model.id, routing);
         if (!route.url.trim()) return { text: t('{0} 使用 {1}，请填写对应的基础 URL。', modelName(model), PROTOCOL_NAMES[route.apiType]), field: split ? ENDPOINT_FIELDS[route.apiType] : 'unified-url' };
       }
     }
@@ -615,9 +590,9 @@
   for (const dialog of document.querySelectorAll('dialog')) {
     dialog.addEventListener('cancel', event => { if (busy) event.preventDefault(); });
     dialog.addEventListener('close', () => {
+      if (dialog.open) return;
       if (dialog.id === 'model-dialog') modelSession = null;
-      if (dialog.id === 'database-editor') databaseEditor = null;
-      if (dialog.id === 'database-dialog') databaseSession = null;
+      if (dialog.id === `${transferSession?.mode}-dialog`) transferSession = null;
       if (dialog.id === 'confirm-dialog') pendingConfirm = null;
       if (state && dialog.id !== 'confirm-dialog') applyState(state);
       const openDialogs = [...document.querySelectorAll('dialog[open]')];
@@ -640,7 +615,7 @@
 
   function addProvider() {
     if (!state || busy) return;
-    const provider = { id: `provider-${crypto.randomUUID()}`, name: t('新供应商'), ...vendors.normalizeRouting({}), enabled: true, zeroDataRetentionEnabled: false, models: [] };
+    const provider = { id: `provider-${crypto.randomUUID()}`, name: t('新供应商'), ...vendors.normalizeRouting({}), enabled: true, models: [] };
     currentDraft()?.selectedModels.clear();
     drafts.set(provider.id, makeDraft(provider, false));
     activeId = provider.id;
@@ -660,9 +635,10 @@
       const payload = { provider };
       if (draft.apiKey.trim()) payload.apiKey = draft.apiKey.trim();
       const next = await request('saveProvider', payload);
-      applyState(next, { providerId: id });
+      applyState(next, { savedIds: [id] });
       $('api-key').value = currentDraft()?.apiKey || '';
       hideKey();
+      successToast(t('供应商已保存。'));
     }, 'provider-error');
   }
 
@@ -689,8 +665,6 @@
     const problem = providerProblem(provider, true);
     if (problem) { formError('provider-error', problem.text, problem.field); return; }
     if (draft.apiKey.length > 16000) { formError('provider-error', t('API Key 不能超过 16000 个字符。'), 'api-key'); return; }
-    draft.selectedModels.clear();
-    syncSelections();
     $('model-list').setAttribute('aria-busy', 'true');
     await runAction(t('正在刷新模型…'), async () => {
       const payload = { provider };
@@ -703,7 +677,7 @@
       const models = vendors.replaceModels(target.provider.models, result.models);
       if (models.length > 5000) throw new Error(t('返回的聊天模型超过每个供应商 5000 个模型的上限，请手动添加所需模型。'));
       target.provider.models = models;
-      target.provider.modelProtocols = vendors.normalizeRouting(target.provider).modelProtocols;
+      target.provider.modelProtocols = vendors.normalizeRouting({ ...target.provider, modelProtocols: {} }).modelProtocols;
       target.selectedModels.clear();
       renderMain(false);
       if (result.warnings?.length) message('provider-error', safeError(result.warnings.join('；')));
@@ -766,7 +740,6 @@
     changed();
   }
   $('model-list').addEventListener('input', endpointChanged);
-  $('provider-zdr-enabled').addEventListener('change', event => { if (currentDraft()) { currentDraft().provider.zeroDataRetentionEnabled = event.target.checked; changed(); } });
   $('api-key').addEventListener('input', event => { if (currentDraft()) { currentDraft().apiKey = event.target.value; changed(); } });
   $('toggle-key').addEventListener('click', () => {
     const visible = $('api-key').type === 'password';
@@ -775,33 +748,54 @@
     $('toggle-key').setAttribute('aria-label', visible ? t('隐藏 API Key') : t('显示 API Key'));
     $('toggle-key').title = visible ? t('隐藏 API Key') : t('显示 API Key');
   });
-  $('model-list').addEventListener('change', event => {
+  function selectionChanged(event) {
     endpointChanged(event);
     const draft = currentDraft();
-    if (!draft || busy || draft.provider.routingMode !== 'split') return;
+    if (!draft || busy) return;
     const checkbox = event.target.closest('[data-select-model]');
     const selectAll = event.target.closest('[data-select-all]');
     if (checkbox) {
       if (checkbox.checked) draft.selectedModels.add(checkbox.dataset.selectModel);
       else draft.selectedModels.delete(checkbox.dataset.selectModel);
     } else if (selectAll) {
-      const list = vendors.protocolLists(draft.provider).find(list => list.apiType === selectAll.dataset.selectAll);
-      for (const model of list.models) {
+      const models = selectAll.dataset.selectAll === 'unified' ? draft.provider.models
+        : vendors.protocolLists(draft.provider).find(list => list.apiType === selectAll.dataset.selectAll)?.models || [];
+      for (const model of models) {
         if (selectAll.checked) draft.selectedModels.add(model.id);
         else draft.selectedModels.delete(model.id);
       }
     }
     syncSelections();
     syncControls();
-  });
+  }
+  $('model-list').addEventListener('change', selectionChanged);
+  $('select-all-unified').addEventListener('change', selectionChanged);
   $('clear-model-selection').addEventListener('click', () => {
     const draft = currentDraft();
     if (!draft || busy) return;
     draft.selectedModels.clear();
     syncSelections();
+    focusModelList();
+  });
+  function focusModelList() {
     const scroller = $('model-scroll');
     scroller.focus();
     if (document.activeElement !== scroller) $('model-list').focus();
+  }
+  $('delete-selected-models').addEventListener('click', () => {
+    const draft = currentDraft();
+    if (!draft || busy) return;
+    const ids = new Set(draft.provider.models.filter(model => draft.selectedModels.has(model.id)).map(model => model.id));
+    if (!ids.size) return;
+    confirmAction(t('删除所选模型'), t('从当前草稿中删除已选的 {0} 个模型？保存供应商后生效。', ids.size), () => {
+      if (currentDraft() !== draft) return;
+      draft.provider.models = draft.provider.models.filter(model => !ids.has(model.id));
+      for (const id of ids) delete draft.provider.modelProtocols[id];
+      draft.selectedModels.clear();
+      renderModels();
+      changed();
+      focusModelList();
+    });
   });
   $('provider-form').addEventListener('submit', event => {
     event.preventDefault();
@@ -844,7 +838,7 @@
     const id = $('model-id').value.trim();
     const parameters = { ...baseParameters(id, modelSession.database), thinking: $('cap-thinking').checked, supportsReasoningEffort: declared };
     const provider = drafts.get(modelSession.providerId).provider;
-    const apiType = vendors.routeForModel(provider, modelSession.editingId || id).apiType;
+    const apiType = provider.routingMode === 'unified' ? provider.unified.apiType : $('model-protocol').value || vendors.recommendedProtocol(id);
     const projection = modelPolicy.projectEfforts(parameters, apiType);
     const values = projection.levels;
     const content = document.createDocumentFragment();
@@ -860,8 +854,7 @@
     $('reasoning-effort').replaceChildren(content);
     $('reasoning-effort').value = thinking && values.includes(selected) ? selected : '';
     unavailable($('reasoning-effort'), !thinking || !values.length);
-    const controls = modelSession ? baseParameters($('model-id').value.trim(), modelSession.database).reasoningControls : undefined;
-    $('reasoning-note').textContent = (!thinking ? t('启用思考能力后可指定实际请求档位。') : projection.rejected.length ? t('部分档位需要官方暂不支持的参数，已隐藏。') : !values.length ? t('此条目没有官方推理档位枚举，保留服务端默认。') : t('请求时使用此档位；默认由服务商决定。')) + (controls?.note ? ` ${controls.note}` : '');
+    $('reasoning-note').textContent = !thinking ? t('启用思考能力后可指定实际请求档位。') : projection.rejected.length ? t('部分档位需要官方暂不支持的参数，已隐藏。') : !values.length ? t('此条目没有官方推理档位枚举，保留服务端默认。') : t('请求时使用此档位；默认由服务商决定。');
   }
 
   function fillModelParameters(parameters, selected = '') {
@@ -875,7 +868,6 @@
     renderEfforts('effort-options', parameters.supportsReasoningEffort);
     $('model-extra-efforts').value = '';
     syncReasoning(selected);
-    syncContextPricing();
     syncControls();
   }
 
@@ -885,7 +877,14 @@
     const matched = own(modelSession.database.models, id);
     $('model-match').textContent = !id ? t('在高级选项中设置请求模型 ID。') : matched ? t('已精确匹配模型参数') : t('使用初始配置，可按需调整');
     $('model-match').classList.toggle('match-ok', matched);
-    $('model-source').textContent = id ? sourceNote(baseParameters(id, modelSession.database)) : '';
+    const provider = drafts.get(modelSession.providerId).provider;
+    const split = provider.routingMode === 'split';
+    $('model-protocol-field').hidden = !split;
+    if (split) {
+      $('model-protocol-note').textContent = id
+        ? t('模型默认归入 {0}，可按服务商支持单独修改。', PROTOCOL_NAMES[vendors.recommendedProtocol(id)])
+        : t('按模型系列自动选择默认协议，可按服务商支持单独修改。');
+    }
   }
 
   function openModel(id = null) {
@@ -893,13 +892,16 @@
     if (!draft || busy) return;
     const model = id ? draft.provider.models.find(item => item.id === id) : { id: '', name: '', discoveredName: '', overrides: {} };
     if (!model) return;
-    modelSession = { providerId: draft.provider.id, original: clone(model), editingId: id, database: clone(state.database), requestId: model.id, automaticName: model.name ? null : (model.id ? modelName(model) : ''), stale: false };
+    const initialProtocol = id && own(draft.provider.modelProtocols, id) ? draft.provider.modelProtocols[id] : vendors.recommendedProtocol(model.id);
+    modelSession = { providerId: draft.provider.id, original: clone(model), editingId: id, database: clone(state.database), requestId: model.id, automaticName: model.name ? null : (model.id ? modelName(model) : ''), protocolTouched: Boolean(id && own(draft.provider.modelProtocols, id)), stale: false };
     $('model-title').textContent = id ? t('模型设置') : t('添加模型');
     $('apply-model').textContent = id ? t('应用到草稿') : t('添加');
     $('advanced-options').open = !id;
     $('model-update').hidden = true;
     $('model-id').value = model.id;
     $('model-name').value = model.id ? modelName(model) : '';
+    $('model-protocol').value = initialProtocol;
+    unavailable($('model-protocol'), draft.provider.routingMode === 'unified');
     clearValidation('model-form');
     message('model-error');
     const choices = new Map(Object.entries(state.database.models).filter(([modelId]) => !vendors.excludedKind(modelId)).map(([modelId, record]) => [modelId, recordName(record, modelId)]));
@@ -931,6 +933,7 @@
       $('model-name').value = name;
       modelSession.automaticName = name;
     }
+    if (!modelSession.protocolTouched) $('model-protocol').value = vendors.recommendedProtocol(id);
     const parameters = { ...baseParameters(id, modelSession.database), ...(id === original.id ? original.overrides : {}) };
     fillModelParameters(parameters, id === original.id ? original.reasoningEffort || '' : '');
     renderModelMatch();
@@ -972,6 +975,11 @@
   });
   $('model-id').addEventListener('input', changeModelId);
   $('model-id').addEventListener('change', changeModelId);
+  $('model-protocol').addEventListener('change', () => {
+    if (!modelSession || busy) return;
+    modelSession.protocolTouched = true;
+    syncReasoning();
+  });
   $('effort-options').addEventListener('change', () => syncReasoning());
   $('model-extra-efforts').addEventListener('input', () => syncReasoning());
   $('cap-thinking').addEventListener('change', () => syncReasoning());
@@ -1018,10 +1026,12 @@
     }
     const original = modelSession.original;
     const next = { id, name: automaticName ? '' : name, discoveredName: id === original.id ? original.discoveredName : '', overrides, ...(reasoningEffort ? { reasoningEffort } : {}) };
-    const apiType = (modelSession.editingId && draft.provider.modelProtocols[modelSession.editingId]) || vendors.recommendedProtocol(id);
+    const apiType = draft.provider.routingMode === 'split' ? $('model-protocol').value : (modelSession.editingId && draft.provider.modelProtocols[modelSession.editingId]) || vendors.recommendedProtocol(id);
+    if (!API_TYPES.includes(apiType)) { formError('model-error', t('请选择有效的请求协议。'), 'model-protocol'); return; }
     const index = draft.provider.models.findIndex(model => model.id === modelSession.editingId);
     if (index >= 0) draft.provider.models[index] = next;
     else draft.provider.models.push(next);
+    if (modelSession.editingId && modelSession.editingId !== id) delete draft.provider.modelProtocols[modelSession.editingId];
     draft.provider.modelProtocols[id] = apiType;
     draft.provider.modelProtocols = vendors.normalizeRouting(draft.provider).modelProtocols;
     if (draft.selectedModels.delete(modelSession.editingId)) draft.selectedModels.add(id);
@@ -1031,294 +1041,127 @@
     syncControls();
   });
 
-  function renderDatabaseStatus() {
-    if (!databaseSession) return;
-    const count = Object.keys(databaseSession.database.models).length;
-    $('database-count').textContent = t('{0} 个模型 · {1}{2}', count, databaseDirty() ? t('未保存的草稿') : t('已保存'), databaseSession.conflict ? t(' · 有外部更新') : '');
-    $('database-update').hidden = !databaseSession.conflict;
-    unavailable($('database-save'), !databaseDirty() && !databaseSession.conflict);
-    $('database-refresh').title = t('从 models.dev 更新，保留手动修改。') + (state.catalog?.updatedAt ? ` ${t('上次更新：{0}', new Date(state.catalog.updatedAt).toLocaleString())}` : '');
-  }
-
-  function databaseRow(id, record, defaults = false) {
-    const row = node('div', `database-row${defaults ? ' default-row' : ''}`);
-    const button = node('button', 'database-record');
-    button.type = 'button';
-    button.dataset.databaseAction = 'edit';
-    if (defaults) button.dataset.defaults = 'true';
-    else button.dataset.entryId = id;
-    const name = defaults ? t('初始配置') : recordName(record, id);
-    button.setAttribute('aria-label', t('编辑{0}', name));
-    const detail = defaults ? t('未知 ID 使用 · {0} 上下文 / {1} 输出', record.contextWindow.toLocaleString(), record.maxOutputTokens.toLocaleString()) : id;
-    button.append(node('strong', '', name), node('small', '', detail));
-    const edit = iconButton('edit', t('编辑{0}', name));
-    edit.dataset.databaseAction = 'edit';
-    if (defaults) edit.dataset.defaults = 'true';
-    else edit.dataset.entryId = id;
-    row.append(button, edit);
-    if (!defaults) {
-      const remove = iconButton('trash', t('删除参数 {0}', name));
-      remove.dataset.databaseAction = 'delete';
-      remove.dataset.entryId = id;
-      row.append(remove);
+  function updateTransferSelection() {
+    const { mode, providers, selected } = transferSession;
+    const count = selected.size, total = providers.length;
+    const selectAll = $(`${mode}-select-all`);
+    selectAll.checked = total > 0 && count === total;
+    selectAll.indeterminate = count > 0 && count < total;
+    unavailable(selectAll, !total);
+    for (const input of $(`${mode}-provider-list`).querySelectorAll('[data-transfer-id]')) {
+      input.checked = selected.has(input.dataset.transferId);
+      input.closest('.transfer-item').classList.toggle('selected', input.checked);
     }
-    return row;
+    if (mode === 'export') {
+      unavailable($('export-clipboard'), !count);
+      unavailable($('export-file'), !count);
+    } else {
+      $('import-summary').textContent = t('已选 {0} / {1}', count, total);
+      unavailable($('apply-import'), !count);
+    }
+    syncControls();
   }
 
-  function renderDatabase() {
-    if (!databaseSession) return;
-    const database = databaseSession.database;
-    const query = $('database-search').value.trim().toLocaleLowerCase();
+  function renderTransferDialog() {
+    const { mode, providers } = transferSession;
     const content = document.createDocumentFragment();
-    content.append(databaseRow(null, database.defaults, true));
-    let count = 0;
-    for (const [id, record] of Object.entries(database.models)) {
-      if (!`${record.name} ${id}`.toLocaleLowerCase().includes(query)) continue;
-      content.append(databaseRow(id, record));
-      count += 1;
+    for (const provider of providers) {
+      const label = node('label', 'transfer-item');
+      const main = node('span', 'transfer-item-main');
+      const input = node('input');
+      input.type = 'checkbox';
+      input.dataset.transferId = provider.id;
+      main.append(input, node('span', 'transfer-item-name', provider.name));
+      const meta = node('span', 'transfer-item-meta');
+      meta.append(node('span', '', t('{0} 个模型', provider.models.length)));
+      if (mode === 'import' && state.providers.some(item => item.id === provider.id || item.name === provider.name)) {
+        meta.append(node('span', 'transfer-badge', t('更新已有')));
+      }
+      label.append(main, meta);
+      content.append(label);
     }
-    if (!count) content.append(node('p', 'database-empty', query ? t('没有匹配的参数条目。') : t('暂无模型条目，可新增或导入参数库。')));
-    $('database-list').replaceChildren(content);
-    renderDatabaseStatus();
-    syncControls();
-  }
-
-  function openDatabase() {
-    if (!state || busy) return;
-    databaseSession = { database: clone(state.database), baseline: clone(state.database), conflict: false };
-    $('database-search').value = '';
-    message('database-error');
-    renderDatabase();
-    showDialog('database-dialog', 'database-search');
-  }
-
-  function syncDatabasePricing() {
-    const kind = $('database-pricing-kind').value;
-    unavailable($('database-pricing-thresholds'), kind !== 'tiered');
-    $('database-pricing-thresholds').required = kind === 'tiered';
-    $('database-pricing-source').required = kind === 'tiered' || kind === 'flat';
-    for (const field of ['scope', 'source', 'note', 'checked']) unavailable($(`database-pricing-${field}`), !kind);
-    if (databaseEditor) {
-      const pricing = readDatabasePricing();
-      $('database-pricing-rates').textContent = pricingRatesText(pricing);
-      $('database-pricing-rates').hidden = !pricing?.rates;
+    $(`${mode}-provider-list`).replaceChildren(content);
+    if (mode === 'import') {
+      $('import-selection-section').hidden = !providers.length;
+      $('import-empty').hidden = Boolean(providers.length);
     }
+    updateTransferSelection();
   }
 
-  function readDatabasePricing() {
-    const kind = $('database-pricing-kind').value;
-    if (!kind) return undefined;
-    const csv = $('database-pricing-thresholds').value.trim();
-    const pricing = {
-      ...databaseEditor.original.contextPricing,
-      kind, scope: $('database-pricing-scope').value,
-      thresholds: kind === 'tiered' && csv ? csv.split(/[,，]/).map(value => /^\d+$/.test(value.trim()) ? Number(value.trim()) : NaN) : [],
-      source: $('database-pricing-source').value.trim(), note: $('database-pricing-note').value.trim(),
-      checkedAt: $('database-pricing-checked').value || null
-    };
-    const previous = databaseEditor.original.contextPricing;
-    if (previous && (previous.kind !== pricing.kind || previous.scope !== pricing.scope || !equal([...previous.thresholds].sort((a,b)=>a-b), [...pricing.thresholds].sort((a,b)=>a-b)))) delete pricing.rates;
-    return pricing;
+  function openTransferDialog(mode) {
+    if (!state || busy || (mode === 'export' && !state.providers.length)) return;
+    const providers = mode === 'export' ? state.providers : [];
+    transferSession = { mode, providers, selected: new Set(providers.map(provider => provider.id)) };
+    message(`${mode}-error`);
+    renderTransferDialog();
+    showDialog(`${mode}-dialog`, mode === 'export' ? 'export-file' : 'import-from-clipboard');
   }
 
-  function contextPricingProblem(pricing) {
-    if (pricing === undefined) return null;
-    if (!pricing || typeof pricing !== 'object' || Array.isArray(pricing) || !['unknown', 'tiered', 'flat'].includes(pricing.kind)) return { text: t('Context 计费类型无效。'), field: 'database-pricing-kind' };
-    if (!['direct-api', 'copilot', 'custom'].includes(pricing.scope)) return { text: t('Context 计费适用渠道无效。'), field: 'database-pricing-scope' };
-    if (!Array.isArray(pricing.thresholds) || pricing.thresholds.length > 8 || pricing.thresholds.some(value => !Number.isSafeInteger(value) || value <= 0 || value > 100000000) || new Set(pricing.thresholds).size !== pricing.thresholds.length) return { text: t('Context 计费阈值最多 8 个，每项为 1–100000000 的不重复整数，用逗号分隔。'), field: 'database-pricing-thresholds' };
-    if ((pricing.kind === 'tiered') !== Boolean(pricing.thresholds.length)) return { text: t('按长度分段需要至少一个阈值；未核实或不分段时阈值应为空。'), field: 'database-pricing-thresholds' };
-    const source = pricing.source ?? '';
-    if (typeof source !== 'string' || source.length > 4000 || (pricing.kind !== 'unknown' && !source.trim())) return { text: t('Context 计费来源最多 4000 个字符；按长度分段或不分段时必须填写。'), field: 'database-pricing-source' };
-    const note = pricing.note ?? '';
-    if (typeof note !== 'string' || note.length > 4000) return { text: t('Context 计费说明必须是最多 4000 个字符的文本。'), field: 'database-pricing-note' };
-    if (pricing.checkedAt != null && !validDate(pricing.checkedAt)) return { text: t('请填写有效的计费核验日期（YYYY-MM-DD），或留空。'), field: 'database-pricing-checked' };
-    return null;
+  async function submitExport(target) {
+    if (transferSession?.mode !== 'export' || busy) return;
+    const ids = [...transferSession.selected];
+    if (!ids.length) return;
+    await runAction(t('正在导出供应商…'), async () => {
+      const result = await request('exportProviders', { ids, target });
+      if (result?.canceled) return;
+      $('export-dialog').close();
+      successToast(target === 'clipboard' ? t('已复制 {0} 个供应商到剪贴板。', ids.length) : t('已导出 {0} 个供应商。', ids.length));
+    }, 'export-error');
   }
 
-  function openDatabaseEditor(mode, id = null) {
-    if (!databaseSession || busy) return;
-    const database = databaseSession.database;
-    const record = clone(mode === 'model' ? database.models[id] : database.defaults);
-    databaseEditor = { mode, id, original: mode === 'new' ? {} : record, pricingEdited: mode === 'new' };
-    $('database-editor-title').textContent = mode === 'defaults' ? t('编辑初始配置') : mode === 'new' ? t('新增模型参数') : t('编辑模型参数');
-    $('database-name').value = mode === 'new' ? '' : record.name;
-    $('database-name').placeholder = mode === 'defaults' ? t('初始配置（可选）') : t('模型显示名称');
-    $('database-id').value = id || '';
-    $('database-mapping').hidden = mode === 'defaults';
-    $('database-mapping').open = false;
-    $('database-context').value = record.contextWindow;
-    $('database-input').value = record.maxInputTokens ?? '';
-    $('database-output').value = record.maxOutputTokens;
-    $('database-default-output').value = record.defaultOutputTokens ?? '';
-    $('database-tools').checked = record.toolCalling;
-    $('database-vision').checked = record.vision;
-    $('database-thinking').checked = record.thinking;
-    renderEfforts('database-efforts', record.supportsReasoningEffort);
-    $('database-extra-efforts').value = '';
-    $('database-provenance').open = false;
-    $('database-source').value = mode === 'new' ? t('用户维护，未核验。') : record.source;
-    $('database-verified').value = mode === 'new' ? '' : record.verifiedAt || '';
-    $('database-release-field').hidden = mode === 'defaults';
-    $('database-release').value = mode === 'new' || mode === 'defaults' ? '' : record.releaseDate || '';
-    const pricing = mode === 'new' ? undefined : record.contextPricing;
-    $('database-pricing').open = false;
-    $('database-pricing-kind').value = pricing?.kind || (mode === 'new' ? 'unknown' : '');
-    $('database-pricing-scope').value = pricing?.scope || 'direct-api';
-    $('database-pricing-thresholds').value = pricing?.thresholds?.join(', ') || '';
-    $('database-pricing-source').value = pricing?.source || '';
-    $('database-pricing-note').value = pricing?.note || '';
-    $('database-pricing-checked').value = pricing?.checkedAt || '';
-    $('database-pricing-rates').textContent = pricingRatesText(pricing);
-    $('database-pricing-rates').hidden = !pricing?.rates;
-    syncDatabasePricing();
-    clearValidation('database-form');
-    message('database-editor-error');
-    syncControls();
-    showDialog('database-editor', 'database-name');
+  async function loadImportSource(source) {
+    if (transferSession?.mode !== 'import' || busy) return;
+    await runAction(t('正在读取导入配置…'), async () => {
+      const result = await request('readImportSource', { source });
+      if (result?.canceled) return;
+      if (!result || !Array.isArray(result.providers) || !result.providers.length) {
+        throw new Error(t('未读取到有效的配置内容。'));
+      }
+      transferSession.providers = result.providers;
+      transferSession.selected = new Set(result.providers.map(provider => provider.id));
+      renderTransferDialog();
+    }, 'import-error');
   }
 
-  function databaseProblem(database) {
-    if (!database || database.schemaVersion !== 1 || !database.models) return t('参数库格式无效。');
-    if (Object.keys(database.models).length > 20000) return t('参数库最多包含 20000 个模型。');
-    for (const [id, record] of [[null, database.defaults], ...Object.entries(database.models)]) {
-      if (id !== null && !validId(id)) return t('参数库中存在无效的请求模型 ID。');
-      if (!record || typeof record.name !== 'string' || typeof record.source !== 'string') return t('参数库中的名称与来源必须是文本。');
-      if (record.name.length > 200 || record.source.length > 4000) return t('显示名称最多 200 个字符，参数来源最多 4000 个字符。');
-      const problem = tokenError(record);
-      if (problem) return t('{0}：{1}', id === null ? t('初始配置') : recordName(record, id), problem);
-      if (['toolCalling', 'vision', 'thinking'].some(field => typeof record[field] !== 'boolean')) return t('模型能力必须为启用或停用状态。');
-      const invalidEfforts = effortError(record.supportsReasoningEffort);
-      if (invalidEfforts) return invalidEfforts;
-      if (record.verifiedAt !== null && !validDate(record.verifiedAt)) return t('核验日期格式应为 YYYY-MM-DD。');
-      if (record.releaseDate != null && !modelPolicy.validDate(record.releaseDate)) return t('模型发布日期必须是有效的 YYYY-MM-DD 日期。');
-      const pricingProblem = contextPricingProblem(record.contextPricing);
-      if (pricingProblem) return t('{0}：{1}', id === null ? t('初始配置') : recordName(record, id), pricingProblem.text);
-    }
-    return null;
+  async function applyImport() {
+    if (transferSession?.mode !== 'import' || busy) return;
+    const chosen = transferSession.providers.filter(provider => transferSession.selected.has(provider.id));
+    if (!chosen.length) return;
+    await runAction(t('正在导入供应商…'), async () => {
+      const result = await request('importProviders', { providers: chosen });
+      applyState(result.state, { savedIds: result.importedIds });
+      $('import-dialog').close();
+      successToast(t('已导入 {0} 个供应商。', chosen.length));
+    }, 'import-error');
   }
 
-  function validDate(value) {
-    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-    const parsed = new Date(`${value}T00:00:00Z`);
-    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
-  }
-
-  $('open-database').addEventListener('click', openDatabase);
-  $('database-search').addEventListener('input', renderDatabase);
-  $('database-add').addEventListener('click', () => openDatabaseEditor('new'));
-  for (const field of ['kind', 'scope', 'thresholds', 'source', 'note', 'checked']) {
-    for (const event of ['input', 'change']) $(`database-pricing-${field}`).addEventListener(event, () => {
-      if (!databaseEditor || busy) return;
-      databaseEditor.pricingEdited = true;
-      if (field === 'kind') syncDatabasePricing();
+  for (const mode of ['export', 'import']) {
+    $(`${mode}-providers`).addEventListener('click', () => openTransferDialog(mode));
+    $(`${mode}-select-all`).addEventListener('change', event => {
+      if (transferSession?.mode !== mode || busy) return;
+      transferSession.selected = event.target.checked ? new Set(transferSession.providers.map(item => item.id)) : new Set();
+      updateTransferSelection();
+    });
+    $(`${mode}-provider-list`).addEventListener('change', event => {
+      const input = event.target.closest('[data-transfer-id]');
+      if (!input || transferSession?.mode !== mode || busy) return;
+      if (input.checked) transferSession.selected.add(input.dataset.transferId);
+      else transferSession.selected.delete(input.dataset.transferId);
+      updateTransferSelection();
     });
   }
-  $('database-list').addEventListener('click', event => {
-    const button = event.target.closest('[data-database-action]');
-    if (!button || !databaseSession || busy) return;
-    const id = button.dataset.entryId;
-    if (button.dataset.databaseAction === 'edit') openDatabaseEditor(button.dataset.defaults ? 'defaults' : 'model', id);
-    else if (own(databaseSession.database.models, id)) {
-      confirmAction(t('删除模型参数'), t('从参数库草稿中删除“{0}”？使用此映射的模型将回退到初始配置，已有手动调整保留。', recordName(databaseSession.database.models[id], id)), () => {
-        delete databaseSession.database.models[id];
-        renderDatabase();
-        $('database-search').focus();
-      });
-    }
-  });
-  $('database-form').addEventListener('submit', event => {
-    event.preventDefault();
-    if (!databaseSession || !databaseEditor || busy) return;
-    clearValidation('database-form');
-    const { mode, id: oldId } = databaseEditor;
-    const id = $('database-id').value.trim();
-    const name = $('database-name').value.trim();
-    if ((mode !== 'defaults' && !name) || name.length > 200) { formError('database-editor-error', t('请填写显示名称，最多 200 个字符。'), 'database-name'); return; }
-    if (mode === 'new' && Object.keys(databaseSession.database.models).length >= 20000) { formError('database-editor-error', t('参数库最多包含 20000 个模型。')); return; }
-    if (mode !== 'defaults' && !validId(id)) { formError('database-editor-error', t('请展开内部 ID 映射并填写有效的请求模型 ID，最多 512 个字符。'), 'database-id'); return; }
-    if (mode !== 'defaults' && own(databaseSession.database.models, id) && (mode === 'new' || id !== oldId)) { formError('database-editor-error', t('此请求模型 ID 已存在，请编辑现有条目。'), 'database-id'); return; }
-    const record = {
-      ...databaseEditor.original,
-      name, contextWindow: Number($('database-context').value), maxOutputTokens: Number($('database-output').value), ...optionalInput('database-input'), ...optionalInput('database-default-output', 'defaultOutputTokens'),
-      toolCalling: $('database-tools').checked, vision: $('database-vision').checked, thinking: $('database-thinking').checked,
-      supportsReasoningEffort: readEfforts('database-efforts', 'database-extra-efforts'),
-      source: $('database-source').value.trim(), verifiedAt: $('database-verified').value || null,
-      ...(mode === 'defaults' ? {} : { releaseDate: $('database-release').value || null })
-    };
-    if (!$('database-input').value.trim()) delete record.maxInputTokens;
-    if (!$('database-default-output').value.trim()) delete record.defaultOutputTokens;
-    if (databaseEditor.pricingEdited) {
-      const pricing = readDatabasePricing();
-      if (pricing === undefined) delete record.contextPricing;
-      else record.contextPricing = pricing;
-    }
-    const pricingProblem = contextPricingProblem(record.contextPricing);
-    if (pricingProblem) { formError('database-editor-error', pricingProblem.text, pricingProblem.field); return; }
-    if (databaseEditor.pricingEdited && record.contextPricing) record.contextPricing.thresholds.sort((left, right) => left - right);
-    const problem = tokenError(record);
-    if (problem) { formError('database-editor-error', problem, 'database-output'); return; }
-    const invalidEfforts = effortError(record.supportsReasoningEffort);
-    if (invalidEfforts) { formError('database-editor-error', invalidEfforts, 'database-extra-efforts'); return; }
-    if (record.source.length > 4000) { formError('database-editor-error', t('参数来源最多 4000 个字符。'), 'database-source'); return; }
-    if (record.verifiedAt && !validDate(record.verifiedAt)) { formError('database-editor-error', t('请填写有效的核验日期。'), 'database-verified'); return; }
-    if (record.releaseDate && !modelPolicy.validDate(record.releaseDate)) { formError('database-editor-error', t('请填写有效的模型发布日期。'), 'database-release'); return; }
-    if (mode === 'defaults') databaseSession.database.defaults = record;
-    else {
-      if (mode === 'model' && oldId !== id) delete databaseSession.database.models[oldId];
-      databaseSession.database.models[id] = record;
-    }
-    $('database-editor').close();
-    message('database-error');
-    renderDatabase();
-  });
+  $('export-clipboard').addEventListener('click', () => { void submitExport('clipboard'); });
+  $('export-file').addEventListener('click', () => { void submitExport('file'); });
 
-  async function saveDatabase() {
-    if (!databaseSession) return;
-    const database = clone(databaseSession.database);
-    const problem = databaseProblem(database);
-    if (problem) { message('database-error', problem); return; }
-    await runAction(t('正在保存参数库…'), async () => {
-      const next = await request('saveDatabase', { database });
-      applyState(next, { database: true });
-      $('database-dialog').close();
-    }, 'database-error');
-  }
+  $('import-from-clipboard').addEventListener('click', () => { void loadImportSource('clipboard'); });
+  $('import-from-file').addEventListener('click', () => { void loadImportSource('file'); });
+  $('apply-import').addEventListener('click', () => { void applyImport(); });
 
-  async function importDatabase() {
-    await runAction(t('请选择要导入的参数库文件…'), async () => {
-      const previous = clone(state.database);
-      const next = await request('importDatabase');
-      validateState(next);
-      const imported = !equal(previous, next.database);
-      applyState(next, { database: imported });
-    }, 'database-error');
-  }
-
-  $('database-refresh').addEventListener('click', () => {
-    if (!databaseSession || busy) return;
-    if (databaseDirty() || databaseSession.conflict) {
-      message('database-error', t('请先保存参数库草稿，再更新。'));
-      return;
-    }
-    void runAction(t('正在更新参数库…'), async () => {
-      const next = await request('updateCatalog');
-      applyState(next, { database: true });
-    }, 'database-error');
-  });
-  $('database-save').addEventListener('click', () => {
-    if (!databaseSession) return;
-    if (databaseSession.conflict) confirmAction(t('覆盖参数库更新'), t('参数库已在其他位置修改。是否使用当前参数草稿覆盖已保存的参数库？'), () => saveDatabase());
-    else void saveDatabase();
-  });
-  $('database-import').addEventListener('click', () => {
-    confirmAction(t('导入参数库'), t('选择文件后，导入的参数库将直接保存并替换当前参数库。当前参数库草稿也将被替换；取消文件选择会保留草稿。'), () => importDatabase());
-  });
-  $('database-export').addEventListener('click', () => {
-    if (!databaseSession) return;
-    const database = clone(databaseSession.database);
-    const problem = databaseProblem(database);
-    if (problem) { message('database-error', problem); return; }
-    void runAction(t('请选择参数库的导出位置…'), async () => { await request('exportDatabase', { database }); }, 'database-error');
+  $('update-catalog').addEventListener('click', () => {
+    if (!state || busy) return;
+    void runAction(t('正在更新预设库…'), async () => {
+      applyState(await request('updateCatalog'));
+    });
   });
 
   async function loadState(reset = false) {
@@ -1340,6 +1183,7 @@
   });
   window.addEventListener('pagehide', () => {
     for (const draft of drafts.values()) draft.apiKey = '';
+    transferSession = null;
     $('api-key').value = '';
     hideKey();
     for (const pending of pendingRequests.values()) clearTimeout(pending.timer);

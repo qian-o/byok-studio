@@ -18,12 +18,17 @@
     <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
     <symbol id="i-edit" viewBox="0 0 24 24"><path d="m15 4 5 5M3 21l5-1L21 7l-5-5L3 15v6Z"/></symbol>
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol>
-    <symbol id="i-code" viewBox="0 0 24 24"><path d="m7 7-5 5 5 5m10-10 5 5-5 5m-4-13-2 18"/></symbol>
+    <symbol id="i-import" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></symbol>
+    <symbol id="i-export" viewBox="0 0 24 24"><path d="M12 15V3m-5 5 5-5 5 5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></symbol>
   </defs></svg>
   <main class="page" id="studio" aria-busy="true">
     <header class="page-header">
       <h1>{{t:模型设置}}</h1>
-      <button id="open-database" class="database-entry" type="button" disabled><svg aria-hidden="true"><use href="#i-code"/></svg>{{t:参数库}}</button>
+      <div class="header-actions">
+        <button id="import-providers" class="catalog-action" type="button" disabled><svg aria-hidden="true"><use href="#i-import"/></svg>{{t:导入}}</button>
+        <button id="export-providers" class="catalog-action" type="button" disabled><svg aria-hidden="true"><use href="#i-export"/></svg>{{t:导出}}</button>
+        <button id="update-catalog" class="catalog-action" type="button" disabled><svg aria-hidden="true"><use href="#i-refresh"/></svg>{{t:更新预设库}}</button>
+      </div>
     </header>
     <div id="loading-state" class="notice" role="status">{{t:正在加载配置…}}</div>
     <div id="load-error" class="notice error-notice" role="alert" hidden><span id="load-error-message"></span><button id="retry-state" class="button secondary small" type="button" data-initial-action>{{t:重新加载}}</button></div>
@@ -48,14 +53,14 @@
             </div>
             <div class="provider-options">
               <fieldset class="plain-fieldset routing-mode"><legend class="visually-hidden">{{t:协议模式}}</legend><div class="segmented-control"><label><input id="routing-unified" type="radio" name="routing-mode" value="unified"><span>{{t:统一协议}}</span></label><label><input id="routing-split" type="radio" name="routing-mode" value="split"><span>{{t:区分协议}}</span></label></div></fieldset>
-              <label class="checkbox provider-zdr"><input id="provider-zdr-enabled" type="checkbox">{{t:零数据保留（ZDR）}}</label>
             </div>
           </div>
           <section class="model-box" aria-labelledby="models-heading">
             <header class="model-box-header">
               <div class="model-heading"><h3 id="models-heading">{{t:模型}}</h3><span id="model-total" class="model-total"></span></div>
-              <div id="model-selection" class="model-selection" hidden><span id="model-selection-count"></span><button id="clear-model-selection" class="icon-button" type="button" aria-label="{{t:清除模型选择}}" title="{{t:清除选择}}"><svg aria-hidden="true"><use href="#i-close"/></svg></button><span class="selection-context">{{t:选择目标协议}}<svg aria-hidden="true"><use href="#i-arrow"/></svg></span></div>
-              <div class="model-header-actions"><button id="refresh-models" class="button secondary small" type="button"><svg aria-hidden="true"><use href="#i-refresh"/></svg><span>{{t:刷新模型}}</span></button><button id="add-model" class="button primary small" type="button"><svg aria-hidden="true"><use href="#i-plus"/></svg>{{t:添加模型}}</button></div>
+              <label id="unified-model-selection" class="checkbox compact"><input id="select-all-unified" type="checkbox" data-select-all="unified" aria-label="{{t:全选模型}}">{{t:全选}}</label>
+              <div id="model-selection" class="model-selection" hidden><span id="model-selection-count"></span><button id="clear-model-selection" class="icon-button" type="button" aria-label="{{t:清除模型选择}}" title="{{t:清除选择}}"><svg aria-hidden="true"><use href="#i-close"/></svg></button><button id="delete-selected-models" class="button secondary small delete-models" type="button">{{t:删除所选}}</button><span id="model-selection-target" class="selection-context" hidden>{{t:选择目标协议}}<svg aria-hidden="true"><use href="#i-arrow"/></svg></span></div>
+              <div class="model-header-actions"><button id="refresh-models" class="button secondary small" type="button"><svg aria-hidden="true"><use href="#i-refresh"/></svg><span id="refresh-models-label">{{t:刷新}}</span></button><button id="add-model" class="button primary small" type="button"><svg aria-hidden="true"><use href="#i-plus"/></svg>{{t:添加模型}}</button></div>
             </header>
             <p id="model-selection-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></p>
             <div id="model-list" class="model-list" role="region" aria-labelledby="models-heading" tabindex="-1"></div>
@@ -72,20 +77,20 @@
   <dialog id="model-dialog" aria-labelledby="model-title">
     <form id="model-form" class="dialog-scroll" novalidate>
       <header class="dialog-header"><h2 id="model-title">{{t:添加模型}}</h2><button class="icon-button" type="button" data-close="model-dialog" aria-label="{{t:关闭模型设置}}"><svg aria-hidden="true"><use href="#i-close"/></svg></button></header>
-      <div class="field"><label for="model-name">{{t:显示名称}}</label><input id="model-name" maxlength="200" placeholder="{{t:对话中显示的名称}}" autocomplete="off" required><p id="model-match" class="source-note"></p><details class="pricing-source"><summary>{{t:参数来源}}</summary><p id="model-source" class="source-note"></p></details></div>
+      <div class="field"><label for="model-name">{{t:显示名称}}</label><input id="model-name" maxlength="200" placeholder="{{t:对话中显示的名称}}" autocomplete="off" required><p id="model-match" class="source-note"></p></div>
+      <div id="model-protocol-field" class="field model-protocol-field"><label for="model-protocol">{{t:请求协议}}</label><select id="model-protocol" aria-describedby="model-protocol-note"><option value="chatCompletions">Chat Completions</option><option value="responses">Responses</option><option value="messages">Messages</option></select><p id="model-protocol-note" class="source-note"></p></div>
       <p id="model-update" class="notice compact-notice" role="status" hidden>{{t:配置已在其他位置更新。当前编辑内容已保留，请在保存供应商前检查。}}</p>
       <details id="advanced-options" class="advanced">
         <summary><svg aria-hidden="true"><use href="#i-chevron"/></svg>{{t:高级选项}}</summary>
         <div class="advanced-body">
-          <div class="field"><label for="model-id">{{t:请求模型 ID}}</label><input id="model-id" maxlength="512" list="model-id-options" placeholder="{{t:选择或填写请求模型 ID}}" spellcheck="false" autocomplete="off" required><datalist id="model-id-options"></datalist><p class="source-note">{{t:精确匹配参数库；未知 ID 使用初始配置。显示名称可单独修改。}}</p></div>
+          <div class="field"><label for="model-id">{{t:请求模型 ID}}</label><input id="model-id" maxlength="512" list="model-id-options" placeholder="{{t:选择或填写请求模型 ID}}" spellcheck="false" autocomplete="off" required><datalist id="model-id-options"></datalist><p class="source-note">{{t:精确匹配预设库；未知 ID 使用初始配置。显示名称可单独修改。}}</p></div>
           <div class="token-fields"><div class="field"><label for="context-window">{{t:上下文窗口}}</label><input id="context-window" type="number" min="1" max="100000000" step="1" required></div><div class="field"><label for="max-output">{{t:最大输出}}</label><input id="max-output" type="number" min="1" max="100000000" step="1" required></div><div class="field"><label for="max-input">{{t:最大输入（可选）}}</label><input id="max-input" type="number" min="1" max="100000000" step="1" placeholder="{{t:自动计算}}" aria-describedby="max-input-note"></div></div>
           <p id="max-input-note" class="source-note token-note">{{t:统一使用完整上下文；共享窗口会预留输出空间，独立输入额度不扣除。}}</p>
-          <div class="field"><label for="default-output">{{t:单次输出预算（可选）}}</label><input id="default-output" type="number" min="1" max="100000000" step="1" placeholder="{{t:使用参数库默认值}}" aria-describedby="default-output-note"><p id="default-output-note" class="source-note">{{t:作为官方配置的输出上限，受模型能力及剩余上下文限制。}}</p></div>
-          <details id="context-pricing-details" class="pricing-source" hidden><summary id="context-pricing-summary">{{t:计费资料}}</summary><p id="context-pricing-note" class="source-note"></p><p id="context-pricing-source" class="source-note"></p><p class="source-note">{{t:来源对应标注渠道；原厂直连 API 的计费规则不保证适用于代理。}}</p></details>
+          <div class="field"><label for="default-output">{{t:单次输出预算（可选）}}</label><input id="default-output" type="number" min="1" max="100000000" step="1" placeholder="{{t:使用预设默认值}}" aria-describedby="default-output-note"><p id="default-output-note" class="source-note">{{t:作为官方配置的输出上限，受模型能力及剩余上下文限制。}}</p></div>
           <fieldset class="plain-fieldset"><legend>{{t:模型能力}}</legend><div class="capabilities"><label class="checkbox"><input id="cap-tools" type="checkbox">{{t:工具调用}}</label><label class="checkbox"><input id="cap-vision" type="checkbox">{{t:视觉}}</label><label class="checkbox"><input id="cap-thinking" type="checkbox">{{t:思考}}</label></div></fieldset>
           <fieldset class="plain-fieldset"><legend>{{t:可用推理档位}}</legend><div id="effort-options" class="efforts"></div><div class="field extra-efforts"><label for="model-extra-efforts">{{t:其他档位（逗号分隔，可选）}}</label><input id="model-extra-efforts" placeholder="{{t:填写服务商支持的档位}}" autocomplete="off" spellcheck="false"></div></fieldset>
           <div class="field"><label for="reasoning-effort">{{t:实际使用的推理档位}}</label><select id="reasoning-effort" aria-describedby="reasoning-note"><option value="">{{t:默认（不指定）}}</option></select><p id="reasoning-note" class="source-note">{{t:请求时使用此档位；默认由服务商决定。}}</p></div>
-          <div class="reset-row"><button id="reset-model" class="text-button" type="button">{{t:使用参数库值}}</button></div>
+          <div class="reset-row"><button id="reset-model" class="text-button" type="button">{{t:恢复预设值}}</button></div>
         </div>
       </details>
       <p id="model-error" class="dialog-error" role="alert" hidden></p>
@@ -93,47 +98,41 @@
     </form>
   </dialog>
 
-  <dialog id="database-dialog" class="database-dialog" aria-labelledby="database-title">
+  <dialog id="export-dialog" aria-labelledby="export-title">
     <div class="dialog-scroll">
-    <header class="dialog-header"><h2 id="database-title">{{t:模型参数库}}</h2><button class="icon-button" type="button" data-close="database-dialog" aria-label="{{t:关闭参数库}}"><svg aria-hidden="true"><use href="#i-close"/></svg></button></header>
-    <p class="database-copy">{{t:从 models.dev 获取模型参数，手动修改优先。}}</p>
-    <p id="database-update" class="notice compact-notice" role="status" hidden>{{t:参数库已在其他位置更新，当前草稿已保留。保存将覆盖参数库，或取消后重新打开。}}</p>
-    <div class="database-toolbar"><input id="database-search" type="search" placeholder="{{t:搜索模型名称}}" aria-label="{{t:搜索参数库}}" autocomplete="off"><button id="database-refresh" class="button secondary" type="button" title="{{t:从 models.dev 更新，保留手动修改。}}"><svg aria-hidden="true"><use href="#i-refresh"/></svg>{{t:更新参数库}}</button><button id="database-add" class="button primary" type="button">{{t:新增条目}}</button></div>
-    <div id="database-list" class="database-list"></div>
-    <p id="database-error" class="dialog-error" role="alert" hidden></p>
-    <footer class="dialog-footer database-footer"><span id="database-count" class="source-note" role="status"></span><div class="database-file-actions"><button id="database-import" class="button secondary small" type="button">{{t:导入 JSON}}</button><button id="database-export" class="button secondary small" type="button">{{t:导出 JSON}}</button></div><div class="database-save-actions"><button class="button secondary" type="button" data-close="database-dialog">{{t:取消}}</button><button id="database-save" class="button primary" type="button">{{t:保存参数库}}</button></div></footer>
-        </div>
-      </dialog>
-
-  <dialog id="database-editor" class="database-editor" aria-labelledby="database-editor-title">
-    <form id="database-form" class="dialog-scroll" novalidate>
-      <header class="dialog-header"><h2 id="database-editor-title">{{t:编辑参数}}</h2><button class="icon-button" type="button" data-close="database-editor" aria-label="{{t:关闭参数编辑}}"><svg aria-hidden="true"><use href="#i-close"/></svg></button></header>
-      <div class="dialog-fields">
-        <div class="field"><label for="database-name">{{t:显示名称}}</label><input id="database-name" maxlength="200" placeholder="{{t:模型显示名称}}" autocomplete="off"></div>
-        <details id="database-mapping" class="advanced"><summary><svg aria-hidden="true"><use href="#i-chevron"/></svg>{{t:内部 ID 映射}}</summary><div class="advanced-body"><div class="field"><label for="database-id">{{t:请求模型 ID}}</label><input id="database-id" maxlength="512" placeholder="{{t:与请求中的模型 ID 完全一致}}" spellcheck="false" autocomplete="off"></div></div></details>
-        <div class="token-fields"><div class="field"><label for="database-context">{{t:上下文窗口}}</label><input id="database-context" type="number" min="1" max="100000000" step="1" required></div><div class="field"><label for="database-output">{{t:最大输出}}</label><input id="database-output" type="number" min="1" max="100000000" step="1" required></div><div class="field"><label for="database-input">{{t:最大输入（可选）}}</label><input id="database-input" type="number" min="1" max="100000000" step="1" placeholder="{{t:自动计算}}" aria-describedby="database-input-note"></div></div>
-        <p id="database-input-note" class="source-note token-note">{{t:留空时按上下文窗口计算；共享窗口会扣除单次输出预算，独立输入额度不扣除。}}</p>
-        <div class="field"><label for="database-default-output">{{t:单次输出预算（可选）}}</label><input id="database-default-output" type="number" min="1" max="100000000" step="1" placeholder="{{t:自动选择}}"><p class="source-note">{{t:优先采用厂商公布的默认生成预算。实际值受最大输出和剩余上下文限制。}}</p></div>
-        <details id="database-pricing" class="advanced pricing-editor"><summary><svg aria-hidden="true"><use href="#i-chevron"/></svg>{{t:Context 计费}}</summary><div class="advanced-body">
-          <div class="pricing-grid"><div class="field"><label for="database-pricing-kind">{{t:计费类型}}</label><select id="database-pricing-kind"><option value="">{{t:未设置（旧条目）}}</option><option value="unknown">{{t:未核实}}</option><option value="tiered">{{t:按长度分段}}</option><option value="flat">{{t:不分段}}</option></select></div><div class="field"><label for="database-pricing-scope">{{t:适用渠道}}</label><select id="database-pricing-scope" aria-describedby="database-pricing-scope-note"><option value="direct-api">{{t:原厂直连 API}}</option><option value="copilot">Copilot</option><option value="custom">{{t:自定义渠道}}</option></select></div></div>
-          <p id="database-pricing-scope-note" class="source-note">{{t:原厂直连 API 的计费规则不保证适用于代理，以实际服务商规则为准。}}</p>
-          <div class="field"><label for="database-pricing-thresholds">{{t:输入计费阈值（逗号分隔）}}</label><input id="database-pricing-thresholds" maxlength="200" placeholder="{{t:输入 token 数，可填写多个}}" autocomplete="off" spellcheck="false" aria-describedby="database-pricing-thresholds-note"><p id="database-pricing-thresholds-note" class="source-note">{{t:每项为较低费率的输入上限（含该值），最多 8 个不重复的正整数。}}</p></div>
-          <div class="field"><label for="database-pricing-source">{{t:计费来源（URL 或文字）}}</label><input id="database-pricing-source" maxlength="4000" placeholder="{{t:对应渠道的计费文档或说明}}" autocomplete="off"><p class="source-note">{{t:按长度分段或不分段时必须填写来源。}}</p></div>
-          <div class="field"><label for="database-pricing-note">{{t:计费说明（可选）}}</label><textarea id="database-pricing-note" maxlength="4000" rows="2"></textarea></div>
-          <p id="database-pricing-rates" class="source-note pricing-rates" hidden></p>
-          <div class="field"><label for="database-pricing-checked">{{t:计费核验日期（可选）}}</label><input id="database-pricing-checked" type="date"><p class="source-note">{{t:仅在已核验来源时填写；留空表示尚未核验，编辑不会自动填入日期。}}</p></div>
-        </div></details>
-        <fieldset class="plain-fieldset"><legend>{{t:模型能力}}</legend><div class="capabilities"><label class="checkbox"><input id="database-tools" type="checkbox">{{t:工具调用}}</label><label class="checkbox"><input id="database-vision" type="checkbox">{{t:视觉}}</label><label class="checkbox"><input id="database-thinking" type="checkbox">{{t:思考}}</label></div></fieldset>
-        <fieldset class="plain-fieldset"><legend>{{t:可用推理档位}}</legend><div id="database-efforts" class="efforts"></div><div class="field extra-efforts"><label for="database-extra-efforts">{{t:其他档位（逗号分隔，可选）}}</label><input id="database-extra-efforts" placeholder="{{t:填写服务商支持的档位}}" autocomplete="off" spellcheck="false"></div></fieldset>
-        <details id="database-provenance" class="advanced"><summary><svg aria-hidden="true"><use href="#i-chevron"/></svg>{{t:参数来源 / 备注}}</summary><div class="advanced-body">
-          <div class="field"><textarea id="database-source" aria-label="{{t:参数来源 / 备注}}" maxlength="4000" rows="3" placeholder="{{t:官方文档地址或维护说明}}"></textarea></div>
-          <div class="field" id="database-release-field"><label for="database-release">{{t:模型发布日期（可选）}}</label><input id="database-release" type="date"></div>
-          <div class="field"><label for="database-verified">{{t:核验日期（可选）}}</label><input id="database-verified" type="date"></div>
-        </div></details>
+      <header class="dialog-header"><h2 id="export-title">{{t:导出供应商}}</h2><button class="icon-button" type="button" data-close="export-dialog" aria-label="{{t:关闭导出}}"><svg aria-hidden="true"><use href="#i-close"/></svg></button></header>
+      <div class="transfer-toolbar">
+        <label class="checkbox"><input id="export-select-all" type="checkbox" checked>{{t:全选}}</label>
       </div>
-      <p id="database-editor-error" class="dialog-error" role="alert" hidden></p>
-      <footer class="dialog-footer"><button class="button secondary" type="button" data-close="database-editor">{{t:取消}}</button><button class="button primary" type="submit">{{t:应用到草稿}}</button></footer>
-    </form>
+      <div id="export-provider-list" class="transfer-list" role="group" aria-labelledby="export-title"></div>
+      <p id="export-error" class="dialog-error" role="alert" hidden></p>
+      <footer class="dialog-footer">
+        <button id="export-clipboard" class="button secondary" type="button">{{t:复制到剪贴板}}</button>
+        <button id="export-file" class="button primary" type="button">{{t:导出 JSON 文件}}</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <dialog id="import-dialog" aria-labelledby="import-title">
+    <div class="dialog-scroll">
+      <header class="dialog-header"><h2 id="import-title">{{t:导入供应商}}</h2><button class="icon-button" type="button" data-close="import-dialog" aria-label="{{t:关闭导入}}"><svg aria-hidden="true"><use href="#i-close"/></svg></button></header>
+      <div class="import-sources">
+        <button id="import-from-clipboard" class="button secondary small" type="button">{{t:从剪贴板读取}}</button>
+        <button id="import-from-file" class="button secondary small" type="button">{{t:选择 JSON 文件}}</button>
+      </div>
+      <div id="import-selection-section" hidden>
+        <div class="transfer-toolbar">
+          <label class="checkbox"><input id="import-select-all" type="checkbox" checked>{{t:全选}}</label>
+          <span id="import-summary" class="source-note"></span>
+        </div>
+        <div id="import-provider-list" class="transfer-list" role="group" aria-labelledby="import-title"></div>
+      </div>
+      <p id="import-empty" class="empty-models">{{t:从剪贴板读取或选择导出的 JSON 文件以预览供应商。}}</p>
+      <p id="import-error" class="dialog-error" role="alert" hidden></p>
+      <footer class="dialog-footer">
+        <button id="apply-import" class="button primary" type="button" disabled>{{t:导入所选}}</button>
+      </footer>
+    </div>
   </dialog>
 
   <dialog id="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
@@ -141,8 +140,8 @@
     <header class="dialog-header"><h2 id="confirm-title">{{t:确认操作}}</h2><button class="icon-button" type="button" data-close="confirm-dialog" aria-label="{{t:关闭确认}}"><svg aria-hidden="true"><use href="#i-close"/></svg></button></header>
     <p id="confirm-message" class="dialog-copy"></p>
     <footer class="dialog-footer"><button id="confirm-cancel" class="button secondary" type="button" data-close="confirm-dialog">{{t:取消}}</button><button id="confirm-action" class="button primary" type="button">{{t:确认}}</button></footer>
-        </div>
-      </dialog>
+    </div>
+  </dialog>
   <div id="toast" class="toast error-toast" role="alert" aria-live="assertive" aria-atomic="true" hidden></div>
   <script nonce="{{NONCE}}" src="{{resource:shared/messages.en.js}}"></script>
   <script nonce="{{NONCE}}" src="{{resource:shared/i18n.js}}"></script>

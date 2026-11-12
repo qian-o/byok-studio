@@ -47,11 +47,10 @@ test('selected providers are declared in policy and produce a validated immutabl
   assert.equal(Object.keys(result.database.models).length, policy.providers.length);
   assert.equal(result.database.defaults.name, ''); assert.equal(result.database.defaults.contextWindow, 128000);
   assert.equal(result.database.defaults.maxOutputTokens, 16000); assert.equal(result.database.defaults.thinking, false);
-  assert.equal(result.database.defaults.contextPricing.kind, 'unknown');
+  assert.equal(Object.hasOwn(result.database.defaults, 'contextPricing'), false);
   assert.equal(result.database.models['baseline-0'].name, 'Original baseline-0');
-  assert.equal(result.database.models['baseline-0'].verifiedAt, null);
-  assert.match(result.database.models['baseline-0'].source, /community snapshot.*2026-11-09/);
-  assert.match(result.database.models['baseline-0'].source, /docs\.example/);
+  assert.equal(Object.hasOwn(result.database.models['baseline-0'], 'verifiedAt'), false);
+  assert.equal(Object.hasOwn(result.database.models['baseline-0'], 'source'), false);
   result.database.models['baseline-0'].name = 'edited';
   assert.equal(models(raw)['baseline-0'].name, 'Original baseline-0');
 });
@@ -83,7 +82,7 @@ test('only supported text chat entries survive shared routing and declared famil
   assert.equal(result['with-image'].vision, true);
 });
 
-test('relay conflicts never choose specifications or prices and canonical aliases preserve exact case', () => {
+test('relay conflicts never choose specifications and canonical aliases preserve exact case', () => {
   const raw = fixture();
   add(raw, FIRST, 'native', { limit: { context: 250000, output: 20000 }, cost: { input: 2, output: 5 } });
   const canonical = raw.providers[FIRST].models.native.canonical_model_id;
@@ -91,11 +90,10 @@ test('relay conflicts never choose specifications or prices and canonical aliase
   relay(raw, 'proxy-first', 'MiXeD/Alias', canonical, { limit: { context: 999, output: 10 }, cost: { input: 99, output: 100 } });
   raw.providers = { 'proxy-first': raw.providers['proxy-first'], ...raw.providers };
   const result = models(raw);
-  assert.equal(result.native.contextWindow, 250000); assert.equal(result.native.contextPricing.rates.bands[0].input, 2);
+  assert.equal(result.native.contextWindow, 250000);
   assert.equal(result['MiXeD/Alias'].aliasOf, 'native'); assert.equal(result['MiXeD/Alias'].contextWindow, 250000);
   assert.equal(result['mixed/alias'], undefined); assert.equal(result.Alias, undefined);
-  assert.deepEqual(result['MiXeD/Alias'].contextPricing, result.native.contextPricing);
-  assert.match(result.native.source, new RegExp(`provider: ${FIRST}`));
+  assert.equal(result['MiXeD/Alias'].maxOutputTokens, result.native.maxOutputTokens);
 });
 
 test('ambiguous aliases, unknown mappings, and unsupported relay records are excluded', () => {
@@ -122,8 +120,6 @@ test('canonical-origin providers supply facts while priority resolves unrelated 
   const result = models(raw);
   assert.equal(result.collision.contextWindow, 90000);
   assert.equal(result['canonical-source'].contextWindow, 320000);
-  assert.equal(result['canonical-source'].contextPricing.rates.bands[0].input, 3);
-  assert.match(result['canonical-source'].source, new RegExp(`provider: ${origin}`));
 });
 
 test('context semantics follow data, clamp independent input, and reserve a conservative output budget', () => {
@@ -136,9 +132,9 @@ test('context semantics follow data, clamp independent input, and reserve a cons
   assert.equal(result['renamed-independent'].contextWindowMode, 'input'); assert.equal(result['renamed-independent'].maxInputTokens, 100000);
   assert.equal(result['renamed-independent'].maxOutputTokens, 150000);
   assert.equal(result['large-output'].maxOutputTokens, 1048576); assert.equal(result['large-output'].defaultOutputTokens, 131072);
-  assert.equal(result['large-output'].contextWindowMode, 'shared');
+  assert.equal(result['large-output'].contextWindowMode, undefined);
   assert.equal(result['shared-clamp'].maxInputTokens, 90000); assert.equal(result['shared-clamp'].maxOutputTokens, 90000);
-  assert.equal(result['missing-output'].maxOutputTokens, 16000); assert.match(result['missing-output'].source, /output ceiling missing/);
+  assert.equal(result['missing-output'].maxOutputTokens, 16000);
   assert(result['missing-output'].defaultOutputTokens <= result['missing-output'].contextWindow / 4);
 });
 
@@ -146,7 +142,7 @@ test('shared physical output may equal context when a separate safe default budg
   const raw = fixture();
   add(raw, FIRST, 'shared-full-output', { limit: { context: 1048576, output: 1048576 } }, { limit: { context: 1048576, output: 131072 } });
   const result = models(raw)['shared-full-output'];
-  assert.equal(result.contextWindowMode, 'shared'); assert.equal(result.maxOutputTokens, 1048576);
+  assert.equal(result.contextWindowMode, undefined); assert.equal(result.maxOutputTokens, 1048576);
   assert.equal(result.defaultOutputTokens, 131072); assert.equal(result.maxInputTokens, undefined);
 });
 
@@ -160,47 +156,26 @@ test('effort, toggle, and budget remain distinct and Messages budgets require pr
   add(raw, native, 'no-adaptive-guess', { reasoning: true });
   const result = models(raw);
   assert.deepEqual(result['effort-mode'].supportsReasoningEffort, ['low', 'high']);
-  assert.deepEqual(result['toggle-only'].supportsReasoningEffort, []); assert.equal(result['toggle-only'].reasoningControls, undefined);
-  assert.equal(result['host-budget'].reasoningControls, undefined);
+  assert.deepEqual(result['toggle-only'].supportsReasoningEffort, []); assert.equal(result['toggle-only'].protocols, undefined);
+  assert.equal(result['host-budget'].protocols, undefined);
   assert.deepEqual(result['native-budget'].supportsReasoningEffort, []);
-  assert.deepEqual(result['native-budget'].reasoningControls.protocols.messages.budget, { min: 1024, max: 8000, default: 1024 });
-  assert.equal(result['missing-bound'].reasoningControls, undefined); assert.equal(result['no-adaptive-guess'].reasoningControls, undefined);
+  assert.deepEqual(result['native-budget'].protocols.messages, { effortFormat: 'unsupported', thinkingBudget: { min: 1024, max: 8000 } });
+  assert.equal(result['missing-bound'].protocols, undefined); assert.equal(result['no-adaptive-guess'].protocols, undefined);
 });
 
-test('pricing keeps exact tier boundaries, inherits base fields, and never assumes 200k', () => {
+test('pricing and provenance metadata cannot change normalized model capabilities', () => {
   const raw = fixture();
-  add(raw, FIRST, 'tiered', { cost: { input: 1, output: 4, cache_read: 0.25, cache_write: 0,
-    tiers: [{ tier: { type: 'context', size: 131072 }, input: 2 }, { tier: { type: 'context', size: 262144 }, output: 8 }], context_over_200k: { input: 99, output: 99 } } });
-  const pricing = models(raw).tiered.contextPricing;
-  assert.equal(pricing.kind, 'tiered'); assert.deepEqual(pricing.thresholds, [131072, 262144]); assert.equal(pricing.checkedAt, null);
-  assert.deepEqual(pricing.rates.bands, [
-    { inputUpTo: 131072, input: 1, output: 4, cacheRead: 0.25, cacheWrite: 0 },
-    { inputUpTo: 262144, input: 2, output: 4, cacheRead: 0.25, cacheWrite: 0 },
-    { inputUpTo: null, input: 1, output: 8, cacheRead: 0.25, cacheWrite: 0 }
-  ]);
-});
-
-test('missing, malformed, and unrepresentable pricing stays unknown without rates', () => {
-  const costs = [undefined, {}, { input: 0 }, { input: -1, output: 0 }, { input: 1, output: Infinity },
-    { input: 1, output: 2, cache_read: -1 }, { input: 1, output: 2, reasoning: 4 },
-    { input: 1, output: 2, context_over_200k: { input: 2, output: 4 } },
-    { input: 1, output: 2, tiers: [{ tier: { type: 'output', size: 1000 }, output: 4 }] },
-    { input: 1, output: 2, tiers: [{ tier: { type: 'context', size: 1000 }, output: -1 }] },
-    { input: 1, output: 2, tiers: [{ tier: { type: 'context', size: 1000 }, output: 4 }, { tier: { type: 'context', size: 1000 }, output: 5 }] },
-    { input: 1, output: 2, tiers: [{ tier: { type: 'context', size: 2000 }, output: 4 }, { tier: { type: 'context', size: 1000 }, output: 5 }] }];
-  for (const cost of costs) {
-    const raw = fixture(); add(raw, FIRST, 'price-unknown', { cost });
-    const pricing = models(raw)['price-unknown'].contextPricing;
-    assert.equal(pricing.kind, 'unknown', JSON.stringify(cost)); assert.equal(pricing.rates, undefined); assert.deepEqual(pricing.thresholds, []);
-  }
-  const raw = fixture(); add(raw, FIRST, 'free', { cost: { input: 0, output: 0 } }); assert.equal(models(raw).free.contextPricing.kind, 'flat');
+  const baseline = models(raw);
+  raw.providers[FIRST].models['baseline-0'].cost = { input: -1, output: 'invalid', tiers: [] };
+  raw.providers[FIRST].doc = 'https://untrusted.example/docs';
+  assert.deepEqual(models(raw), baseline);
 });
 
 test('renamed compatibility data applies sampling parameters and context mode without identity branches', () => {
   const moduleId = require.resolve('../dist/core/modelCatalog'), policyId = require.resolve('../resources/catalog/compatibility.json');
   const original = require.cache[policyId].exports, originalModule = require.cache[moduleId];
   const renamed = structuredClone(original);
-  const sampling = Object.values(renamed.models).find(patch => renamed.profiles[patch.profile]?.reasoningControls?.protocols?.chatCompletions?.parameters?.top_p === 0.95);
+  const sampling = Object.values(renamed.models).find(patch => renamed.profiles[patch.profile]?.protocols?.chatCompletions?.modelOptions?.top_p === 0.95);
   const shared = Object.values(renamed.models).find(patch => patch.contextWindowMode === 'shared');
   renamed.models = { 'unrelated-sampling-name': sampling, 'unrelated-window-name': shared };
   try {
@@ -210,18 +185,18 @@ test('renamed compatibility data applies sampling parameters and context mode wi
     const inputProvider = policy.providers.find(id => policy.providerDefaults[id].contextWindowMode === 'input');
     add(raw, inputProvider, 'unrelated-window-name');
     const result = converter(raw, TIME).database.models;
-    assert.equal(result['unrelated-sampling-name'].reasoningControls.protocols.chatCompletions.parameters.top_p, 0.95);
-    assert.equal(result['unrelated-window-name'].contextWindowMode, 'shared');
+    assert.equal(result['unrelated-sampling-name'].protocols.chatCompletions.modelOptions.top_p, 0.95);
+    assert.equal(result['unrelated-window-name'].contextWindowMode, undefined);
   } finally { require.cache[policyId].exports = original; require.cache[moduleId] = originalModule; }
 });
 
-test('offline checker validates cache shape, community provenance, and compatibility at module load', async () => {
+test('offline checker validates cache shape and compatibility at module load', async () => {
   const snapshot = buildModelCatalog(fixture(), TIME);
   assert.deepEqual(checkSnapshot(snapshot), snapshot);
   assert.throws(() => checkSnapshot(snapshot.database));
   assert.throws(() => checkSnapshot({ ...snapshot, source: 'other' }));
-  const bad = structuredClone(snapshot); bad.database.models['baseline-0'].verifiedAt = '2026-11-09';
-  assert.throws(() => checkSnapshot(bad), /verification/);
+  const bad = structuredClone(snapshot); bad.database.models['baseline-0'].contextWindow = 0;
+  assert.throws(() => checkSnapshot(bad));
   const promises = require('node:fs/promises'), originalRead = promises.readFile, originalFetch = globalThis.fetch;
   try {
     globalThis.fetch = () => { throw new Error('Offline check used the network'); };
@@ -288,6 +263,16 @@ test('30-second timeout bounds even an injected transport that ignores AbortSign
   await assert.rejects(pending, error => error.name === 'TimeoutError' && /模型目录请求超时/.test(error.message));
 });
 
+test('cancelling an unresponsive request also cancels its body if the response arrives later', async () => {
+  const controller = new AbortController(); let resolve, cancelled = false;
+  const pending = fetchModelCatalog(controller.signal, () => new Promise(done => resolve = done));
+  controller.abort(new Error('SECRET cancellation'));
+  await assert.rejects(pending, error => error.name === 'AbortError' && !error.message.includes('SECRET'));
+  resolve(new Response(new ReadableStream({ cancel() { cancelled = true; } })));
+  await new Promise(done => setImmediate(done));
+  assert.equal(cancelled, true);
+});
+
 test('the same timeout also bounds a stalled response stream and releases it', async context => {
   context.mock.timers.enable({ apis: ['setTimeout'] });
   let cancelled = false;
@@ -305,11 +290,10 @@ test('downloaded real snapshot preserves representative canonical aliases, budge
   const raw = JSON.parse(fs.readFileSync(process.env.MODELS_DEV_CATALOG_FIXTURE, 'utf8'));
   const result = models(raw);
   assert.equal(result['kimi-k3'].maxOutputTokens, 1048576); assert.equal(result['kimi-k3'].defaultOutputTokens, 131072);
-  assert.equal(result['kimi-k3'].reasoningControls.protocols.chatCompletions.parameters.top_p, 0.95);
-  assert.equal(result['gemini-4-argon'].contextWindowMode, 'shared');
-  assert.deepEqual(result['gemini-3.1-pro-preview'].reasoningControls.protocols.chatCompletions.effortPath, ['extra_body', 'google', 'thinking_config', 'thinking_level']);
+  assert.equal(result['kimi-k3'].protocols.chatCompletions.modelOptions.top_p, 0.95);
+  assert.equal(result['gemini-4-argon'].contextWindowMode, undefined);
+  assert.equal(result['gemini-3.1-pro-preview'].protocols.chatCompletions.effortFormat, 'unsupported');
   assert(result['GLM-5.3']); assert.equal(result['GLM-5.3'].contextWindow, result['glm-5.3'].contextWindow);
   assert.equal(result['GLM-5.3'].aliasOf, 'glm-5.3');
-  assert.equal(result['claude-opus-4-8'].reasoningControls.protocols.messages.defaultMode, 'adaptive');
-  assert.equal(result['glm-5.3'].contextPricing.rates.bands[0].input, raw.providers.zhipuai.models['glm-5.3'].cost.input);
+  assert.equal(result['claude-opus-4-8'].protocols.messages.adaptiveThinking, true);
 });

@@ -10,11 +10,11 @@ export function vendorOf(id: string): ModelVendor;
 export function excludedKind(id: string): 'image' | 'video' | 'non-chat' | null;
 export function defaultProtocols(): Record<ModelVendor, ApiType>;
 export type RoutingMode = 'unified' | 'split';
-export interface RoutingInput { url?: string; apiType?: ApiType; routingMode?:RoutingMode; unified?:{apiType:ApiType;url:string}; endpoints?: Partial<Record<ApiType,string>>; modelProtocols?:Record<string,ApiType>; vendorProtocols?: Partial<Record<ModelVendor,ApiType>>; zeroDataRetentionEnabled?: boolean; models?:readonly {id:string}[] }
+export interface RoutingInput { url?: string; apiType?: ApiType; routingMode?:RoutingMode; unified?:{apiType:ApiType;url:string}; endpoints?: Partial<Record<ApiType,string>>; modelProtocols?:Record<string,ApiType>; vendorProtocols?: Partial<Record<ModelVendor,ApiType>>; models?:readonly {id:string}[] }
 export interface RoutingConfig { routingMode:RoutingMode;unified:{apiType:ApiType;url:string};endpoints:Record<ApiType,string>;modelProtocols:Record<string,ApiType> }
 export function recommendedProtocol(modelId:string):ApiType;
 export function normalizeRouting(provider: RoutingInput): RoutingConfig;
-export function routeForModel(provider: RoutingInput, modelId: string, routing?: RoutingConfig): {apiType:ApiType;url:string;zeroDataRetentionEnabled:boolean};
+export function routeForModel(provider: RoutingInput, modelId: string, routing?: RoutingConfig): {apiType:ApiType;url:string};
 export function protocolLists<T extends {id:string}>(provider:RoutingInput & {models:readonly T[]}):Array<{apiType:ApiType;models:T[]}>;
 export function assignModels(provider:RoutingInput,ids:readonly string[],apiType:ApiType):Record<string,ApiType>;
 export function groups<T extends {id:string}>(models:readonly T[]): Array<VendorDefinition & {models:T[]}>;

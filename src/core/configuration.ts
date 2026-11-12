@@ -1,10 +1,12 @@
-import type { ApiType, ContextPricing, ModelApiProfile, ModelConfig, ModelDatabase, ModelParameters, ParameterOverrides, ParameterValue, ProviderConfig, ReasoningControls } from './types';
+import type { ApiType, ModelConfig, ModelDatabase, ModelParameters, OfficialProtocol, ParameterOverrides, ProtocolProfile, ProviderConfig } from './types';
 import { t } from '../../resources/shared/i18n.js';
 import { validDate } from '../../resources/shared/model-policy.js';
 import { apiTypes, vendors, normalizeRouting, routeForModel, excludedKind } from '../../resources/shared/routing.js';
 
 const unsafeKeys = new Set(['__proto__', 'constructor', 'prototype']);
 const parameterKeys = ['contextWindow', 'maxInputTokens', 'maxOutputTokens', 'defaultOutputTokens', 'toolCalling', 'vision', 'thinking', 'supportsReasoningEffort'] as const;
+const effortFormats = new Set(['chat-completions', 'responses', 'messages', 'unsupported']);
+
 export function object(value: unknown, label = t('配置')): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(t('{0}必须是对象。', label));
   return value as Record<string, unknown>;
@@ -30,158 +32,59 @@ export function validId(value: unknown, label = t('模型 ID')): string {
   if (/\s|[\x00-\x1f\x7f]/.test(id) || unsafeKeys.has(id)) throw new Error(t('{0}不能包含空白或控制字符。', label));
   return id;
 }
-export function validateContextPricing(value: unknown): ContextPricing {
-  const v = object(value, t('Context 计费配置'));
-  if (!['tiered', 'flat', 'unknown'].includes(String(v.kind))) throw new Error(t('Context 计费类型无效。'));
-  if (!['direct-api', 'copilot', 'custom'].includes(String(v.scope))) throw new Error(t('Context 计费适用渠道无效。'));
-  if (!Array.isArray(v.thresholds) || v.thresholds.length > 8) throw new Error(t('Context 计费阈值必须是最多8个整数的列表。'));
-  const thresholds = v.thresholds.map(value => positiveInt(value, t('Context 计费阈值')));
-  if (new Set(thresholds).size !== thresholds.length) throw new Error(t('Context 计费阈值不能重复。'));
-  thresholds.sort((a,b) => a-b);
-  if ((v.kind === 'tiered') !== Boolean(thresholds.length)) throw new Error(t('分段计费需要至少一个阈值；未核实或不分段时阈值应为空。'));
-  const source = text(v.source ?? '', t('Context 计费来源'), 4000, v.kind === 'unknown');
-  const checkedAt = v.checkedAt == null ? null : text(v.checkedAt, t('Context 计费核验日期'), 10);
-  if (checkedAt !== null && !validDate(checkedAt)) throw new Error(t('Context 计费核验日期必须是有效的 YYYY-MM-DD 日期。'));
-  const result: ContextPricing = { kind: v.kind as ContextPricing['kind'], scope: v.scope as ContextPricing['scope'], thresholds, source, checkedAt, note: text(v.note ?? '', t('Context 计费说明'), 4000, true) };
-  if (v.rates !== undefined) {
-    const rates = object(v.rates, t('分段费率'));
-    if (!['USD', 'CNY'].includes(String(rates.currency)) || rates.perTokens !== 1000000 || !Array.isArray(rates.bands) || !rates.bands.length || rates.bands.length > 32) throw new Error(t('费率必须注明币种、每百万 token 单位和有效分段。'));
-    const price = (value: unknown): number => {
-      if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) throw new Error(t('分段费率必须为非负数。'));
-      return value;
-    };
-    result.rates = { currency: rates.currency as 'USD' | 'CNY', perTokens: 1000000, bands: rates.bands.map(raw => {
-      const band = object(raw, t('计费分段'));
-      const inputUpTo = band.inputUpTo === null ? null : positiveInt(band.inputUpTo, t('输入分段上限'));
-      if (inputUpTo !== null && !thresholds.includes(inputUpTo)) throw new Error(t('输入费率分段必须与 Context 阈值一致。'));
-      return { inputUpTo, input: price(band.input), output: price(band.output),
-        ...(band.outputUpTo !== undefined ? { outputUpTo: band.outputUpTo === null ? null : positiveInt(band.outputUpTo, t('输出分段上限')) } : {}),
-        ...(band.cacheRead !== undefined ? { cacheRead: price(band.cacheRead) } : {}),
-        ...(band.cacheWrite !== undefined ? { cacheWrite: price(band.cacheWrite) } : {}) };
-    }) };
-    if (result.kind === 'unknown') throw new Error(t('未核实的计费策略不能声明已核实费率。'));
-    for (const inputUpTo of [...thresholds, null]) {
-      const bands = result.rates.bands.filter(band => band.inputUpTo === inputUpTo);
-      if (!bands.length) throw new Error(t('分段费率必须覆盖每个输入区间及最后一段。'));
-      if (bands.some(band => band.outputUpTo !== undefined)) {
-        if (bands.some(band => band.outputUpTo === undefined) || !bands.some(band => band.outputUpTo === null)) throw new Error(t('输出分段必须完整覆盖到最后一段。'));
-        if (new Set(bands.map(band => band.outputUpTo)).size !== bands.length) throw new Error(t('输出计费分段不能重复。'));
-      } else if (bands.length !== 1) throw new Error(t('输入计费分段不能重复。'));
+
+function validateModelOptions(value: unknown): NonNullable<ProtocolProfile['modelOptions']> {
+  const v = object(value, t('采样参数'));
+  if (Object.keys(v).some(key => key !== 'temperature' && key !== 'top_p')) throw new Error(t('采样参数包含未知字段。'));
+  const result: NonNullable<ProtocolProfile['modelOptions']> = {};
+  for (const key of ['temperature', 'top_p'] as const) {
+    if (!Object.hasOwn(v, key)) continue;
+    const item = v[key];
+    if (item !== null && (typeof item !== 'number' || !Number.isFinite(item) || item < 0 || (key === 'top_p' && item > 1))) {
+      throw new Error(t('采样参数值无效。'));
     }
+    result[key] = item;
   }
   return result;
 }
-const requestParameterRoots = new Set(['reasoning', 'reasoning_effort', 'thinking', 'enable_thinking', 'output_config', 'extra_body', 'generation_config', 'temperature', 'top_p', 'top_k', 'min_p', 'presence_penalty', 'frequency_penalty', 'repetition_penalty', 'seed', 'stop']);
-const reservedProfileKeys = new Set(['model', 'messages', 'input', 'instructions', 'system', 'prompt', 'tools', 'toolchoice', 'functions', 'functioncall', 'stream', 'streamoptions', 'headers', 'header', 'authorization', 'auth', 'apikey', 'xapikey', 'accesstoken', 'bearertoken', 'credentials', 'credential', 'password', 'secret', 'clientsecret', 'cookie', 'cookies', 'url', 'baseurl', 'endpoint', 'method', 'body', 'request', 'store', 'include', 'maxtokens', 'maxoutputtokens', 'maxcompletiontokens']);
-function profileKey(key: string): boolean {
-  return /^[a-zA-Z_][a-zA-Z0-9_-]{0,63}$/.test(key) && !unsafeKeys.has(key) && !reservedProfileKeys.has(key.replace(/[-_]/g, '').toLowerCase());
-}
-function profilePath(value: unknown, metadata = false): string[] {
-  if (!Array.isArray(value) || !value.length || value.length > 8 || value.some(key => typeof key !== 'string' || !profileKey(key))) throw new Error(t('协议参数路径无效或包含保留字段。'));
-  if (metadata ? ['index', 'id', 'type', 'function', 'name', 'arguments'].includes(value[0]) : !requestParameterRoots.has(value[0])) throw new Error(t('协议参数路径不在允许范围内。'));
-  return [...value];
-}
-function profileScalar(value: unknown): string | number | boolean | null {
-  if (value === null || typeof value === 'boolean' || (typeof value === 'number' && Number.isFinite(value)) || (typeof value === 'string' && value.length <= 4096)) return value;
-  throw new Error(t('协议参数值必须是有效标量。'));
-}
-function profileParameters(value: unknown): Record<string, ParameterValue> {
-  let nodes = 0;
-  const clone = (value: unknown, depth: number): ParameterValue => {
-    if (++nodes > 512 || depth > 8) throw new Error(t('协议参数超过复杂度限制。'));
-    if (Array.isArray(value)) {
-      if (value.length > 32) throw new Error(t('协议参数列表过长。'));
-      return value.map(item => clone(item, depth + 1));
-    }
-    if (value && typeof value === 'object') {
-      const entries = Object.entries(object(value, t('协议参数')));
-      if (entries.length > 32 || entries.some(([key]) => !profileKey(key) || (depth === 0 && !requestParameterRoots.has(key)))) throw new Error(t('协议参数包含不允许的字段。'));
-      return Object.fromEntries(entries.map(([key, item]) => [key, clone(item, depth + 1)]));
-    }
-    return profileScalar(value);
-  };
-  object(value, t('协议参数'));
-  const result = clone(value, 0) as Record<string, ParameterValue>;
-  if (Buffer.byteLength(JSON.stringify(result)) > 16384) throw new Error(t('协议参数过大。'));
-  return result;
-}
-function effortMap<T>(value: unknown, convert: (item: unknown) => T): Record<string, T> {
-  const entries = Object.entries(object(value, t('推理档位映射')));
-  efforts(entries.map(([key]) => key));
-  if (entries.some(([key]) => unsafeKeys.has(key))) throw new Error(t('推理档位映射包含保留字段。'));
-  return Object.fromEntries(entries.map(([key, item]) => [key, convert(item)]));
-}
-function validateApiProfile(value: unknown, apiType: ApiType): ModelApiProfile {
+
+function validateProtocolProfile(value: unknown): ProtocolProfile {
   const v = object(value, t('协议配置'));
-  const fields = ['effortPath', 'effortValues', 'modePath', 'enabledValue', 'disabledValue', 'defaultMode', 'disabledEfforts', 'budgetPath', 'budget', 'budgetByEffort', 'supportsForcedTools', 'allowUnsignedThinking', 'toolCallMetadataPaths', 'parameters'];
-  if (Object.keys(v).some(key => !fields.includes(key))) throw new Error(t('协议配置包含未知字段。'));
-  const result: ModelApiProfile = {};
-  if (v.effortPath !== undefined) result.effortPath = v.effortPath === null ? null : profilePath(v.effortPath);
-  if (v.effortValues !== undefined) result.effortValues = effortMap(v.effortValues, value => {
-    if (value === null) return null;
-    return efforts([value])[0]!;
-  });
-  if (v.modePath !== undefined) result.modePath = profilePath(v.modePath);
-  for (const field of ['enabledValue', 'disabledValue', 'defaultMode'] as const) if (v[field] !== undefined) {
-    if (!result.modePath) throw new Error(t('思考模式值需要声明模式路径。'));
-    result[field] = profileScalar(v[field]);
+  const allowed = ['effortFormat', 'effortValues', 'adaptiveThinking', 'thinkingBudget', 'modelOptions'];
+  if (Object.keys(v).some(key => !allowed.includes(key))) throw new Error(t('协议配置包含未知字段。'));
+  const result: ProtocolProfile = {};
+  if (v.effortFormat !== undefined) {
+    if (typeof v.effortFormat !== 'string' || !effortFormats.has(v.effortFormat)) throw new Error(t('推理档位格式无效。'));
+    result.effortFormat = v.effortFormat as OfficialProtocol | 'unsupported';
   }
-  if (result.modePath && !['enabledValue', 'disabledValue', 'defaultMode'].some(key => Object.hasOwn(v, key))) throw new Error(t('思考模式路径需要声明模式值。'));
-  if (v.disabledEfforts !== undefined) result.disabledEfforts = efforts(v.disabledEfforts);
-  if (v.budgetPath !== undefined) result.budgetPath = profilePath(v.budgetPath);
-  if ((v.budget === undefined) !== (v.budgetPath === undefined)) throw new Error(t('思考预算和预算路径必须同时声明。'));
-  if (v.budget !== undefined) {
-    const budget = object(v.budget, t('思考预算'));
-    if (Object.keys(budget).some(key => !['min', 'max', 'default'].includes(key))) throw new Error(t('思考预算包含未知字段。'));
-    result.budget = { min: positiveInt(budget.min, t('思考预算下限')), max: positiveInt(budget.max, t('思考预算上限')), default: positiveInt(budget.default, t('思考默认预算')) };
-    if (result.budget.min > result.budget.default || result.budget.default > result.budget.max) throw new Error(t('思考预算默认值必须在有效范围内。'));
+  if (v.effortValues !== undefined) {
+    const entries = Object.entries(object(v.effortValues, t('推理档位映射')));
+    efforts(entries.map(([key]) => key));
+    if (entries.some(([key]) => unsafeKeys.has(key))) throw new Error(t('推理档位映射包含保留字段。'));
+    result.effortValues = Object.fromEntries(entries.map(([key, item]) => [key, item === null ? null : efforts([item])[0]!]));
   }
-  if (v.budgetByEffort !== undefined) {
-    if (!result.budget) throw new Error(t('推理档位预算映射需要声明预算范围。'));
-    const budget = result.budget;
-    result.budgetByEffort = effortMap(v.budgetByEffort, value => {
-      const amount = positiveInt(value, t('推理档位预算'));
-      if (amount < budget.min || amount > budget.max) throw new Error(t('推理档位预算必须在声明范围内。'));
-      return amount;
-    });
+  if (v.adaptiveThinking !== undefined) result.adaptiveThinking = bool(v.adaptiveThinking, t('自适应思考'));
+  if (v.thinkingBudget !== undefined) {
+    const budget = object(v.thinkingBudget, t('思考预算'));
+    if (Object.keys(budget).some(key => key !== 'min' && key !== 'max')) throw new Error(t('思考预算包含未知字段。'));
+    const min = positiveInt(budget.min, t('思考预算下限'));
+    const max = positiveInt(budget.max, t('思考预算上限'));
+    if (min > max) throw new Error(t('思考预算上限不能小于下限。'));
+    result.thinkingBudget = { min, max };
   }
-  for (const field of ['supportsForcedTools', 'allowUnsignedThinking'] as const) if (v[field] !== undefined) result[field] = bool(v[field], t('协议能力'));
-  if (v.toolCallMetadataPaths !== undefined) {
-    if (!Array.isArray(v.toolCallMetadataPaths) || v.toolCallMetadataPaths.length > 16) throw new Error(t('工具元数据最多支持16个路径。'));
-    result.toolCallMetadataPaths = v.toolCallMetadataPaths.map(path => profilePath(path, true));
+  if (v.modelOptions !== undefined) {
+    const options = validateModelOptions(v.modelOptions);
+    if (Object.keys(options).length) result.modelOptions = options;
   }
-  const standardEffortPath = apiType === 'chatCompletions' ? ['reasoning_effort'] : [apiType === 'responses' ? 'reasoning' : 'output_config', 'effort'];
-  const paths = [result.effortPath === undefined ? standardEffortPath : result.effortPath, result.modePath, result.budgetPath].filter((path): path is string[] => Array.isArray(path));
-  for (const collection of [paths, result.toolCallMetadataPaths ?? []]) {
-    for (let i = 0; i < collection.length; i++) for (let j = i + 1; j < collection.length; j++) {
-      const a = collection[i]!, b = collection[j]!;
-      if (a.slice(0, Math.min(a.length, b.length)).every((key, offset) => key === b[offset])) throw new Error(t('协议参数路径不能相互覆盖。'));
-    }
-  }
-  if (v.parameters !== undefined) result.parameters = profileParameters(v.parameters);
   return result;
 }
-export function validateReasoningControls(value: unknown): ReasoningControls {
-  const v = object(value, t('思考控制'));
-  const legacyTypes = apiTypes.filter(api => Object.hasOwn(v, api));
-  if (Object.keys(v).some(key => !['protocols', 'note', ...(legacyTypes.length ? [...apiTypes, 'budget', 'disabledEfforts'] : [])].includes(key))) throw new Error(t('思考控制包含未知字段。'));
-  const result: ReasoningControls = { note: text(v.note ?? '', t('思考控制说明'), 4000, true) };
-  const protocols = v.protocols === undefined ? {} : { ...object(v.protocols, t('协议配置列表')) };
-  if (Object.keys(protocols).some(key => !apiTypes.includes(key as ApiType))) throw new Error(t('协议配置类型无效。'));
-  if (legacyTypes.length) {
-    const legacyProfiles = require('../../resources/catalog/migrations.json').legacyProfiles as Partial<Record<ApiType, Record<string, unknown>>>;
-    for (const api of legacyTypes) {
-      const profiles = legacyProfiles[api], name = v[api];
-      if (Object.hasOwn(protocols, api) || typeof name !== 'string' || !profiles || !Object.hasOwn(profiles, name)) throw new Error(t('旧思考控制缺少已声明的迁移配置。'));
-      const profile = { ...object(profiles[name], t('思考控制迁移配置')) };
-      if (v.budget !== undefined && profile.budgetPath !== undefined) profile.budget = v.budget;
-      if (v.disabledEfforts !== undefined) profile.disabledEfforts = v.disabledEfforts;
-      protocols[api] = profile;
-    }
-  }
-  if (v.protocols !== undefined || legacyTypes.length) result.protocols = Object.fromEntries(Object.entries(protocols).map(([key, profile]) => [key, validateApiProfile(profile, key as ApiType)]));
-  return result;
+
+export function validateProtocols(value: unknown): Partial<Record<ApiType, ProtocolProfile>> {
+  const v = object(value, t('协议配置列表'));
+  if (Object.keys(v).some(key => !apiTypes.includes(key as ApiType))) throw new Error(t('协议配置类型无效。'));
+  return Object.fromEntries(Object.entries(v).map(([key, profile]) => [key, validateProtocolProfile(profile)]));
 }
+
 export function validateParameters(value: unknown): ModelParameters {
   const v = object(value, t('模型参数'));
   const result: ModelParameters = {
@@ -191,34 +94,26 @@ export function validateParameters(value: unknown): ModelParameters {
     toolCalling: bool(v.toolCalling, t('工具调用')),
     vision: bool(v.vision, t('视觉')),
     thinking: bool(v.thinking, t('思考')),
-    supportsReasoningEffort: efforts(v.supportsReasoningEffort),
-    source: text(v.source ?? '', t('来源'), 4000, true),
-    verifiedAt: v.verifiedAt == null ? null : text(v.verifiedAt, t('核验日期'), 10)
+    supportsReasoningEffort: efforts(v.supportsReasoningEffort ?? [])
   };
   if (v.contextWindowMode !== undefined) {
     if (!['shared', 'input'].includes(String(v.contextWindowMode))) throw new Error(t('上下文窗口语义无效。'));
-    result.contextWindowMode = v.contextWindowMode as 'shared' | 'input';
+    if (v.contextWindowMode === 'input') result.contextWindowMode = 'input';
   }
-  if (v.contextPricing !== undefined) result.contextPricing = validateContextPricing(v.contextPricing);
-  if (v.reasoningControls !== undefined) result.reasoningControls = validateReasoningControls(v.reasoningControls);
+  if (v.protocols !== undefined) {
+    const protocols = validateProtocols(v.protocols);
+    if (Object.keys(protocols).length) result.protocols = protocols;
+  }
   if (v.aliasOf !== undefined) result.aliasOf = validId(v.aliasOf, t('参数来源模型 ID'));
-  if (v.chatCompletionOptions !== undefined) {
-    const options = object(v.chatCompletionOptions, t('Chat Completions 参数'));
-    if (!['max_tokens', 'max_completion_tokens'].includes(String(options.maxTokensField))) throw new Error(t('输出 token 字段无效。'));
-    result.chatCompletionOptions = { maxTokensField: options.maxTokensField as 'max_tokens' | 'max_completion_tokens', includeUsage: bool(options.includeUsage, t('流式用量')) };
-    if (options.store !== undefined) result.chatCompletionOptions.store = bool(options.store, 'store');
-    if (options.maxOutputTokens !== undefined) result.chatCompletionOptions.maxOutputTokens = positiveInt(options.maxOutputTokens, t('协议输出上限'));
-  }
-  if (Object.hasOwn(v, 'releaseDate')) {
+  if (Object.hasOwn(v, 'releaseDate') && v.releaseDate !== undefined) {
     if (v.releaseDate !== null && !validDate(v.releaseDate)) throw new Error(t('模型发布日期必须是有效的 YYYY-MM-DD 日期或 null。'));
-    result.releaseDate = v.releaseDate as string | null;
+    if (v.releaseDate !== null) result.releaseDate = v.releaseDate;
   }
   if (v.maxInputTokens !== undefined && v.maxInputTokens !== null && v.maxInputTokens !== '') result.maxInputTokens = positiveInt(v.maxInputTokens, t('最大输入'));
   if (v.defaultOutputTokens !== undefined && v.defaultOutputTokens !== null && v.defaultOutputTokens !== '') result.defaultOutputTokens = positiveInt(v.defaultOutputTokens, t('默认输出预算'));
   if ((result.contextWindowMode !== 'input' && result.maxOutputTokens > result.contextWindow) || (result.maxInputTokens !== undefined && result.maxInputTokens > result.contextWindow)) throw new Error(t('输入或输出上限不能超过上下文窗口。'));
   if (result.contextWindowMode !== 'input' && result.maxInputTokens === undefined && result.maxOutputTokens >= result.contextWindow
     && !(result.defaultOutputTokens !== undefined && result.defaultOutputTokens < result.contextWindow)) throw new Error(t('最大输出必须小于上下文窗口，或设置较小的单次输出预算或有效输入上限。'));
-  if (result.verifiedAt && !/^\d{4}-\d{2}-\d{2}$/.test(result.verifiedAt)) throw new Error(t('核验日期格式应为 YYYY-MM-DD。'));
   return result;
 }
 export function validateDatabase(value: unknown): ModelDatabase {
@@ -245,10 +140,6 @@ export function baseParameters(database: ModelDatabase, id: string): ModelParame
 }
 export function effectiveParameters(database: ModelDatabase, model: ModelConfig): ModelParameters {
   return validateParameters({ ...baseParameters(database, model.id), ...model.overrides });
-}
-export function requestParametersForApi(parameters: ModelParameters, apiType: ApiType): ModelParameters {
-  const maximum = apiType === 'chatCompletions' ? parameters.chatCompletionOptions?.maxOutputTokens : undefined;
-  return maximum === undefined ? parameters : { ...parameters, maxOutputTokens: Math.min(parameters.maxOutputTokens, maximum) };
 }
 export function modelName(database: ModelDatabase, model: ModelConfig): string {
   const catalogName = Object.hasOwn(database.models, model.id) ? database.models[model.id]!.name : '';
@@ -294,21 +185,18 @@ export function validateProvider(value: unknown, database: ModelDatabase, discov
     const unified = object(v.unified, t('统一协议'));
     if (!apiTypes.includes(unified.apiType as ApiType) || typeof unified.url !== 'string') throw new Error(t('统一协议配置无效。'));
   }
-  if (v.modelProtocols !== undefined) {
+  if (Object.hasOwn(v, 'modelProtocols')) {
     for (const [modelId, api] of Object.entries(object(v.modelProtocols, t('模型协议分配')))) {
       validId(modelId);
       if (!apiTypes.includes(api as ApiType)) throw new Error(t('模型协议分配无效。'));
     }
   }
-  const routing = normalizeRouting(v);
+  const models = v.models.filter(m => !excludedKind(String(object(m, t('模型')).id))).map(m => validateModel(m, database));
+  if (new Set(models.map(m => m.id)).size !== models.length) throw new Error(t('同一供应商内不能重复添加模型 ID。'));
+  const routing = normalizeRouting({ ...v, models });
   for (const api of apiTypes) routing.endpoints[api] = routing.endpoints[api].trim() ? validateUrl(routing.endpoints[api]) : '';
   routing.unified.url = routing.unified.url.trim() ? validateUrl(routing.unified.url) : '';
-  const models = v.models.filter(m => !excludedKind(String(object(m, t('模型')).id))).map(m => validateModel(m, database));
-  const zeroDataRetentionEnabled = v.zeroDataRetentionEnabled !== undefined
-    ? bool(v.zeroDataRetentionEnabled, t('零数据保留'))
-    : typeof v.zdr === 'boolean' ? v.zdr : v.models.length > 0 && v.models.every(m => m.zdr === true);
-  if (new Set(models.map(m => m.id)).size !== models.length) throw new Error(t('同一供应商内不能重复添加模型 ID。'));
-  const provider: ProviderConfig = { id, name: text(v.name, t('供应商名称'), 200), ...routing, enabled, zeroDataRetentionEnabled, models };
+  const provider: ProviderConfig = { id, name: text(v.name, t('供应商名称'), 200), ...routing, enabled, models };
   if (enabled && !discovery) {
     for (const model of models) {
       const route = routeForModel(provider, model.id, routing);
@@ -317,8 +205,11 @@ export function validateProvider(value: unknown, database: ModelDatabase, discov
   }
   return provider;
 }
-export function sanitizeError(error: unknown, secret?: string): string {
+export function sanitizeError(error: unknown, secrets?: string | readonly string[]): string {
   let message = error instanceof Error ? error.message : t('操作失败。');
-  if (secret) message = message.split(secret).join('[REDACTED]');
+  const values = typeof secrets === 'string' ? [secrets] : secrets ?? [];
+  for (const secret of [...new Set(values.flatMap(value => [value, value.trim()]))].filter(Boolean).sort((a, b) => b.length - a.length)) {
+    message = message.split(secret).join('[REDACTED]');
+  }
   return message.replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]').slice(0, 2000);
 }

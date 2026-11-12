@@ -1,9 +1,8 @@
 require('../resources/shared/i18n').setLocale('zh-CN');
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const { compileOfficialGroup, compileOfficialModel, officialProtocol, unsupportedFields } = require('../dist/core/officialConfig');
-const { effectiveParameters, requestParametersForApi } = require('../dist/core/configuration');
+const { compileOfficialGroup, compileOfficialModel, officialProtocol } = require('../dist/core/officialConfig');
+const { effectiveParameters } = require('../dist/core/configuration');
 const { inputCeiling } = require('../resources/shared/model-policy');
 const { projectEfforts } = require('../resources/shared/model-policy');
 const catalog = require('../resources/catalog/models.json').database;
@@ -78,7 +77,7 @@ test('all catalog entries and fallback compile for every native protocol with va
     assert.equal(group.models.length, Object.keys(catalog.models).length + 1);
     assert.equal(Object.hasOwn(group, 'apiType'), false);
     for (const native of group.models) {
-      const params = requestParametersForApi(effectiveParameters(catalog, model(native.id)), protocols[index]);
+      const params = effectiveParameters(catalog, model(native.id));
       assert.equal(native.apiType, nativeProtocols[index]);
       assert.equal(Object.hasOwn(native, 'reasoningEffortFormat'), false);
       assert.equal(Object.hasOwn(native, 'streaming'), false);
@@ -93,13 +92,6 @@ test('all catalog entries and fallback compile for every native protocol with va
       assert.equal(Object.hasOwn(native, 'contextWindow'), false);
     }
   }
-});
-
-const nativePackagePath = 'D:\\Program Files\\Microsoft VS Code\\c4453f8ea4\\resources\\app\\extensions\\copilot\\package.json';
-test('compiled catalog also satisfies the installed official schema when available', { skip: !fs.existsSync(nativePackagePath) }, () => {
-  const manifest = JSON.parse(fs.readFileSync(nativePackagePath, 'utf8'));
-  const schema = manifest.contributes.languageModelChatProviders.find(item => item.vendor === 'customendpoint').configuration;
-  for (const group of allCatalogGroups()) validateSchema(group, schema);
 });
 
 test('compilation preserves model order, ownership, names and unknown raw IDs without mutating inputs', () => {
@@ -133,6 +125,29 @@ test('unified routes override model preferences and split routes retain per-mode
   assert.deepEqual(split.models.map(item => item.apiType), nativeProtocols);
   assert.deepEqual(split.models.map(item => item.url), ['https://chat.example/root/v1/chat/completions', 'https://responses.example/api/v2/responses', 'https://messages.example/v1/messages']);
   protocols.forEach((api, index) => assert.equal(officialProtocol(api), nativeProtocols[index]));
+});
+
+test('compiled split groups use family endpoints and manual routes independently of unified settings', () => {
+  const models = ['gpt-automatic', 'claude-automatic', 'pinned'].map(id => model(id, { reasoningEffort: 'high', overrides: { maxOutputTokens: 4096 } }));
+  const db = database(); Object.assign(db.defaults, { thinking: true, supportsReasoningEffort: ['low', 'high'] });
+  const supplier = provider('chatCompletions', models, { routingMode: 'split', modelProtocols: { pinned: 'chatCompletions' } });
+  for (const apiType of protocols) {
+    supplier.unified.apiType = apiType;
+    const before = structuredClone(supplier), group = compileOfficialGroup(supplier, db);
+    assert.deepEqual(group.models.map(item => item.apiType), ['responses', 'messages', 'chat-completions']);
+    assert.equal(group.models[0].url, 'https://responses.example/api/v2/responses');
+    assert.equal(group.models[1].url, 'https://messages.example/v1/messages');
+    assert.equal(group.models[2].url, 'https://chat.example/root/v1/chat/completions');
+    for (const native of group.models) {
+      assert.equal(native.defaultReasoningEffort, 'high'); assert.equal(native.maxOutputTokens, 4096);
+      validateSchema(native, modelSchema);
+    }
+    assert.deepEqual(supplier, before);
+  }
+  supplier.modelProtocols = { 'gpt-automatic': 'messages' };
+  const moved = compileOfficialGroup(supplier, db).models[0];
+  assert.equal(moved.apiType, 'messages');
+  assert.equal(moved.url, 'https://messages.example/v1/messages');
 });
 
 test('generic endpoint normalization accepts roots, prefixes, versions and full operation paths', () => {
@@ -172,12 +187,9 @@ test('equal physical input/output windows reserve a conservative positive output
   assert.equal(independent.maxOutputTokens, 20000);
 });
 
-test('chat-specific caps apply before choosing output reservations', () => {
-  const params = { maxOutputTokens: 64000, defaultOutputTokens: 50000,
-    chatCompletionOptions: { maxTokensField: 'max_tokens', maxOutputTokens: 4096, includeUsage: false } };
-  assert.equal(compile(params, model(), 'chatCompletions').maxOutputTokens, 4096);
-  assert.equal(compile(params, model(), 'responses').maxOutputTokens, 50000);
-  assert.equal(compile(params, model(), 'messages').maxOutputTokens, 50000);
+test('provider output overrides apply consistently to each protocol', () => {
+  const params = { maxOutputTokens: 64000, defaultOutputTokens: 50000 };
+  for (const apiType of protocols) assert.equal(compile(params, model('sample', { overrides: { maxOutputTokens: 4096 } }), apiType).maxOutputTokens, 4096);
 });
 
 test('billing tiers and retired per-model budgets never reduce published capacity', () => {
@@ -193,14 +205,14 @@ test('billing tiers and retired per-model budgets never reduce published capacit
 });
 
 test('thinking mapping is profile-driven, target-specific and invariant under arbitrary model renames', () => {
-  const params = { thinking: true, supportsReasoningEffort: ['low', 'max'], reasoningControls: { note: '', protocols: {
-    messages: { modePath: ['thinking', 'type'], enabledValue: 'adaptive', budgetPath: ['thinking', 'budget_tokens'], budget: { min: 1024, max: 63999, default: 1024 } }
-  } } };
+  const params = { thinking: true, supportsReasoningEffort: ['low', 'max'], protocols: {
+    messages: { adaptiveThinking: true, thinkingBudget: { min: 1024, max: 63999 } }
+  } };
   const native = compile(params, model('sample', { overrides: { defaultOutputTokens: 512 } }), 'messages');
   assert.equal(native.adaptiveThinking, true);
   assert.equal(native.minThinkingBudget, undefined);
   assert.equal(native.maxThinkingBudget, undefined, 'Adaptive thinking does not also configure a legacy budget');
-  const budgetOnly = structuredClone(params); budgetOnly.reasoningControls.protocols.messages.enabledValue = 'enabled';
+  const budgetOnly = structuredClone(params); budgetOnly.protocols.messages.adaptiveThinking = false;
   assert.throws(()=>compile(budgetOnly,model('sample',{overrides:{defaultOutputTokens:512}}),'messages'),/最小思考预算/);
   assert.equal(compile(budgetOnly,model('sample',{overrides:{defaultOutputTokens:2048}}),'messages').minThinkingBudget,1024);
   const db = database(params); db.models['unrelated-id'] = structuredClone(db.models.sample);
@@ -213,9 +225,6 @@ test('thinking mapping is profile-driven, target-specific and invariant under ar
   }
   assert.equal(Object.hasOwn(compile({ thinking: true }, model(), 'messages'), 'adaptiveThinking'), false);
   assert.equal(Object.hasOwn(compile(params, model('sample', { overrides: { maxOutputTokens: 1 } }), 'messages'), 'minThinkingBudget'), false);
-  const defaultMode = structuredClone(params); delete defaultMode.reasoningControls.protocols.messages.enabledValue;
-  defaultMode.reasoningControls.protocols.messages.defaultMode = 'adaptive';
-  assert.equal(compile(defaultMode, model(), 'messages').adaptiveThinking, true);
 });
 
 test('default-valued optional fields are omitted while required capabilities remain explicit', () => {
@@ -244,21 +253,20 @@ test('K3 sampling overrides Copilot chat defaults without adding unused settings
   }
 });
 
-test('native reasoning choices honor declarative disables, aliases and supported field paths', () => {
-  const params = { thinking: true, supportsReasoningEffort: ['none', 'low', 'high', 'max'], reasoningControls: { note: '', protocols: {
-    chatCompletions: { modePath: ['thinking', 'type'], enabledValue: 'enabled', disabledValue: 'disabled', disabledEfforts: ['none'], effortValues: { high: 'low', max: 'high' } }
-  } } };
+test('native reasoning choices honor disabled choices, aliases and supported formats', () => {
+  const params = { thinking: true, supportsReasoningEffort: ['none', 'low', 'high', 'max'], protocols: {
+    chatCompletions: { effortValues: { none: null, high: 'low', max: 'high' } }
+  } };
   const native = compile(params, model('sample', { reasoningEffort: 'max' }), 'chatCompletions');
   assert.deepEqual(native.supportsReasoningEffort, ['low', 'high']);
   assert.equal(native.defaultReasoningEffort, 'high');
   assert.throws(() => compile(params, model('sample', { reasoningEffort: 'none' }), 'chatCompletions'), /官方配置暂不支持/);
-  assert.ok(unsupportedFields(provider('chatCompletions'), database(params)).some(item => item.field.endsWith('.disabledEfforts')));
-  for (const [effortPath, format] of [[['reasoning_effort'], undefined], [['reasoning', 'effort'], 'responses'], [['output_config', 'effort'], 'messages']]) {
-    const changed = structuredClone(params); changed.reasoningControls.protocols.chatCompletions.effortPath = effortPath;
+  for (const [effortFormat, format] of [['chat-completions', undefined], ['responses', 'responses'], ['messages', 'messages']]) {
+    const changed = structuredClone(params); changed.protocols.chatCompletions.effortFormat = effortFormat;
     assert.equal(compile(changed, model(), 'chatCompletions').reasoningEffortFormat, format);
   }
-  for (const effortPath of [null, ['extra_body', 'thinking_level']]) {
-    const changed = structuredClone(params); changed.reasoningControls.protocols.chatCompletions.effortPath = effortPath;
+  {
+    const changed = structuredClone(params); changed.protocols.chatCompletions.effortFormat = 'unsupported';
     assert.equal(compile(changed, model(), 'chatCompletions').supportsReasoningEffort, undefined);
     assert.throws(() => compile(changed, model('sample', { reasoningEffort: 'high' }), 'chatCompletions'), /官方配置暂不支持/);
   }
@@ -279,37 +287,31 @@ test('large provider compilation normalizes routing once', () => {
 
 test('only explicit valid temperature and top_p reach native modelOptions', () => {
   for (const parameters of [{ temperature: 0, top_p: 1 }, { temperature: null, top_p: null }, { temperature: 2.5, top_p: 0 }]) {
-    const params = { reasoningControls: { note: '', protocols: { responses: { parameters }, messages: { parameters: { temperature: 0.3 } } } } };
+    const params = { protocols: { responses: { modelOptions: parameters }, messages: { modelOptions: { temperature: 0.3 } } } };
     assert.deepEqual(compile(params).modelOptions, parameters);
     assert.deepEqual(compile(params, model(), 'messages').modelOptions, { temperature: 0.3 });
     assert.equal(Object.hasOwn(compile(params, model(), 'chatCompletions'), 'modelOptions'), false);
   }
   for (const parameters of [{ temperature: -1, top_p: 1.01 }, { temperature: true, top_p: '0.5' }, { temperature: [1], top_p: { value: 1 } }]) {
-    const params = { reasoningControls: { note: '', protocols: { responses: { parameters } } } };
-    assert.equal(Object.hasOwn(compile(params), 'modelOptions'), false);
-    assert.equal(unsupportedFields(provider(), database(params)).length, 2);
+    const params = { protocols: { responses: { modelOptions: parameters } } };
+    assert.throws(() => compile(params));
   }
 });
 
-test('unmapped request JSON is reported separately and never injected into native models', () => {
-  const db = database({ thinking: true, reasoningControls: { note: '', protocols: { responses: { parameters: {
+test('unsupported request injection fields are rejected before native compilation', () => {
+  const db = database({ thinking: true, protocols: { responses: { parameters: {
     temperature: 0.5, reasoning: { summary: 'auto' }, extra_body: { enable_thinking: true }, stop: ['end'], top_k: 20
-  } } } } });
+  } } } });
   const supplier = provider();
-  const group = compileOfficialGroup(supplier, db);
-  validateSchema(group, groupSchema);
-  assert.deepEqual(group.models[0].modelOptions, { temperature: 0.5 });
-  assert.deepEqual(unsupportedFields(supplier, db).map(item => item.field.split('.').at(-1)), ['reasoning', 'extra_body', 'stop', 'top_k']);
-  const json = JSON.stringify(group);
-  for (const field of ['reasoningControls', 'extra_body', 'top_k', 'summary', 'enable_thinking', 'warnings']) assert.equal(json.includes(`"${field}"`), false);
+  assert.throws(() => compileOfficialGroup(supplier, db));
 });
 
-test('credentials never get read or emitted, ZDR is per model, and responses remain stateless', () => {
+test('credentials and both manually managed Responses settings are never read or emitted', () => {
   for (const zeroDataRetentionEnabled of [false, true]) {
     const supplier = provider('responses', [model(), model('unknown')], { zeroDataRetentionEnabled });
     Object.defineProperty(supplier, 'apiKey', { enumerable: true, get() { assert.fail('Compiler read a key'); } });
     const group = compileOfficialGroup(supplier, database());
-    assert.ok(group.models.every(item => item.zeroDataRetentionEnabled === zeroDataRetentionEnabled && item.statefulResponses === (zeroDataRetentionEnabled ? undefined : false)));
+    assert.ok(group.models.every(item => !Object.hasOwn(item, 'zeroDataRetentionEnabled') && !Object.hasOwn(item, 'statefulResponses')));
     for (const apiType of ['messages', 'chatCompletions']) {
       const other = compileOfficialGroup(provider(apiType, supplier.models, { zeroDataRetentionEnabled }), database());
       assert.ok(other.models.every(item => !Object.hasOwn(item, 'zeroDataRetentionEnabled') && !Object.hasOwn(item, 'statefulResponses')));

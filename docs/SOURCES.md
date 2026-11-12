@@ -5,17 +5,22 @@ The main source is [models.dev](https://models.dev), a community-maintained cata
 - [Bundled snapshot](../resources/catalog/models.json): the offline starting catalog and its retrieval time.
 - [Compatibility data](../resources/catalog/compatibility.json): source priorities and parameters that the upstream JSON cannot express for Copilot.
 - [Converter](../src/core/modelCatalog.ts): used by both the extension and the maintenance script.
-- [Legacy migrations](../resources/catalog/migrations.json): retained only to upgrade existing installations without replacing user edits.
 
 ## Updates
 
-Use **Update presets** in the model library. A successful update is cached in VS Code storage. Network or validation errors leave the previous catalog intact. Startup does not make a network request.
+Use **Update presets** at the top of the settings page. A successful update is cached locally. Network or validation errors leave the previous catalog intact. Startup uses the bundled or cached snapshot without making a network request.
 
-Updates compare the current library with its previous source snapshot. Manual fields, custom entries, deleted presets, provider keys, URLs, model IDs and per-model overrides are preserved. Entries absent from an upstream update remain available locally.
+Presets are read-only; change model parameters using each model's **Advanced options**. There is no separate preset editor or preset JSON import/export workflow (header **Import** / **Export** transfers provider configurations only). Provider keys, URLs, model IDs and per-model overrides remain separate from the upstream snapshot.
+
+An update replaces the preset snapshot. A configured model missing from the new snapshot uses the new defaults with its existing overrides. If any saved model becomes invalid or loses its selected reasoning level, the entire update is rejected and the previous snapshot and timestamp remain unchanged.
+
+When upgrading from the editable library, supported settings used by saved providers (including disabled providers) are converted into per-model overrides and custom names. Unused entries from the old editable library are discarded after a successful save. Incompatible legacy settings stop conversion with an explicit error and leave the original storage intact.
 
 Provider records are selected by explicit priority. Aliases are matched only through unambiguous upstream canonical IDs. Provider discovery still uses the configured provider's model-list endpoint; models.dev does not determine which models an API key can access.
 
-Input/output allocation and protocol translation are configuration rules. Output capacity is not an instruction to reserve the entire context window. Pricing is stored only when the response can be represented faithfully; provider and proxy charges may differ.
+Input/output allocation and protocol translation are configuration rules. Output capacity is not an instruction to reserve the entire context window. Presets contain token limits, capabilities, supported protocol settings, release dates and exact aliases. Pricing and per-record verification metadata are not stored.
+
+Compatibility profiles retain only native reasoning formats, effort mappings, adaptive thinking, thinking budget bounds, and sampling options. Profiles that require unsupported request paths suppress the corresponding reasoning picker. Relevant sources are [Claude extended thinking](https://platform.claude.com/docs/en/build-with-claude/extended-thinking), [Google's OpenAI compatibility](https://aistudio.google.com/docs/openai), [Gemini long decoding](https://aistudio.google.com/docs/long-decode), and [Kimi model documentation](https://platform.kimi.ai/docs/api/models-overview.md).
 
 ## Maintenance
 

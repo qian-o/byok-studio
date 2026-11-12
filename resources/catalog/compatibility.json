@@ -137,136 +137,61 @@
     }
   },
   "profiles": {
-    "messages-adaptive-required": {
-      "source": "https://platform.claude.com/docs/en/build-with-claude/extended-thinking",
-      "reasoningControls": {
-        "protocols": {
-          "messages": {
-            "modePath": [
-              "thinking",
-              "type"
-            ],
-            "enabledValue": "adaptive",
-            "defaultMode": "adaptive"
-          }
-        },
-        "note": "Explicit native Messages adaptive-thinking behavior retained from the reviewed compatibility profile; never inferred from missing budgets."
+    "messages-adaptive": {
+      "protocols": {
+        "messages": {
+          "adaptiveThinking": true
+        }
       }
     },
     "messages-budget": {
-      "source": "https://platform.claude.com/docs/en/build-with-claude/extended-thinking",
-      "reasoningControls": {
-        "protocols": {
-          "messages": {
-            "effortPath": null,
-            "modePath": [
-              "thinking",
-              "type"
-            ],
-            "enabledValue": "enabled",
-            "disabledValue": "disabled",
-            "defaultMode": "enabled",
-            "budgetPath": [
-              "thinking",
-              "budget_tokens"
-            ],
-            "budget": {
-              "min": 1024,
-              "max": 63999,
-              "default": 1024
-            }
+      "protocols": {
+        "messages": {
+          "effortFormat": "unsupported",
+          "thinkingBudget": {
+            "min": 1024,
+            "max": 63999
           }
-        },
-        "note": "Explicit native Messages budget limits retained from the reviewed compatibility profile."
-      }
-    },
-    "messages-adaptive": {
-      "source": "https://platform.claude.com/docs/en/build-with-claude/extended-thinking",
-      "reasoningControls": {
-        "protocols": {
-          "messages": {
-            "modePath": [
-              "thinking",
-              "type"
-            ],
-            "enabledValue": "adaptive",
-            "disabledValue": "disabled",
-            "defaultMode": "adaptive"
-          }
-        },
-        "note": "Explicit native Messages adaptive-thinking behavior retained from the reviewed compatibility profile; never inferred from missing budgets."
+        }
       }
     },
     "messages-budget-effort": {
-      "source": "https://platform.claude.com/docs/en/build-with-claude/extended-thinking",
-      "reasoningControls": {
-        "protocols": {
-          "messages": {
-            "effortPath": [
-              "output_config",
-              "effort"
-            ],
-            "modePath": [
-              "thinking",
-              "type"
-            ],
-            "enabledValue": "enabled",
-            "disabledValue": "disabled",
-            "defaultMode": "enabled",
-            "budgetPath": [
-              "thinking",
-              "budget_tokens"
-            ],
-            "budget": {
-              "min": 1024,
-              "max": 63999,
-              "default": 1024
-            }
+      "protocols": {
+        "messages": {
+          "effortFormat": "messages",
+          "thinkingBudget": {
+            "min": 1024,
+            "max": 63999
           }
-        },
-        "note": "Explicit native Messages budget limits retained from the reviewed compatibility profile."
+        }
       }
     },
     "chat-thinking-level": {
-      "source": "https://aistudio.google.com/docs/openai ; https://aistudio.google.com/docs/thinking#thinking-levels",
-      "reasoningControls": {
-        "protocols": {
-          "chatCompletions": {
-            "effortPath": [
-              "extra_body",
-              "google",
-              "thinking_config",
-              "thinking_level"
-            ]
-          }
-        },
-        "note": "OpenAI-compatible thinking-level path omitted from the community JSON API."
+      "protocols": {
+        "chatCompletions": {
+          "effortFormat": "unsupported"
+        }
       }
     },
     "chat-required-sampling": {
-      "source": "https://platform.kimi.ai/docs/api/models-overview.md ; https://platform.kimi.ai/docs/api/chat.md ; https://platform.kimi.ai/docs/api/responses.md",
-      "reasoningControls": {
-        "protocols": {
-          "chatCompletions": {
-            "parameters": {
-              "top_p": 0.95
-            }
+      "protocols": {
+        "chatCompletions": {
+          "modelOptions": {
+            "top_p": 0.95
           }
-        },
-        "note": "Required sampling value omitted from the community JSON API."
+        }
       }
     }
   },
   "models": {
     "gemini-4-argon": {
-      "contextWindowMode": "shared",
-      "source": "https://aistudio.google.com/docs/models/gemini-4-argon ; https://aistudio.google.com/docs/long-decode"
+      "contextWindowMode": "shared"
     },
     "claude-fable-5": {
-      "profile": "messages-adaptive-required"
+      "profile": "messages-adaptive"
     },
     "claude-fable-5-1": {
-      "profile": "messages-adaptive-required"
+      "profile": "messages-adaptive"
     },
     "claude-haiku-4-5": {
       "profile": "messages-budget"
@@ -296,7 +221,7 @@
       "profile": "messages-adaptive"
     },
     "claude-opus-5-5": {
-      "profile": "messages-adaptive-required"
+      "profile": "messages-adaptive"
     },
     "claude-sonnet-4-5": {
       "profile": "messages-budget"

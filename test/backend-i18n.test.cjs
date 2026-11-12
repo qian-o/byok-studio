@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const { t, setLocale, getLocale } = require('../resources/shared/i18n.js');
 const {
   object, text, validId, validateParameters, validateOverrides, validateProvider,
-  validateReasoningControls, sanitizeError
+  validateProtocols, sanitizeError
 } = require('../dist/core/configuration');
 const { StudioStore } = require('../dist/core/store');
 const { resolveEndpoint } = require('../dist/core/endpoints');
@@ -36,8 +36,8 @@ test('backend messages default to English and localize validation labels before 
   assert.throws(() => validateParameters({ ...defaults, contextWindow: 0 }), {
     message: 'Context window must be an integer between 1 and 100000000.'
   });
-  assert.throws(() => validateProvider({ ...provider(), zeroDataRetentionEnabled: 'true' }, database()), {
-    message: 'Zero data retention must be a boolean.'
+  assert.throws(() => validateProvider({ ...provider(), enabled: 'true' }, database()), {
+    message: 'Enabled status must be a boolean.'
   });
 });
 
@@ -58,25 +58,19 @@ test('Chinese locale variants change validation and fallback messages at call ti
 });
 
 test('parameter keys and generated field paths stay exact in both languages', () => {
-  const { unsupportedFields } = require('../dist/core/officialConfig');
-  const db = database();
-  db.defaults.reasoningControls = { protocols: { responses: { parameters: { top_k: 16 } } } };
   for (const [locale, expected] of [
     ['en', 'contextWindow must be an integer between 1 and 100000000.'],
     ['zh-CN', 'contextWindow必须是 1–100000000 的整数。']
   ]) {
     setLocale(locale);
     assert.throws(() => validateOverrides({ contextWindow: 0 }), { message: expected });
-    assert.deepEqual(unsupportedFields(validateProvider(provider(), db), db), [{
-      modelId: 'sample', apiType: 'responses', field: 'reasoningControls.protocols.responses.parameters.top_k'
-    }]);
   }
   setLocale('en');
-  assert.throws(() => text(42, 'reasoningControls.protocols.responses.parameters.top_k'), {
-    message: 'reasoningControls.protocols.responses.parameters.top_k is not valid text.'
+  assert.throws(() => text(42, 'protocols.responses.modelOptions.top_p'), {
+    message: 'protocols.responses.modelOptions.top_p is not valid text.'
   });
-  assert.throws(() => validateReasoningControls({ protocols: { responses: { modePath: ['headers'] } } }), {
-    message: 'The protocol parameter path is invalid or contains reserved fields.'
+  assert.throws(() => validateProtocols({ responses: { parameters: { headers: {} } } }), {
+    message: t('协议配置包含未知字段。')
   });
 });
 
@@ -110,9 +104,9 @@ test('sanitization preserves raw errors while redacting credentials in either lo
     assert.equal(sanitizeError(new Error('The provider refused this request.')), 'The provider refused this request.');
     assert.equal(sanitizeError(new Error('x'.repeat(2100))).length, 2000);
   }
-  assert.equal(t('BYOK Studio 官方配置同步失败：{0}', '操作失败。 {1} $&'), 'BYOK Studio 官方配置同步失败：操作失败。 {1} $&');
+  assert.equal(t('BYOK Studio 官方配置写入失败：{0}', '操作失败。 {1} $&'), 'BYOK Studio 官方配置写入失败：操作失败。 {1} $&');
   setLocale('en');
-  assert.equal(t('BYOK Studio 官方配置同步失败：{0}', '操作失败。 {1} $&'), 'BYOK Studio could not synchronize the official configuration: 操作失败。 {1} $&');
+  assert.equal(t('BYOK Studio 官方配置写入失败：{0}', '操作失败。 {1} $&'), 'BYOK Studio could not write the official configuration: 操作失败。 {1} $&');
 });
 
 test('saved-state validation and asynchronous library errors use the selected locale', async () => {
@@ -131,13 +125,11 @@ test('saved-state validation and asynchronous library errors use the selected lo
   await store.saveProvider(item);
   const smaller = database();
   smaller.defaults.contextWindow = 32000;
-  for (const [locale, message] of [
-    ['en', 'Updating the parameter library would invalidate the manual overrides for “操作失败。 {0} $&”. Adjust its token parameters first.'],
-    ['zh-CN', '参数库更新会使“操作失败。 {0} $&”的手动覆盖无效，请先调整其 Token 参数。']
-  ]) {
+  for (const locale of ['en', 'zh-CN']) {
     setLocale(locale);
-    await assert.rejects(store.saveDatabase(smaller), { message });
-    assert.equal(store.snapshot().database.defaults.contextWindow, 128000);
+    const message = t('目录更新与供应商 {0} 的模型配置不兼容，未保存任何更改：{1}', item.name, t('输入或输出上限不能超过上下文窗口。'));
+    await assert.rejects(store.updateCatalog({ source: 'models.dev', updatedAt: '2026-01-01T00:00:00Z', database: smaller }), { message });
+    assert.equal(store.database().defaults.contextWindow, 128000);
   }
 });
 

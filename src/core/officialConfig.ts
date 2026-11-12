@@ -1,11 +1,11 @@
-import { effectiveParameters, modelName, requestParametersForApi } from './configuration';
+import { effectiveParameters, modelName } from './configuration';
 import { resolveEndpoint } from './endpoints';
-import type { ApiType, ModelConfig, ModelDatabase, ModelParameters, ProviderConfig } from './types';
+import type { ApiType, ModelConfig, ModelDatabase, ModelParameters, OfficialProtocol, ProviderConfig } from './types';
 import { inputCeiling, projectEfforts } from '../../resources/shared/model-policy.js';
 import { t } from '../../resources/shared/i18n.js';
 import { normalizeRouting, routeForModel } from '../../resources/shared/routing.js';
 
-export type OfficialProtocol = 'chat-completions' | 'responses' | 'messages';
+export type { OfficialProtocol };
 export interface OfficialModel {
   id: string;
   name: string;
@@ -19,8 +19,6 @@ export interface OfficialModel {
   adaptiveThinking?: boolean;
   minThinkingBudget?: number;
   maxThinkingBudget?: number;
-  zeroDataRetentionEnabled?: boolean;
-  statefulResponses?: false;
   supportsReasoningEffort?: string[];
   reasoningEffortFormat?: OfficialProtocol;
   defaultReasoningEffort?: string;
@@ -32,19 +30,9 @@ export interface OfficialGroup {
   byokStudioId: string;
   models: OfficialModel[];
 }
-export interface UnsupportedOfficialField {
-  modelId: string;
-  apiType: OfficialProtocol;
-  field: string;
-}
 
 export function officialProtocol(apiType: ApiType): OfficialProtocol {
   return apiType === 'chatCompletions' ? 'chat-completions' : apiType;
-}
-
-function validModelOption(key: string, value: unknown): value is number | null {
-  return (key === 'temperature' || key === 'top_p') && (value === null
-    || (typeof value === 'number' && Number.isFinite(value) && value >= 0 && (key !== 'top_p' || value <= 1)));
 }
 
 function tokenBudgets(parameters: ModelParameters): { maxInputTokens: number; maxOutputTokens: number } {
@@ -60,8 +48,8 @@ function tokenBudgets(parameters: ModelParameters): { maxInputTokens: number; ma
 export function compileOfficialModel(provider: ProviderConfig, database: ModelDatabase, model: ModelConfig, routing = normalizeRouting(provider)): OfficialModel {
   const route = routeForModel(provider, model.id, routing);
   const apiType = officialProtocol(route.apiType);
-  const parameters = requestParametersForApi(effectiveParameters(database, model), route.apiType);
-  const profile = parameters.reasoningControls?.protocols?.[route.apiType];
+  const parameters = effectiveParameters(database, model);
+  const profile = parameters.protocols?.[route.apiType];
   const result: OfficialModel = {
     id: model.id,
     name: modelName(database, model),
@@ -77,28 +65,21 @@ export function compileOfficialModel(provider: ProviderConfig, database: ModelDa
     result.supportsReasoningEffort = efforts.nativeLevels;
     if (efforts.format !== apiType) result.reasoningEffortFormat = efforts.format;
   }
-  if (route.apiType === 'responses') {
-    // Explicit false keeps the existing store=true behavior; omission delegates storage to the server.
-    result.zeroDataRetentionEnabled = route.zeroDataRetentionEnabled;
-    if (!route.zeroDataRetentionEnabled) result.statefulResponses = false;
-  }
   if (route.apiType === 'messages' && parameters.thinking) {
-    if (profile?.modePath?.join('.') === 'thinking.type' && (profile.defaultMode === 'adaptive' || profile.enabledValue === 'adaptive')) result.adaptiveThinking = true;
-    if (!result.adaptiveThinking && profile?.budgetPath?.join('.') === 'thinking.budget_tokens' && profile?.budget) {
-      if (result.maxOutputTokens <= profile.budget.min) throw new Error(t('单次输出预算必须大于该模型的最小思考预算。'));
-      result.maxThinkingBudget = Math.min(profile.budget.max, result.maxOutputTokens - 1);
-      result.minThinkingBudget = profile.budget.min;
+    if (profile?.adaptiveThinking) result.adaptiveThinking = true;
+    else if (profile?.thinkingBudget) {
+      if (result.maxOutputTokens <= profile.thinkingBudget.min) throw new Error(t('单次输出预算必须大于该模型的最小思考预算。'));
+      result.maxThinkingBudget = Math.min(profile.thinkingBudget.max, result.maxOutputTokens - 1);
+      result.minThinkingBudget = profile.thinkingBudget.min;
     }
   }
   if (model.reasoningEffort && parameters.thinking && parameters.supportsReasoningEffort.includes(model.reasoningEffort)) {
     if (!Object.hasOwn(efforts.mapping, model.reasoningEffort)) throw new Error(t('模型 {0} 的推理档位 {1} 需要官方配置暂不支持的参数。请选择其他档位或恢复默认。', model.id, model.reasoningEffort));
     result.defaultReasoningEffort = efforts.mapping[model.reasoningEffort];
   }
-  const options: NonNullable<OfficialModel['modelOptions']> = {};
-  for (const [key, value] of Object.entries(profile?.parameters ?? {})) {
-    if ((key === 'temperature' || key === 'top_p') && validModelOption(key, value)) options[key] = value;
+  if (profile?.modelOptions && Object.keys(profile.modelOptions).length) {
+    result.modelOptions = { ...profile.modelOptions };
   }
-  if (Object.keys(options).length) result.modelOptions = options;
   return result;
 }
 
@@ -112,19 +93,4 @@ export function compileOfficialGroup(provider: ProviderConfig, database: ModelDa
     byokStudioId: provider.id,
     models
   };
-}
-
-/** Additional request fields have no native whole-body injection equivalent. */
-export function unsupportedFields(provider: ProviderConfig, database: ModelDatabase): UnsupportedOfficialField[] {
-  const routing = normalizeRouting(provider);
-  return provider.models.flatMap(model => {
-    const route = routeForModel(provider, model.id, routing);
-    const parameters = effectiveParameters(database, model);
-    const profile = parameters.reasoningControls?.protocols?.[route.apiType];
-    const fields = Object.entries(profile?.parameters ?? {}).filter(([key, value]) => !validModelOption(key, value)).map(([key]) => `parameters.${key}`);
-    for (const rejected of projectEfforts(parameters, route.apiType).rejected) fields.push(rejected.field);
-    if (profile?.modePath && (route.apiType !== 'messages' || profile.modePath.join('.') !== 'thinking.type')) fields.push('modePath');
-    for (const field of ['allowUnsignedThinking', 'supportsForcedTools', 'toolCallMetadataPaths'] as const) if (profile?.[field] !== undefined) fields.push(field);
-    return [...new Set(fields)].map(field => ({ modelId: model.id, apiType: officialProtocol(route.apiType), field: `reasoningControls.protocols.${route.apiType}.${field}` }));
-  });
 }

@@ -40,18 +40,14 @@ test('legacy sorting is removed on load; saved models and additions retain inser
     assert.deepEqual(ids(restored.snapshot().providers[0].models),['unknown','old','new','same','added']);
   }
 });
-test('release date migration fills absent dates without overwriting edits or restoring removed entries',async()=>{
-  const original=database();delete original.models.old.releaseDate;original.models.new.releaseDate=null;original.models.same.releaseDate='2026-01-01';delete original.models.unknown;
-  const state={version:1,providers:[{...supplier(),modelSort:'custom'}],database:original};const values=new Map([['byokStudio.state.v1',state]]);
+test('catalog release date changes preserve configured provider order across restart',async()=>{
+  const state={version:1,providers:[supplier()]};const values=new Map([['byokStudio.state.v1',state]]);
   const storage={get:key=>values.get(key),update:async(key,value)=>values.set(key,structuredClone(value))};
   const secrets={get:async()=>undefined,store:async()=>{},delete:async()=>{}};
   const store=new StudioStore(storage,secrets,database(),()=>{});
-  await store.applyReleaseDates('dates',database());
-  assert.equal(store.snapshot().database.models.old.releaseDate,'2024-01-15');
-  assert.equal(store.snapshot().database.models.new.releaseDate,null);
-  assert.equal(store.snapshot().database.models.same.releaseDate,'2026-01-01');
-  assert.equal(Object.hasOwn(store.snapshot().database.models,'unknown'),false);
-  const changed=store.snapshot().database;changed.models.old.releaseDate=null;await store.saveDatabase(changed);
-  const reloaded=new StudioStore(storage,secrets,database(),()=>{});await reloaded.applyReleaseDates('dates',database());
-  assert.equal(reloaded.snapshot().database.models.old.releaseDate,null);
+  const incoming=database();incoming.models.old.releaseDate='2026-11-01';
+  await store.updateCatalog({source:'models.dev',updatedAt:'2026-11-12T00:00:00Z',database:incoming});
+  const reloaded=new StudioStore(storage,secrets,database(),()=>{});
+  assert.equal(reloaded.database().models.old.releaseDate,'2026-11-01');
+  assert.deepEqual(ids(reloaded.snapshot().providers[0].models),ids(supplier().models));
 });

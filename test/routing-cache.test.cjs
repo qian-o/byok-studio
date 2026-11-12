@@ -34,11 +34,11 @@ test('using cached routing does not read or scan the provider model list', () =>
   const guarded = { ...provider, get models() { throw new Error('Model list must not be rescanned'); } };
   for (const model of models) {
     assert.deepEqual(routing.routeForModel(guarded, model.id, cached), {
-      apiType: 'messages', url: 'https://messages.example.test', zeroDataRetentionEnabled: false
+      apiType: 'messages', url: 'https://messages.example.test'
     });
   }
   guarded.zeroDataRetentionEnabled = true;
-  assert.equal(routing.routeForModel(guarded, models[0].id, cached).zeroDataRetentionEnabled, true);
+  assert.equal(Object.hasOwn(routing.routeForModel(guarded, models[0].id, cached), 'zeroDataRetentionEnabled'), false);
 });
 
 test('validating a provider does not rescan the whole model list for each route', context => {
@@ -66,7 +66,7 @@ test('validating a provider does not rescan the whole model list for each route'
     const validated = validateProvider(provider, database);
     assert.deepEqual(validated.models, entries);
     assert.deepEqual(validated.modelProtocols, protocols);
-    assert.equal(validated.zeroDataRetentionEnabled, true);
+    assert.equal(Object.hasOwn(validated, 'zeroDataRetentionEnabled'), false);
     assert.deepEqual(provider, before);
   }
   assert.equal(routeCalls, entries.length * 2);

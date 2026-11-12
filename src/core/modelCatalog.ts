@@ -1,6 +1,5 @@
-import type { CatalogSnapshot, ContextPricing, ModelApiProfile, ModelParameters, ReasoningControls } from './types';
-import { validateParameters, validateReasoningControls, validId } from './configuration';
-import { validateCatalogSnapshot } from './store';
+import type { ApiType, CatalogSnapshot, ModelDatabase, ModelParameters, ProtocolProfile } from './types';
+import { validateDatabase, validateParameters, validateProtocols, validId } from './configuration';
 import { excludedKind } from '../../resources/shared/routing.js';
 import { validDate } from '../../resources/shared/model-policy.js';
 import { t } from '../../resources/shared/i18n.js';
@@ -10,9 +9,10 @@ const MAX_BYTES = 16 * 1024 * 1024;
 const TIMEOUT_MS = 30_000;
 type Json = Record<string, unknown>;
 type ProviderPolicy = { families: string[]; canonicalProviders: string[]; contextWindowMode?: 'input' | 'shared'; nativeMessages?: boolean };
-type Patch = { source: string; contextWindowMode?: 'input' | 'shared'; reasoningControls?: ReasoningControls };
+type Patch = { contextWindowMode?: 'input' | 'shared'; protocols?: Partial<Record<ApiType, ProtocolProfile>> };
 type Policy = { providers: string[]; providerDefaults: Record<string, ProviderPolicy>; models: Record<string, Patch> };
 type Candidate = { id: string; provider: string; model: Json; canonicalId?: string };
+
 class CatalogError extends Error { override name = 'CatalogError'; }
 function fail(message = t('模型目录数据格式无效，未更新本地目录。')): never { throw new CatalogError(message); }
 function record(value: unknown): value is Json { return value !== null && typeof value === 'object' && !Array.isArray(value); }
@@ -22,6 +22,18 @@ function strings(value: unknown): value is string[] { return Array.isArray(value
 function own(value: Json, key: string): unknown { return Object.hasOwn(value, key) ? value[key] : undefined; }
 function keys(value: Json, allowed: string[]): void { if (Object.keys(value).some(key => !allowed.includes(key))) fail(); }
 function mode(value: unknown): value is 'input' | 'shared' | undefined { return value === undefined || value === 'input' || value === 'shared'; }
+
+export function validateCatalogSnapshot(value: unknown): CatalogSnapshot {
+  const raw = object(value);
+  if (raw.source !== 'models.dev') throw new Error(t('模型目录来源必须是 models.dev。'));
+  const timestamp = raw.updatedAt;
+  if (typeof timestamp !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(timestamp)
+    || !Number.isFinite(Date.parse(timestamp))
+    || new Date(timestamp).toISOString() !== timestamp.replace(/(?:\.(\d{1,3}))?Z$/, (_, fraction: string | undefined) => `.${(fraction ?? '').padEnd(3, '0')}Z`)) {
+    throw new Error(t('模型目录更新时间必须是有效的 UTC ISO 8601 时间戳。'));
+  }
+  return { source: 'models.dev', updatedAt: timestamp, database: validateDatabase(raw.database) };
+}
 
 function readPolicy(value: unknown): Policy {
   try {
@@ -39,33 +51,27 @@ function readPolicy(value: unknown): Policy {
         || (entry.nativeMessages !== undefined && typeof entry.nativeMessages !== 'boolean')) fail();
       providerDefaults[id] = entry as ProviderPolicy;
     }
-    const citation = (value: unknown): string => {
-      if (typeof value !== 'string' || !value.startsWith('https://') || value.length > 1500) fail();
-      return value;
-    };
     const profiles: Record<string, Patch> = Object.create(null);
-    for (const [id, value] of Object.entries(declaredProfiles)) {
+    for (const [id, item] of Object.entries(declaredProfiles)) {
       if (validId(id) !== id) fail();
-      const profile = object(value);
-      keys(profile, ['source', 'reasoningControls']);
-      profiles[id] = { source: citation(profile.source), reasoningControls: validateReasoningControls(profile.reasoningControls) };
+      const profile = object(item);
+      keys(profile, ['protocols']);
+      profiles[id] = { protocols: validateProtocols(profile.protocols) };
     }
     const models: Record<string, Patch> = Object.create(null);
-    for (const [id, value] of Object.entries(patches)) {
+    for (const [id, item] of Object.entries(patches)) {
       if (validId(id) !== id) fail();
-      const patch = object(value);
-      keys(patch, ['source', 'contextWindowMode', 'profile']);
+      const patch = object(item);
+      keys(patch, ['contextWindowMode', 'profile']);
       if (!mode(patch.contextWindowMode)) fail();
       if (patch.profile !== undefined && (typeof patch.profile !== 'string' || !Object.hasOwn(profiles, patch.profile))) fail();
       const profile = typeof patch.profile === 'string' ? profiles[patch.profile] : undefined;
-      const source = patch.source === undefined ? profile?.source : citation(patch.source);
-      if (!source || (!profile && patch.contextWindowMode === undefined)) fail();
-      models[id] = { ...profile, source, ...(patch.contextWindowMode ? { contextWindowMode: patch.contextWindowMode } : {}) };
+      if (!profile && patch.contextWindowMode === undefined) fail();
+      models[id] = { ...profile, ...(patch.contextWindowMode ? { contextWindowMode: patch.contextWindowMode } : {}) };
     }
     return { providers: raw.providers, providerDefaults, models };
   } catch { return fail(t('模型目录兼容配置无效。')); }
 }
-// Loading the same module in the offline checker also validates the shipped policy.
 const policy = readPolicy(require('../../resources/catalog/compatibility.json'));
 
 function readModel(id: string, value: unknown): Json {
@@ -83,82 +89,50 @@ function readModel(id: string, value: unknown): Json {
     for (const option of model.reasoning_options) {
       const entry = object(option);
       if (typeof entry.type !== 'string') fail();
-      if (entry.type === 'effort' && (!strings(entry.values) || entry.values.length > 32 || entry.values.some(value => !/^[a-zA-Z0-9_-]{1,40}$/.test(value)))) fail();
+      if (entry.type === 'effort' && (!strings(entry.values) || entry.values.length > 32 || entry.values.some(item => !/^[a-zA-Z0-9_-]{1,40}$/.test(item)))) fail();
       for (const field of ['min', 'max']) if (entry[field] !== undefined && (!Number.isSafeInteger(entry[field]) || (entry[field] as number) < 0 || (entry[field] as number) > 100_000_000)) fail();
       if (typeof entry.min === 'number' && typeof entry.max === 'number' && entry.min > entry.max) fail();
     }
   }
   return model;
 }
+
 function chatModel(id: string, model: Json): boolean {
   const modalities = object(model.modalities);
   return (model.type === undefined || model.type === 'chat' || model.type === 'text')
     && (modalities.input as string[]).includes('text') && (modalities.output as string[]).length === 1
     && (modalities.output as string[])[0] === 'text' && !excludedKind(id);
 }
+
 function canonicalId(provider: string, id: string, model: Json, canonical: Json): string | undefined {
   if (typeof model.canonical_model_id === 'string') return model.canonical_model_id;
   const exact = `${provider}/${id}`;
   return Object.hasOwn(canonical, exact) ? exact : undefined;
 }
+
 function origin(id: string): string { return id.split('/')[0]!; }
-function documentation(provider: Json): string {
-  if (typeof provider.doc !== 'string' || provider.doc.length > 1500) return '';
-  try { const url = new URL(provider.doc); return url.protocol === 'https:' && !url.username && !url.password ? `; provider documentation: ${url.href}` : ''; }
-  catch { return ''; }
-}
-function provenance(provider: string, providers: Json, updatedAt: string): string {
-  return `${SOURCE_URL}; models.dev community snapshot ${updatedAt}; provider: ${provider}; not independently verified${documentation(object(providers[provider]))}`;
-}
-function pricing(raw: unknown, source: string): ContextPricing {
-  const unknown: ContextPricing = { kind: 'unknown', scope: 'direct-api', thresholds: [], source, checkedAt: null,
-    note: 'Community snapshot; missing, ambiguous, or unsupported prices are not treated as verified flat rates.' };
-  if (!record(raw)) return unknown;
-  const price = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0;
-  const rates = (value: Json) => {
-    if (!price(value.input) || !price(value.output) || ['cache_read', 'cache_write'].some(key => value[key] !== undefined && !price(value[key]))
-      || (value.reasoning !== undefined && value.reasoning !== value.output)) return undefined;
-    return { input: value.input, output: value.output,
-      ...(price(value.cache_read) ? { cacheRead: value.cache_read } : {}), ...(price(value.cache_write) ? { cacheWrite: value.cache_write } : {}) };
-  };
-  const base = rates(raw);
-  if (!base) return unknown;
-  const tiers = raw.tiers === undefined ? [] : raw.tiers;
-  if (!Array.isArray(tiers) || tiers.length > 8 || (raw.context_over_200k !== undefined && tiers.length === 0)) return unknown;
-  const thresholds: number[] = [], bands: NonNullable<ContextPricing['rates']>['bands'] = [];
-  let previous = 0, current = base;
-  for (const rawTier of tiers) {
-    if (!record(rawTier) || !record(rawTier.tier) || rawTier.tier.type !== 'context' || !positive(rawTier.tier.size) || rawTier.tier.size <= previous) return unknown;
-    // Partial tier prices inherit the base, never an unrelated provider's rates.
-    const next = rates({ ...raw, ...rawTier });
-    if (!next) return unknown;
-    thresholds.push(rawTier.tier.size);
-    bands.push({ inputUpTo: rawTier.tier.size, ...current });
-    current = next; previous = rawTier.tier.size;
-  }
-  bands.push({ inputUpTo: null, ...current });
-  return { kind: thresholds.length ? 'tiered' : 'flat', scope: 'direct-api', thresholds, source, checkedAt: null,
-    note: `USD per 1M text tokens from the models.dev community snapshot; provider/channel pricing is not independently verified. ${thresholds.length ? 'Context tiers use the exact reported token boundaries.' : 'Only a base rate is reported; absence of tiers is not independent confirmation of flat pricing.'} Auxiliary modality prices are not represented.`,
-    rates: { currency: 'USD', perTokens: 1000000, bands } };
-}
-function reasoning(model: Json, defaults: ProviderPolicy, patch?: Patch): { supportsReasoningEffort: string[]; reasoningControls?: ReasoningControls } {
+
+function reasoning(model: Json, defaults: ProviderPolicy, patch?: Patch): { supportsReasoningEffort: string[]; protocols?: Partial<Record<ApiType, ProtocolProfile>> } {
   const options = (model.reasoning_options ?? []) as Json[];
   const supportsReasoningEffort = [...new Set(options.filter(option => option.type === 'effort').flatMap(option => option.values as string[]))];
-  let controls: ReasoningControls | undefined;
+  let protocols: Partial<Record<ApiType, ProtocolProfile>> | undefined;
   const budgets = options.filter(option => option.type === 'budget_tokens');
   const budget = budgets.length === 1 ? budgets[0] : undefined;
   if (model.reasoning === true && defaults.nativeMessages && budget && positive(budget.min) && positive(budget.max) && budget.min <= budget.max) {
-    const messages: ModelApiProfile = { effortPath: supportsReasoningEffort.length ? ['output_config', 'effort'] : null,
-      modePath: ['thinking', 'type'], enabledValue: 'enabled', defaultMode: 'enabled',
-      budgetPath: ['thinking', 'budget_tokens'], budget: { min: budget.min, max: budget.max, default: budget.min } };
-    controls = { protocols: { messages }, note: 'Native Messages budget bounds explicitly supplied by the community source.' };
+    protocols = {
+      messages: {
+        ...(supportsReasoningEffort.length ? { effortFormat: 'messages' } : { effortFormat: 'unsupported' }),
+        thinkingBudget: { min: budget.min, max: budget.max }
+      }
+    };
   }
-  if (patch?.reasoningControls) {
-    controls = { ...patch.reasoningControls, protocols: { ...controls?.protocols, ...patch.reasoningControls.protocols } };
+  if (patch?.protocols) {
+    protocols = { ...protocols, ...patch.protocols };
   }
-  return { supportsReasoningEffort, ...(controls ? { reasoningControls: controls } : {}) };
+  return { supportsReasoningEffort, ...(protocols && Object.keys(protocols).length ? { protocols } : {}) };
 }
-function normalize(candidate: Candidate, providers: Json, canonical: Json, updatedAt: string): ModelParameters {
+
+function normalize(candidate: Candidate, canonical: Json, updatedAt: string): ModelParameters {
   const { id, model, provider } = candidate, defaults = policy.providerDefaults[provider]!;
   const patch = policy.models[id], limit = object(model.limit);
   if (!positive(limit.context)) fail();
@@ -170,20 +144,21 @@ function normalize(candidate: Candidate, providers: Json, canonical: Json, updat
   const canonicalOutput = canonicalModel ? object(canonicalModel.limit).output : undefined;
   const reservation = Math.min(maxOutputTokens, 131072, Math.max(1, Math.floor(contextWindow / 4)));
   const defaultOutputTokens = positive(canonicalOutput) && canonicalOutput < maxOutputTokens ? Math.min(canonicalOutput, reservation) : reservation;
-  let source = provenance(provider, providers, updatedAt);
-  if (candidate.canonicalId) source += `; canonical model: ${candidate.canonicalId}`;
-  if (reportedOutput === undefined) source += '; output ceiling missing: conservative editable fallback, not an official limit';
-  if (reportedOutput !== undefined && maxOutputTokens < reportedOutput) source += '; reported output clamped to the shared context policy';
-  if (positive(canonicalOutput) && canonicalOutput < maxOutputTokens) source += `; default output budget bounded by canonical output ${canonicalOutput}`;
-  if (positive(limit.input) && limit.input > contextWindow) source += '; reported input clamped to the context policy';
-  if (patch) source += `; protocol/context compatibility: ${patch.source}`;
   const modalities = object(model.modalities);
   const releaseDate = validDate(model.release_date) && (model.release_date as string) <= updatedAt.slice(0, 10) ? model.release_date as string : undefined;
-  return { name: model.name as string, contextWindow, contextWindowMode, maxOutputTokens, defaultOutputTokens,
+  return {
+    name: model.name as string,
+    contextWindow,
+    ...(contextWindowMode === 'input' ? { contextWindowMode: 'input' } : {}),
+    maxOutputTokens,
+    defaultOutputTokens,
     ...(positive(limit.input) ? { maxInputTokens: Math.min(limit.input, contextWindow) } : {}),
-    toolCalling: model.tool_call === true, vision: (modalities.input as string[]).some(input => input === 'image' || input.startsWith('image/')),
-    thinking: model.reasoning === true, ...reasoning(model, defaults, patch), source, verifiedAt: null,
-    ...(releaseDate ? { releaseDate } : {}), contextPricing: pricing(model.cost, provenance(provider, providers, updatedAt)) };
+    toolCalling: model.tool_call === true,
+    vision: (modalities.input as string[]).some(input => input === 'image' || input.startsWith('image/')),
+    thinking: model.reasoning === true,
+    ...reasoning(model, defaults, patch),
+    ...(releaseDate ? { releaseDate } : {})
+  };
 }
 
 export function buildModelCatalog(raw: unknown, updatedAt: string): CatalogSnapshot {
@@ -214,8 +189,7 @@ export function buildModelCatalog(raw: unknown, updatedAt: string): CatalogSnaps
     for (const candidate of candidates) {
       if (Object.hasOwn(models, candidate.id)) continue;
       const source = candidate.canonicalId ? sources.get(candidate.canonicalId)! : candidate;
-      // Exact IDs retain declared provider priority; canonical-origin records supply matching facts and prices.
-      const normalized = normalize(source, providers, canonical, updatedAt);
+      const normalized = normalize(source, canonical, updatedAt);
       models[candidate.id] = { ...normalized, name: candidate.model.name as string };
       if (candidate.canonicalId && !known.has(candidate.canonicalId)) known.set(candidate.canonicalId, candidate.id);
     }
@@ -239,13 +213,12 @@ export function buildModelCatalog(raw: unknown, updatedAt: string): CatalogSnaps
       const [link] = claims;
       if (claims.size !== 1 || link === undefined || !known.has(link)) continue;
       const sourceId = known.get(link)!;
-      models[id] = { ...structuredClone(models[sourceId]!), aliasOf: sourceId,
-        source: `${models[sourceId]!.source}; exact alias declared by canonical_model_id` };
+      models[id] = { ...structuredClone(models[sourceId]!), aliasOf: sourceId };
     }
     if (!Object.keys(models).length) fail();
-    const source = `${SOURCE_URL}; models.dev community snapshot ${updatedAt}; unknown model: editable conservative fallback, not official specifications`;
-    const defaults = validateParameters({ name: '', contextWindow: 128000, maxOutputTokens: 16000, toolCalling: false, vision: false, thinking: false,
-      supportsReasoningEffort: [], source, verifiedAt: null, contextPricing: pricing(undefined, source) });
+    const defaults: ModelDatabase['defaults'] = validateParameters({
+      name: '', contextWindow: 128000, maxOutputTokens: 16000, toolCalling: false, vision: false, thinking: false, supportsReasoningEffort: []
+    });
     return validateCatalogSnapshot({ source: 'models.dev', updatedAt, database: { schemaVersion: 1, defaults, models } });
   } catch (error) { if (error instanceof CatalogError) throw error; return fail(); }
 }

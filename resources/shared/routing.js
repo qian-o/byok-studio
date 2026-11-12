@@ -39,23 +39,23 @@
     const endpoints = Object.fromEntries(apiTypes.map(api => [api, typeof provider.endpoints?.[api] === 'string' ? provider.endpoints[api] : legacy]));
     const routingMode = ['unified', 'split'].includes(provider.routingMode) ? provider.routingMode : provider.endpoints ? 'split' : 'unified';
     const preferredApi = apiTypes.includes(provider.unified?.apiType) ? provider.unified.apiType
-      : apiTypes.includes(provider.apiType) ? provider.apiType : endpoints.chatCompletions ? 'chatCompletions' : apiTypes.find(api => endpoints[api]) || 'chatCompletions';
+      : apiTypes.includes(provider.apiType) ? provider.apiType : 'chatCompletions';
     const unified = { apiType: preferredApi, url: typeof provider.unified?.url === 'string' ? provider.unified.url : legacy || endpoints[preferredApi] };
     const modelProtocols = Object.fromEntries((provider.models || []).filter(model => !excludedKind(model.id)).map(model => {
-      const supplied = Object.prototype.hasOwnProperty.call(provider.modelProtocols || {}, model.id) ? provider.modelProtocols[model.id] : undefined;
+      const supplied = Object.hasOwn(provider.modelProtocols || {}, model.id) ? provider.modelProtocols[model.id] : undefined;
       const oldGroup = provider.vendorProtocols?.[vendorOf(model.id)];
       return [model.id, apiTypes.includes(supplied) ? supplied : apiTypes.includes(oldGroup) ? oldGroup : recommendedProtocol(model.id)];
     }));
     return { routingMode, unified, endpoints, modelProtocols };
   }
   function routeForModel(provider, modelId, routing = normalizeRouting(provider)) {
-    if (routing.routingMode === 'unified') return { ...routing.unified, zeroDataRetentionEnabled: provider.zeroDataRetentionEnabled === true };
-    const apiType = routing.modelProtocols[modelId] || recommendedProtocol(modelId);
-    return { apiType, url: routing.endpoints[apiType], zeroDataRetentionEnabled: provider.zeroDataRetentionEnabled === true };
+    if (routing.routingMode === 'unified') return { ...routing.unified };
+    const apiType = Object.hasOwn(routing.modelProtocols, modelId) ? routing.modelProtocols[modelId] : recommendedProtocol(modelId);
+    return { apiType, url: routing.endpoints[apiType] };
   }
   function protocolLists(provider) {
     const routing = normalizeRouting(provider);
-    return apiTypes.map(apiType => ({ apiType, models: (provider.models || []).filter(model => !excludedKind(model.id) && routing.modelProtocols[model.id] === apiType) }));
+    return apiTypes.map(apiType => ({ apiType, models: (provider.models || []).filter(model => !excludedKind(model.id) && routeForModel(provider, model.id, routing).apiType === apiType) }));
   }
   function assignModels(provider, ids, apiType) {
     if (!apiTypes.includes(apiType)) throw new Error('Unsupported protocol.');
