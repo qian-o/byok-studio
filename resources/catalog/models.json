@@ -1,6 +1,6 @@
 {
   "source": "models.dev",
-  "updatedAt": "2026-11-11T00:45:42.080Z",
+  "updatedAt": "2026-11-12T17:46:18.222Z",
   "database": {
     "schemaVersion": 1,
     "defaults": {
@@ -4384,6 +4384,22 @@
         },
         "releaseDate": "2026-09-01"
       },
+      "anthropic-claude-fable-5.2": {
+        "name": "Claude Fable 5.2",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "releaseDate": "2026-11-09"
+      },
       "anthropic-claude-haiku-4.5": {
         "name": "Claude Haiku 4.5 (latest)",
         "contextWindow": 200000,
@@ -7664,21 +7680,6 @@
         ],
         "releaseDate": "2026-08-03"
       },
-      "bytedance-seed/seed-1.6": {
-        "name": "Seed 1.6",
-        "contextWindow": 256000,
-        "maxOutputTokens": 64000,
-        "toolCalling": true,
-        "vision": true,
-        "thinking": true,
-        "supportsReasoningEffort": [
-          "minimal",
-          "low",
-          "medium",
-          "high"
-        ],
-        "releaseDate": "2025-10-15"
-      },
       "bytedance-seed/seed-1.6-flash": {
         "name": "Seed 1.6 Flash",
         "contextWindow": 256000,
@@ -7937,16 +7938,6 @@
         ],
         "releaseDate": "2026-06-23"
       },
-      "bytedance/glm-4.7": {
-        "name": "GLM-4.7",
-        "contextWindow": 204800,
-        "maxOutputTokens": 51200,
-        "toolCalling": true,
-        "vision": false,
-        "thinking": true,
-        "supportsReasoningEffort": [],
-        "releaseDate": "2025-12-22"
-      },
       "bytedance/glm-5.2": {
         "name": "GLM-5.2",
         "contextWindow": 1000000,
@@ -7959,39 +7950,6 @@
           "max"
         ],
         "releaseDate": "2026-06-13"
-      },
-      "bytedance/seed-1.6": {
-        "name": "Seed 1.6",
-        "contextWindow": 256000,
-        "maxOutputTokens": 64000,
-        "toolCalling": true,
-        "vision": true,
-        "thinking": true,
-        "supportsReasoningEffort": [
-          "minimal",
-          "low",
-          "medium",
-          "high"
-        ],
-        "releaseDate": "2025-10-15"
-      },
-      "bytedance/seed-1.8": {
-        "name": "Seed 1.8",
-        "contextWindow": 256000,
-        "maxOutputTokens": 64000,
-        "toolCalling": true,
-        "vision": true,
-        "thinking": true,
-        "supportsReasoningEffort": [
-          "none",
-          "minimal",
-          "low",
-          "medium",
-          "high",
-          "xhigh",
-          "max"
-        ],
-        "releaseDate": "2025-12-28"
       },
       "bytedance/seed-2.1-turbo": {
         "name": "Seed 2.1 Turbo",
@@ -8270,6 +8228,22 @@
           }
         },
         "releaseDate": "2026-09-01"
+      },
+      "claude-fable-5.2": {
+        "name": "Claude Fable 5.2",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "releaseDate": "2026-11-09"
       },
       "claude-fable-5@default": {
         "name": "Claude Fable 5",
@@ -12111,6 +12085,20 @@
           "high"
         ],
         "releaseDate": "2026-10-13"
+      },
+      "gemini/gemini-4-carbon": {
+        "name": "Gemini 4 Carbon",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 32768,
+        "toolCalling": true,
+        "vision": true,
+        "thinking": true,
+        "supportsReasoningEffort": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "releaseDate": "2026-11-10"
       },
       "gemma-4": {
         "name": "Gemma 4 31B IT",
@@ -18257,20 +18245,6 @@
         "releaseDate": "2024-12-20"
       },
       "openai/o3-mini-high": {
-        "name": "o3-mini",
-        "contextWindow": 200000,
-        "maxOutputTokens": 50000,
-        "toolCalling": true,
-        "vision": false,
-        "thinking": true,
-        "supportsReasoningEffort": [
-          "low",
-          "medium",
-          "high"
-        ],
-        "releaseDate": "2024-12-20"
-      },
-      "openai/o3-mini-low": {
         "name": "o3-mini",
         "contextWindow": 200000,
         "maxOutputTokens": 50000,

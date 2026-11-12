@@ -41,15 +41,23 @@ export function createVsCodeAdapter(context: vscode.ExtensionContext): VsCodeCon
   };
 
   const readDiskText = async (): Promise<string | undefined> => {
-    for (const candidate of [userdataUri, fileUri]) {
-      try {
-        const bytes = await vscode.workspace.fs.readFile(candidate);
-        return Buffer.from(bytes).toString('utf8');
-      } catch (error) {
-        if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound') continue;
+    try {
+      const bytes = await vscode.workspace.fs.readFile(userdataUri);
+      return Buffer.from(bytes).toString('utf8');
+    } catch (error) {
+      if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound' && userdataUri.toString() === fileUri.toString()) {
+        return undefined;
       }
     }
-    return undefined;
+    try {
+      const bytes = await vscode.workspace.fs.readFile(fileUri);
+      return Buffer.from(bytes).toString('utf8');
+    } catch (error) {
+      if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound') {
+        return undefined;
+      }
+      throw error;
+    }
   };
 
   const openOrCreateDocument = async (create: boolean): Promise<vscode.TextDocument | undefined> => {
