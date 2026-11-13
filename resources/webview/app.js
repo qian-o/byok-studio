@@ -23,7 +23,7 @@
   let activeId = null;
   let busy = null;
   let sequence = 0;
-  let catalogLoaded = false;
+  let datalistModelsRef = null;
   let modelSession = null;
   let transferSession = null;
   let pendingConfirm = null;
@@ -183,12 +183,22 @@
   function isDirty(draft) { return !draft.baseline || !equal(draft.provider, draft.baseline) || Boolean(draft.apiKey.trim()); }
   function modelLabel(model) { return routing.displayModelName(state.database, model); }
 
-  function populateModelDatalist() {
-    if (catalogLoaded || !state?.database?.models) return;
-    catalogLoaded = true;
+  function ensureModelDatalist() {
+    const models = state?.database?.models;
+    if (!models || datalistModelsRef === models) return;
+    datalistModelsRef = models;
+    const rankId = id => (/[/:@]/.test(id) ? 1 : 0);
+    const entries = Object.entries(models)
+      .filter(([id]) => !routing.isExcludedModel(id))
+      .sort(([a], [b]) => {
+        const rankDiff = rankId(a) - rankId(b);
+        if (rankDiff) return rankDiff;
+        const al = a.toLowerCase();
+        const bl = b.toLowerCase();
+        return al < bl ? -1 : al > bl ? 1 : (a < b ? -1 : a > b ? 1 : 0);
+      });
     const fragment = document.createDocumentFragment();
-    for (const [id, record] of Object.entries(state.database.models)) {
-      if (routing.isExcludedModel(id)) continue;
+    for (const [id, record] of entries) {
       const option = node('option');
       option.value = id;
       option.label = record.name || id;
@@ -202,8 +212,7 @@
       throw new Error(t('扩展返回的配置格式无效，请重新打开 BYOK Studio。'));
     }
     const previousDraft = currentDraft();
-    state = clone(next);
-    populateModelDatalist();
+    state = { providers: clone(next.providers), database: next.database };
 
     const savedMap = new Map(state.providers.map(p => [p.id, p]));
 
@@ -697,6 +706,9 @@
       if (draft.apiKey.trim()) payload.apiKey = draft.apiKey.trim();
       const result = await request('discoverModels', payload);
       if (!result || !Array.isArray(result.models)) throw new Error(t('扩展返回的模型列表格式无效。'));
+      if (result.database?.models) {
+        state.database = result.database;
+      }
       const target = drafts.get(provider.id);
       if (!target) return;
       const models = routing.replaceModels(target.provider.models, result.models);
@@ -903,6 +915,7 @@
     if (!draft || busy) return;
     const model = id ? draft.provider.models.find(item => item.id === id) : { id: '', name: '', overrides: {} };
     if (!model) return;
+    ensureModelDatalist();
 
     const initialProtocol = id && own(draft.provider.modelProtocols, id)
       ? draft.provider.modelProtocols[id]

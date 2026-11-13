@@ -10,12 +10,14 @@
 
   const EXCLUSION_PATTERNS = [
     /^(?:sora|veo|kling|seedance|wan(?:\d|[-.])|grok-imagine-video|doubao-(?:seedance|video))(?:[-.\d]|$)/i,
-    /^(?:gpt-image|dall-e|imagen|seedream|grok-imagine(?:-image)?|doubao-(?:seedream|image))(?:[-.\d]|$)/i,
+    /^(?:gpt-image|dall-e|imagen|seedream|flux|stable-diffusion|midjourney|grok-imagine(?:-image)?|doubao-(?:seedream|image))(?:[-.\d]|$)/i,
     /^gemini.*(?:-image(?:[-.]|$)|-imagegen(?:[-.]|$))/i,
-    /^(?:text-embedding|embedding|whisper|tts|gpt.*-(?:audio|realtime|transcribe|tts))(?:[-.]|$)/i
+    /(?:^|[-._])(?:text-embedding|embedding|embeddings|embed|rerank|reranker|whisper|tts|speech|transcribe|transcription|moderation|realtime|live-translate)(?:[-._\d]|$)/i,
+    /^gpt.*-(?:audio|realtime|transcribe|tts)(?:[-.]|$)/i
   ];
   const RESPONSES_PATTERN = /^(?:gpt[-.]|chatgpt[-.]|codex(?:[-.]|$)|o[134](?:[-.]|$))/i;
   const MESSAGES_PATTERN = /^claude(?:[-.]|$)/i;
+  const VENDOR_SLUG_PREFIX = /^(?:(?:us|eu|ap|au|jp|in|global)[.-])?(?:doubao|openai|anthropic|google|xai|zai|zhipuai?|moonshotai?|deepseek|meta|mistral|alibaba)[.-]/;
 
   function modelLeaf(id) {
     return String(id).split('/').at(-1) || '';
@@ -39,31 +41,84 @@
     return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
   }
 
-  function getLowerIndex(models) {
-    let map = lowerIndexCache.get(models);
-    if (!map) {
-      map = new Map();
-      for (const key of Object.keys(models)) {
-        const lower = key.toLowerCase();
-        if (!map.has(lower)) map.set(lower, models[key]);
+  function mergeVersionParts(parts) {
+    const merged = [];
+    for (let i = 0; i < parts.length; i++) {
+      const prev = parts[i - 1] || '';
+      const next = parts[i + 2] || '';
+      if (
+        /^\d$/.test(parts[i])
+        && i + 1 < parts.length
+        && /^\d$/.test(parts[i + 1])
+        && !/^\d+$/.test(prev)
+        && !/^(?:\d{1,2}|(?:19|20)\d{2})$/.test(next)
+      ) {
+        merged.push(`${parts[i]}.${parts[i + 1]}`);
+        i++;
+      } else {
+        merged.push(parts[i]);
       }
-      lowerIndexCache.set(models, map);
     }
-    return map;
+    return merged;
+  }
+
+  function normalizeModelSlug(value) {
+    const base = String(value || '').toLowerCase().replace(/[:@].*$/, '');
+    const parts = base.split(/[-_\s]+/).filter(Boolean);
+    return parts.length ? mergeVersionParts(parts).join('-') : base;
+  }
+
+  function getLookupIndex(models) {
+    let index = lowerIndexCache.get(models);
+    if (!index) {
+      const lower = new Map();
+      const slug = new Map();
+      for (const key of Object.keys(models)) {
+        const record = models[key];
+        const lowerKey = key.toLowerCase();
+        if (!lower.has(lowerKey)) lower.set(lowerKey, record);
+        const leafKey = modelLeaf(key);
+        const normKey = normalizeModelSlug(leafKey || key);
+        if (normKey && !slug.has(normKey)) slug.set(normKey, record);
+      }
+      index = { lower, slug };
+      lowerIndexCache.set(models, index);
+    }
+    return index;
   }
 
   function lookupPreset(database, id) {
     const models = database.models;
     if (Object.hasOwn(models, id)) return models[id];
-    const lowerMap = getLowerIndex(models);
-    const byLower = lowerMap.get(String(id).toLowerCase());
+    const raw = String(id || '');
+    const { lower, slug } = getLookupIndex(models);
+    const byLower = lower.get(raw.toLowerCase());
     if (byLower) return byLower;
-    const leaf = modelLeaf(id);
-    if (leaf && leaf !== id) {
+
+    const leaf = modelLeaf(raw);
+    if (leaf && leaf !== raw) {
       if (Object.hasOwn(models, leaf)) return models[leaf];
-      const byLeafLower = lowerMap.get(leaf.toLowerCase());
+      const byLeafLower = lower.get(leaf.toLowerCase());
       if (byLeafLower) return byLeafLower;
     }
+
+    const strippedLeaf = (leaf || raw).replace(/[:@].*$/, '');
+    if (strippedLeaf && strippedLeaf !== leaf) {
+      const byStripped = lower.get(strippedLeaf.toLowerCase());
+      if (byStripped) return byStripped;
+    }
+
+    const norm = normalizeModelSlug(leaf || raw);
+    if (norm) {
+      const bySlug = slug.get(norm);
+      if (bySlug) return bySlug;
+      const withoutVendor = norm.replace(VENDOR_SLUG_PREFIX, '');
+      if (withoutVendor && withoutVendor !== norm) {
+        const byVendorStripped = slug.get(withoutVendor);
+        if (byVendorStripped) return byVendorStripped;
+      }
+    }
+
     return database.defaults;
   }
 
@@ -112,24 +167,7 @@
     const leaf = modelLeaf(raw) || raw;
     const parts = leaf.split(/[-_\s]+/).filter(Boolean);
     if (!parts.length) return raw.slice(0, 200);
-    const merged = [];
-    for (let i = 0; i < parts.length; i++) {
-      const prev = parts[i - 1] || '';
-      const next = parts[i + 2] || '';
-      if (
-        /^\d$/.test(parts[i])
-        && i + 1 < parts.length
-        && /^\d$/.test(parts[i + 1])
-        && !/^\d+$/.test(prev)
-        && !/^(?:\d{1,2}|(?:19|20)\d{2})$/.test(next)
-      ) {
-        merged.push(`${parts[i]}.${parts[i + 1]}`);
-        i++;
-      } else {
-        merged.push(parts[i]);
-      }
-    }
-    const formatted = merged.map(formatToken).join(' ').slice(0, 200).trim();
+    const formatted = mergeVersionParts(parts).map(formatToken).join(' ').slice(0, 200).trim();
     return formatted || raw.slice(0, 200);
   }
 

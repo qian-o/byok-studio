@@ -1,8 +1,6 @@
 .vscode/**
 src/**
 resources/**/*.d.ts
-dist/catalogBuilder.*
-resources/catalog/compatibility.json
 scripts/**
 releases/**
 docs/*.md

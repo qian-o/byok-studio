@@ -2,12 +2,19 @@ import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import * as vscode from 'vscode';
 import { t } from '../resources/shared/i18n.js';
+import {
+  CATALOG_REFRESH_TTL_MS,
+  CATALOG_TTL_MS,
+  emptyCatalogSnapshot,
+  fetchModelCatalog
+} from './catalogBuilder';
 import type { ConfigHost } from './configService';
 import { listOfficialGroups, removeOfficialGroup } from './jsonc';
 import { isSecretReference, validateCatalogSnapshot } from './models';
-import type { ModelDatabase, RoutingHint } from './types';
+import type { CatalogSnapshot, ModelDatabase, RoutingHint } from './types';
 
 const ROUTING_HINTS_KEY = 'byokStudio.routing.v1';
+const CATALOG_CACHE_FILE = 'models-catalog.json';
 const ADD_GROUP_COMMAND = 'lm.addLanguageModelsProviderGroup';
 const secretKey = (id: string) => `byokStudio.provider.${id}`;
 const normalizeEol = (value: string) => value.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
@@ -21,6 +28,10 @@ export function createVsCodeAdapter(context: vscode.ExtensionContext): VsCodeCon
   const location = vscode.Uri.joinPath(context.globalStorageUri, '..', '..', 'chatLanguageModels.json');
   const userdataUri = location.with({ scheme: 'vscode-userdata' });
   const fileUri = location.with({ scheme: context.globalStorageUri.scheme });
+  const catalogCacheUri = vscode.Uri.joinPath(context.globalStorageUri, CATALOG_CACHE_FILE);
+
+  let cachedCatalog: CatalogSnapshot | undefined;
+  let inflightCatalog: Promise<CatalogSnapshot> | undefined;
 
   let routingHints: Record<string, RoutingHint> = structuredClone(
     context.globalState.get<Record<string, RoutingHint>>(ROUTING_HINTS_KEY, {})
@@ -142,10 +153,63 @@ export function createVsCodeAdapter(context: vscode.ExtensionContext): VsCodeCon
   };
 
   const host: ConfigHost = {
-    async readCatalog(): Promise<ModelDatabase> {
-      const catalogUri = vscode.Uri.joinPath(context.extensionUri, 'resources', 'catalog', 'models.json');
-      const raw = JSON.parse(Buffer.from(await vscode.workspace.fs.readFile(catalogUri)).toString('utf8'));
-      return validateCatalogSnapshot(raw).database;
+    async readCatalog(forceRefresh = false, signal?: AbortSignal): Promise<ModelDatabase> {
+      if (!cachedCatalog) {
+        try {
+          const raw = JSON.parse(Buffer.from(await vscode.workspace.fs.readFile(catalogCacheUri)).toString('utf8'));
+          cachedCatalog = validateCatalogSnapshot(raw);
+        } catch {
+          cachedCatalog = undefined;
+        }
+      }
+
+      const modelCount = cachedCatalog ? Object.keys(cachedCatalog.database.models).length : 0;
+      const age = cachedCatalog ? Math.max(0, Date.now() - Date.parse(cachedCatalog.updatedAt)) : Infinity;
+      const ttl = forceRefresh ? CATALOG_REFRESH_TTL_MS : CATALOG_TTL_MS;
+
+      const refreshOnline = (): Promise<CatalogSnapshot> => {
+        if (!inflightCatalog) {
+          inflightCatalog = (async () => {
+            const fresh = await fetchModelCatalog();
+            cachedCatalog = fresh;
+            try {
+              await vscode.workspace.fs.createDirectory(context.globalStorageUri);
+              await vscode.workspace.fs.writeFile(catalogCacheUri, Buffer.from(JSON.stringify(fresh), 'utf8'));
+            } catch {
+              // Ignore non-fatal cache write errors.
+            }
+            return fresh;
+          })().finally(() => {
+            inflightCatalog = undefined;
+          });
+        }
+        return inflightCatalog;
+      };
+
+      if (cachedCatalog && modelCount > 0) {
+        if (age <= ttl) return cachedCatalog.database;
+        if (!forceRefresh) {
+          void refreshOnline().catch(() => {});
+          return cachedCatalog.database;
+        }
+      }
+
+      try {
+        const pending = refreshOnline();
+        const resolved = signal
+          ? await Promise.race([
+              pending,
+              new Promise<never>((_, reject) => {
+                if (signal.aborted) reject(signal.reason);
+                else signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+              })
+            ])
+          : await pending;
+        return resolved.database;
+      } catch {
+        if (cachedCatalog) return cachedCatalog.database;
+        return emptyCatalogSnapshot().database;
+      }
     },
 
     async readOfficialText(): Promise<string | undefined> {

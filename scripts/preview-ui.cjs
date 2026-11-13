@@ -3,8 +3,15 @@
 
 const http = require('node:http');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const {
+  CATALOG_REFRESH_TTL_MS,
+  CATALOG_TTL_MS,
+  emptyCatalogSnapshot,
+  fetchModelCatalog
+} = require('../dist/catalogBuilder');
 const { ConfigService } = require('../dist/configService');
 const { upsertOfficialGroup } = require('../dist/jsonc');
 const { MAX_IMPORT_BYTES, parseImportData, sanitizeError, validateCatalogSnapshot } = require('../dist/models');
@@ -13,8 +20,8 @@ const { setLocale, renderHtml } = require('../resources/shared/i18n');
 setLocale(process.env.BYOK_PREVIEW_LANGUAGE || 'en');
 
 const root = path.resolve(__dirname, '..');
-const catalogRaw = JSON.parse(fs.readFileSync(path.join(root, 'resources', 'catalog', 'models.json'), 'utf8'));
-const database = validateCatalogSnapshot(catalogRaw).database;
+const previewCacheFile = path.join(os.tmpdir(), 'byok-studio-preview-catalog.json');
+let cachedSnapshot;
 
 let officialText;
 let secretCounter = 0;
@@ -22,7 +29,35 @@ const secrets = new Map();
 let routingHints = {};
 
 const service = new ConfigService({
-  async readCatalog() { return database; },
+  async readCatalog(forceRefresh = false, signal) {
+    if (!cachedSnapshot) {
+      try {
+        cachedSnapshot = validateCatalogSnapshot(JSON.parse(fs.readFileSync(previewCacheFile, 'utf8')));
+      } catch {
+        cachedSnapshot = undefined;
+      }
+    }
+    const count = cachedSnapshot ? Object.keys(cachedSnapshot.database.models).length : 0;
+    const age = cachedSnapshot ? Math.max(0, Date.now() - Date.parse(cachedSnapshot.updatedAt)) : Infinity;
+    const ttl = forceRefresh ? CATALOG_REFRESH_TTL_MS : CATALOG_TTL_MS;
+    if (cachedSnapshot && count > 0) {
+      if (age <= ttl) return cachedSnapshot.database;
+      if (!forceRefresh) {
+        fetchModelCatalog().then(fresh => {
+          cachedSnapshot = fresh;
+          try { fs.writeFileSync(previewCacheFile, JSON.stringify(fresh)); } catch {}
+        }).catch(() => {});
+        return cachedSnapshot.database;
+      }
+    }
+    try {
+      cachedSnapshot = await fetchModelCatalog(signal);
+      try { fs.writeFileSync(previewCacheFile, JSON.stringify(cachedSnapshot)); } catch {}
+      return cachedSnapshot.database;
+    } catch {
+      return cachedSnapshot ? cachedSnapshot.database : emptyCatalogSnapshot().database;
+    }
+  },
   async readOfficialText() { return officialText; },
   async writeOfficialText(expectedBefore, nextText) {
     if (officialText !== expectedBefore) throw new Error('Concurrent modification in preview.');

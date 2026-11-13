@@ -12,7 +12,7 @@
 - **Chat Completions**、**Responses** 或 **Messages** 协议配置，可统一设置或按模型分配。
 - 模型列表、显示名称、Context、Output、能力声明和推理档位。
 
-模型预设来自 [models.dev](https://models.dev)，随扩展发版提供。在 **模型设置** 中调整参数。[参数来源与发版维护](docs/SOURCES.md)。
+模型预设在线同步自 [models.dev](https://models.dev) 并在本地缓存。在 **模型设置** 中调整参数。[参数来源与匹配规则](docs/SOURCES.md)。
 
 Context 和 Output 直接写入官方 JSON 的 `contextWindow` 和 `maxOutputTokens`。保存供应商时会清除该供应商旧模型中的 `maxInputTokens`、`zeroDataRetentionEnabled` 和 `statefulResponses`；未操作的供应商保持不变。
 
@@ -72,8 +72,8 @@ Context 和 Output 直接写入官方 JSON 的 `contextWindow` 和 `maxOutputTok
 运行 `node scripts/preview-ui.cjs` 可预览界面，数据仅保存在内存。
 
 - `src/` — 扩展与配置逻辑
-- `resources/` — 页面、共享模块及运行时参数库
-- `scripts/` — 开发工具与参数库维护资料
+- `resources/` — 页面与共享模块
+- `scripts/` — 本地界面预览工具
 - `docs/` — 截图与参数来源
 
 ```powershell

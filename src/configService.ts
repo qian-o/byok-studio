@@ -15,7 +15,7 @@ import {
 import type { ExportBundle, ExportedProvider, ModelDatabase, ProviderConfig, ProviderView, RoutingHint, UiState } from './types';
 
 export interface ConfigHost {
-  readCatalog(): Promise<ModelDatabase>;
+  readCatalog(forceRefresh?: boolean, signal?: AbortSignal): Promise<ModelDatabase>;
   readOfficialText(): Promise<string | undefined>;
   writeOfficialText(expectedBefore: string | undefined, nextText: string): Promise<void>;
   provisionSecretReference(providerId: string, apiKey: string, beforeText: string | undefined): Promise<{ currentText: string; reference: string }>;
@@ -27,14 +27,19 @@ export interface ConfigHost {
 }
 
 export class ConfigService {
+  private rawCatalogRef: ModelDatabase | undefined;
   private cachedDatabase: ModelDatabase | undefined;
   private queue: Promise<unknown> = Promise.resolve();
 
   constructor(private readonly host: ConfigHost) {}
 
-  async database(): Promise<ModelDatabase> {
-    if (!this.cachedDatabase) {
-      this.cachedDatabase = validateDatabase(await this.host.readCatalog());
+  async database(forceRefresh = false, signal?: AbortSignal): Promise<ModelDatabase> {
+    if (!this.cachedDatabase || forceRefresh) {
+      const next = await this.host.readCatalog(forceRefresh, signal);
+      if (next !== this.rawCatalogRef || !this.cachedDatabase) {
+        this.cachedDatabase = validateDatabase(next);
+        this.rawCatalogRef = next;
+      }
     }
     return this.cachedDatabase;
   }
@@ -48,7 +53,7 @@ export class ConfigService {
   private async readCurrentState(database: ModelDatabase): Promise<UiState> {
     const rawText = await this.host.readOfficialText();
     if (rawText === undefined) {
-      return { providers: [], database: structuredClone(database) };
+      return { providers: [], database };
     }
     const groups = listOfficialGroups(rawText);
     const hints = this.host.getRoutingHints();
@@ -61,7 +66,7 @@ export class ConfigService {
       const hasKey = hasSecret || isSecretReference(group.apiKey);
       providers.push({ ...parsed, hasKey });
     }
-    return { providers, database: structuredClone(database) };
+    return { providers, database };
   }
 
   getUiState(): Promise<UiState> {
@@ -265,12 +270,23 @@ export class ConfigService {
     });
   }
 
-  async discoverModels(rawProvider: unknown, rawApiKey: unknown, signal: AbortSignal): Promise<DiscoveryResult> {
-    const db = await this.database();
-    const provider = validateProvider(rawProvider, db, true);
+  async discoverModels(
+    rawProvider: unknown,
+    rawApiKey: unknown,
+    signal: AbortSignal
+  ): Promise<DiscoveryResult & { database?: ModelDatabase }> {
+    const initialDb = await this.database(false, signal);
+    const beforeRef = this.rawCatalogRef;
+    const provider = validateProvider(rawProvider, initialDb, true);
     const key = rawApiKey === undefined || rawApiKey === null || rawApiKey === ''
       ? (await this.host.getSecret(provider.id) ?? '')
       : asText(rawApiKey, 'API Key', 16000, true);
-    return discoverProviderModels(provider, key, signal);
+    const [discovered, refreshedDb] = await Promise.all([
+      discoverProviderModels(provider, key, signal),
+      this.database(true, signal).catch(() => initialDb)
+    ]);
+    return this.rawCatalogRef !== beforeRef
+      ? { models: discovered.models, database: refreshedDb }
+      : { models: discovered.models };
   }
 }

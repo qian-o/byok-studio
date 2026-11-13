@@ -1,31 +1,24 @@
 # Model data
 
-The main source is [models.dev](https://models.dev), a community-maintained catalog. The release maintenance script reads [catalog.json](https://models.dev/catalog.json), which contains canonical model metadata and provider records. Upstream data is not labeled as independently verified by this project.
+Model presets are fetched online at runtime from [models.dev](https://models.dev) via [`https://models.dev/catalog.json`](https://models.dev/catalog.json), which combines canonical model metadata (`models.json`) and provider records (`api.json`) while omitting specialized non-chat model types by default. Upstream data is not labeled as independently verified by this project.
 
-- [Bundled snapshot](../resources/catalog/models.json): the offline model preset catalog and its retrieval time.
-- [Compatibility data](../resources/catalog/compatibility.json): source priorities and protocol parameters that upstream JSON cannot express for Copilot.
-- [Catalog builder](../src/catalogBuilder.ts): used by the release maintenance script; the builder and compatibility source are excluded from the VSIX.
+- [Catalog builder](../src/catalogBuilder.ts): fetches, validates, and converts online `models.dev` data into chat model presets.
+- [Shared routing & matching](../resources/shared/routing.js): protocol assignment, non-chat exclusion, normalized preset lookup, and fallback display name formatting.
 
-## Updates
+## Online sync & caching
 
-Preset updates are prepared when releasing the extension using the commands below. There is no runtime download or implicit sync. Provider configurations live directly in `chatLanguageModels.json`, while API keys for model discovery and manual export are stored in VS Code's `SecretStorage`.
+When opening BYOK Studio or refreshing provider models, the extension loads its local cache (`models-catalog.json` in VS Code `globalStorageUri`) and refreshes from `https://models.dev/catalog.json` when the cache is missing or expired (6 hours on open, 15 minutes on manual model refresh). If `models.dev` is temporarily unreachable, the extension falls back to the cached snapshot or conservative default parameters so provider configuration continues to work offline.
 
-Presets are read-only defaults; adjust parameters in **Model settings**. Header **Import** / **Export** transfers provider configurations manually.
+Provider configurations live directly in `chatLanguageModels.json`, while API keys for model discovery and manual export are stored in VS Code's `SecretStorage`.
 
-Provider records are selected by explicit priority, and aliases are matched through unambiguous upstream canonical IDs. Model discovery uses the configured provider's `/models` endpoint; `models.dev` does not determine which models an API key can access.
+## Filtering & conversion rules
 
-The editor and generated JSON use two token fields: **Context** (`contextWindow`) and **Output** (`maxOutputTokens`). Output must be smaller than Context. Saving a provider removes retired model fields (`maxInputTokens`, `defaultOutputTokens`, `contextWindowMode`, `streaming`, `zeroDataRetentionEnabled`, `statefulResponses`) on that provider while leaving unrelated configuration groups untouched.
+1. **Chat-only filtering**: Only models whose `type` is `chat`, `text`, or omitted, whose `modalities.input` includes `text`, whose `modalities.output` is strictly `["text"]`, and whose ID does not match non-chat exclusion patterns (image, video, audio, TTS, transcription, embeddings, reranking, moderation, realtime) are retained.
+2. **Canonical + provider aggregation**: All valid canonical chat models in `models` are indexed alongside their leaf IDs and enriched with `reasoning_options` (`effort` levels and `budget_tokens`) from ranked linked provider entries. Unambiguous provider aliases, date-stripped first-party base slugs, and standalone chat models are also indexed.
+3. **Token limits**: The editor and generated JSON use **Context** (`contextWindow`) and **Output** (`maxOutputTokens`), where Output is capped at the upstream provider/canonical limits, `131072` tokens, and one quarter of Context.
+4. **Protocol compatibility**:
+   - Claude reasoning models automatically emit `thinkingBudget` (`<= 4.5`) or `adaptiveThinking: true` (`>= 4.6` / 5.x+) under the `messages` protocol; custom `messages` thinking models also receive an automatic adaptive or budget fallback so `thinking` is always sent.
+   - `kimi-k3` models retain `modelOptions: { "top_p": 0.95 }` under `chatCompletions`.
+5. **Multi-stage ID matching & fallback naming**: Preset lookup matches exact IDs, case-insensitive IDs, slash-stripped leaf IDs, tag-stripped IDs (`:free`, `@eu`), normalized version separators (`2-1` ↔ `2.1`), and vendor-prefixed slugs (`doubao-seed-2-1-pro` → `seed-2.1-pro`). Unmatched custom IDs automatically format into readable title-cased names.
 
-Release-time conversion selects one usable Output default from upstream limits: at most the provider and canonical output limits, 131072 tokens, and one quarter of Context. This is a preset default that users can edit. Presets also contain capabilities, protocol settings, release dates and exact aliases. Pricing and per-record verification metadata are not stored.
-
-Compatibility profiles retain only native reasoning formats, effort mappings, adaptive thinking, thinking budget bounds, and sampling options. Profiles that require unsupported request paths suppress the corresponding reasoning picker. Relevant sources are [Claude extended thinking](https://platform.claude.com/docs/en/build-with-claude/extended-thinking), [Google's OpenAI compatibility](https://aistudio.google.com/docs/openai), [Gemini long decoding](https://aistudio.google.com/docs/long-decode), and [Kimi model documentation](https://platform.kimi.ai/docs/api/models-overview.md).
-
-## Maintenance
-
-```powershell
-npm run build
-node scripts/catalog/update.cjs
-node scripts/catalog/update.cjs --check
-```
-
-The first command builds the shared converter, the second refreshes the bundled snapshot, and `--check` validates it offline. Upstream attribution and the MIT license are in [THIRD_PARTY_NOTICES.txt](../THIRD_PARTY_NOTICES.txt).
+Upstream attribution and the MIT license are in [THIRD_PARTY_NOTICES.txt](../THIRD_PARTY_NOTICES.txt).

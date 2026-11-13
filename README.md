@@ -12,7 +12,7 @@ A visual editor for Copilot's **Custom Endpoint** configuration in `chatLanguage
 - **Chat Completions**, **Responses**, or **Messages** protocol settings, shared by all models or assigned per model.
 - Model lists, display names, Context, Output, capabilities, and reasoning defaults.
 
-Model presets come from [models.dev](https://models.dev) and ship with extension releases. Adjust parameters in **Model settings**. [Parameter sources and release maintenance](docs/SOURCES.md).
+Model presets are fetched online from [models.dev](https://models.dev) and cached locally by the extension. Adjust parameters in **Model settings**. [Parameter sources and matching rules](docs/SOURCES.md).
 
 Context and Output are written directly as `contextWindow` and `maxOutputTokens` in the official JSON. Saving a provider removes its old `maxInputTokens`, `zeroDataRetentionEnabled`, and `statefulResponses` model fields. Providers outside that operation remain unchanged.
 
@@ -72,8 +72,8 @@ Run **BYOK Studio: Open Official Model Configuration** to inspect the generated 
 Run `node scripts/preview-ui.cjs` to preview the UI with data stored only in memory.
 
 - `src/` — extension and configuration logic
-- `resources/` — webview, shared modules, and runtime catalog
-- `scripts/` — development tools and catalog maintenance
+- `resources/` — webview and shared modules
+- `scripts/` — local UI preview harness
 - `docs/` — screenshots and parameter sources
 
 ```powershell

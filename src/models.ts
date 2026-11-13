@@ -5,6 +5,7 @@ import {
   apiTypes,
   baseParametersForProtocol,
   displayModelName,
+  formatModelName,
   isExcludedModel,
   lookupPreset,
   normalizeRouting,
@@ -222,7 +223,7 @@ export function validateDatabase(value: unknown): ModelDatabase {
   const v = asObject(value, t('参数库'));
   if (v.schemaVersion !== 1) throw new Error(t('模型目录数据格式无效。'));
   const entries = Object.entries(asObject(v.models, t('参数库')));
-  if (entries.length > 20_000) throw new Error(t('模型目录数据格式无效。'));
+  if (entries.length > 100_000) throw new Error(t('模型目录数据格式无效。'));
   return {
     schemaVersion: 1,
     defaults: validateParameters(v.defaults),
@@ -576,9 +577,11 @@ export function readOfficialGroup(
       ? rawDefaultEffort
       : undefined;
 
+    const autoFormattedName = formatModelName(modelId);
+
     models.push({
       id: modelId,
-      name: rawName && rawName !== defaultName && rawName !== modelId ? rawName : '',
+      name: rawName && rawName !== defaultName && rawName !== modelId && rawName !== autoFormattedName ? rawName : '',
       overrides,
       ...(reasoningEffort ? { reasoningEffort } : {})
     });
