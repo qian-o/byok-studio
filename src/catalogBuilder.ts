@@ -139,13 +139,20 @@ function extractReasoning(model: Json, defaults: ProviderPolicy, patch?: Patch):
   let protocols: Partial<Record<ApiType, ProtocolProfile>> | undefined;
   const budgets = options.filter(option => option.type === 'budget_tokens');
   const budget = budgets.length === 1 ? budgets[0] : undefined;
-  if (model.reasoning === true && defaults.nativeMessages && budget && positive(budget.min) && positive(budget.max) && budget.min <= budget.max) {
-    protocols = {
-      messages: {
-        effortFormat: supportsReasoningEffort.length ? 'messages' : 'unsupported',
-        thinkingBudget: { min: budget.min, max: budget.max }
-      }
-    };
+  if (model.reasoning === true && defaults.nativeMessages) {
+    protocols = budget && positive(budget.min) && positive(budget.max) && budget.min <= budget.max
+      ? {
+          messages: {
+            effortFormat: supportsReasoningEffort.length ? 'messages' : 'unsupported',
+            thinkingBudget: { min: budget.min, max: budget.max }
+          }
+        }
+      : {
+          messages: {
+            ...(supportsReasoningEffort.length ? {} : { effortFormat: 'unsupported' }),
+            adaptiveThinking: true
+          }
+        };
   }
   if (patch?.protocols) {
     protocols = { ...protocols, ...patch.protocols };

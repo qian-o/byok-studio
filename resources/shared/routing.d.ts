@@ -48,6 +48,7 @@ export function validDate(value: unknown): value is string;
 export function lookupPreset(database: PresetDatabase, id: string): PresetRecord;
 export function defaultEfforts(preset: PresetRecord, apiType?: ApiType): string[];
 export function baseParametersForProtocol(database: PresetDatabase, id: string, apiType?: ApiType): PresetRecord;
+export function formatModelName(id: string): string;
 export function displayModelName(database: PresetDatabase, model: { id: string; name?: string }): string;
 export function normalizeRouting(provider?: RoutingInput): RoutingConfig;
 export function routeForModel(provider: RoutingInput, modelId: string, routing?: RoutingConfig): { apiType: ApiType; url: string };

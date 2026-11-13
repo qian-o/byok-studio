@@ -356,8 +356,6 @@
     const draft = currentDraft();
     if (!draft) return;
     const content = document.createDocumentFragment();
-    const scroller = node('div', 'model-scroll');
-    scroller.id = 'model-scroll';
 
     const split = draft.provider.routingMode === 'split';
     $('unified-model-selection').hidden = split;
@@ -367,14 +365,11 @@
     $('model-total').setAttribute('aria-label', t('共 {0} 个模型', total));
 
     if (split) {
-      const cards = node('div', 'protocol-cards');
-      cards.setAttribute('aria-hidden', 'true');
-      const headers = node('div', 'protocol-headers');
-
       for (const { apiType, models } of routing.protocolLists(draft.provider)) {
-        const card = node('div', 'protocol-card');
+        const card = node('section', 'protocol-card');
         card.id = `protocol-card-${apiType}`;
-        cards.append(card);
+        card.dataset.protocol = apiType;
+        card.setAttribute('aria-labelledby', `protocol-heading-${apiType}`);
 
         const header = node('header', 'model-group-header');
         const heading = node('h4', '', PROTOCOL_NAMES[apiType]);
@@ -414,23 +409,23 @@
         input.setAttribute('aria-label', `${PROTOCOL_NAMES[apiType]} Base URL`);
         endpoint.append(label, input);
 
-        const list = node('section', 'protocol-models');
-        list.dataset.protocol = apiType;
-        list.setAttribute('aria-labelledby', `protocol-heading-${apiType}`);
+        const controls = node('div', 'protocol-controls');
+        controls.append(header, endpoint, move);
+
+        const list = node('div', 'protocol-models');
         for (const model of models) list.append(modelRow(model));
         if (!models.length) list.append(node('p', 'empty-models', t('暂无模型')));
 
-        const controls = node('div', 'protocol-controls');
-        controls.append(header, endpoint, move);
-        headers.append(controls);
-        scroller.append(list);
+        card.append(controls, list);
+        content.append(card);
       }
-      content.append(cards, headers);
     } else {
+      const scroller = node('div', 'model-scroll');
+      scroller.id = 'model-scroll';
       for (const model of draft.provider.models) scroller.append(modelRow(model));
       if (!draft.provider.models.length) scroller.append(node('p', 'empty-models', t('暂无模型')));
+      content.append(scroller);
     }
-    content.append(scroller);
     $('model-list').replaceChildren(content);
     syncSelections();
   }

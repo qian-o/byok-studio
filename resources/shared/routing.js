@@ -81,10 +81,62 @@
     };
   }
 
+  const BRAND_WORDS = {
+    gpt: 'GPT',
+    chatgpt: 'ChatGPT',
+    glm: 'GLM',
+    chatglm: 'ChatGLM',
+    deepseek: 'DeepSeek',
+    qwq: 'QwQ',
+    qvq: 'QVQ',
+    ernie: 'ERNIE',
+    minimax: 'MiniMax',
+    codellama: 'CodeLlama',
+    vl: 'VL',
+    moe: 'MoE'
+  };
+
+  function formatToken(token) {
+    const lower = token.toLowerCase();
+    if (Object.hasOwn(BRAND_WORDS, lower)) return BRAND_WORDS[lower];
+    if (token !== lower) return token.charAt(0).toUpperCase() + token.slice(1);
+    if (/^(?:a\d+[bkm]|\d+v|(?:fp|int|bf)\d+)$/.test(lower)) return lower.toUpperCase();
+    if (/^(?:\d+(?:\.\d+)?|\d+x\d+)[bkm]$/.test(lower)) {
+      return lower.slice(0, -1) + lower.slice(-1).toUpperCase();
+    }
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+  }
+
+  function formatModelName(id) {
+    const raw = String(id || '').trim();
+    const leaf = modelLeaf(raw) || raw;
+    const parts = leaf.split(/[-_\s]+/).filter(Boolean);
+    if (!parts.length) return raw.slice(0, 200);
+    const merged = [];
+    for (let i = 0; i < parts.length; i++) {
+      const prev = parts[i - 1] || '';
+      const next = parts[i + 2] || '';
+      if (
+        /^\d$/.test(parts[i])
+        && i + 1 < parts.length
+        && /^\d$/.test(parts[i + 1])
+        && !/^\d+$/.test(prev)
+        && !/^(?:\d{1,2}|(?:19|20)\d{2})$/.test(next)
+      ) {
+        merged.push(`${parts[i]}.${parts[i + 1]}`);
+        i++;
+      } else {
+        merged.push(parts[i]);
+      }
+    }
+    const formatted = merged.map(formatToken).join(' ').slice(0, 200).trim();
+    return formatted || raw.slice(0, 200);
+  }
+
   function displayModelName(database, model) {
     if (model.name) return model.name;
     const preset = lookupPreset(database, model.id);
-    return preset.name || model.id;
+    return preset.name || formatModelName(model.id);
   }
 
   function normalizeRouting(provider) {
@@ -161,6 +213,7 @@
     lookupPreset,
     defaultEfforts,
     baseParametersForProtocol,
+    formatModelName,
     displayModelName,
     normalizeRouting,
     routeForModel,

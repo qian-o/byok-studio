@@ -323,6 +323,14 @@ export function compileOfficialModel(
         }
         result.minThinkingBudget = profile.thinkingBudget.min;
         result.maxThinkingBudget = Math.min(profile.thinkingBudget.max, result.maxOutputTokens - 1);
+      } else if (recommendedProtocol(model.id) === 'messages' || result.maxOutputTokens <= 1024) {
+        result.adaptiveThinking = true;
+      } else {
+        result.minThinkingBudget = 1024;
+        result.maxThinkingBudget = Math.min(32000, result.maxOutputTokens - 1);
+      }
+      if (result.adaptiveThinking && !parameters.supportsReasoningEffort.length) {
+        result.supportsReasoningEffort = [];
       }
     }
   }
@@ -488,6 +496,7 @@ export function readOfficialGroup(
   const models: ModelConfig[] = [];
   const modelProtocols: Record<string, ApiType> = {};
   const observedUrls: Partial<Record<ApiType, string>> = {};
+  const observedRawUrls: Partial<Record<ApiType, Set<string>>> = {};
   const distinctRoutes = new Set<string>();
   const seenIds = new Set<string>();
 
@@ -499,14 +508,27 @@ export function readOfficialGroup(
     seenIds.add(modelId);
 
     const apiType = fromOfficialProtocol(entry.apiType, modelId);
-    const baseUrl = typeof entry.url === 'string' ? extractBaseUrl(entry.url) : '';
+    const rawUrl = typeof entry.url === 'string' ? entry.url.trim() : '';
+    const baseUrl = rawUrl ? extractBaseUrl(rawUrl) : '';
     modelProtocols[modelId] = apiType;
-    if (baseUrl && !observedUrls[apiType]) observedUrls[apiType] = baseUrl;
+    if (baseUrl) {
+      if (!observedUrls[apiType]) observedUrls[apiType] = baseUrl;
+      let normalizedRaw: string | undefined;
+      try { normalizedRaw = new URL(rawUrl).toString(); } catch { normalizedRaw = undefined; }
+      if (normalizedRaw) {
+        let rawSet = observedRawUrls[apiType];
+        if (!rawSet) {
+          rawSet = new Set<string>();
+          observedRawUrls[apiType] = rawSet;
+        }
+        rawSet.add(normalizedRaw);
+      }
+    }
     distinctRoutes.add(`${apiType}|${baseUrl}`);
 
     const base = baseParametersForProtocol(database, modelId, apiType);
     const rawName = typeof entry.name === 'string' ? entry.name.trim().slice(0, 200) : '';
-    const defaultName = base.name || modelId;
+    const defaultName = displayModelName(database, { id: modelId });
 
     const contextWindow = Number.isSafeInteger(entry.contextWindow) && (entry.contextWindow as number) >= 2 && (entry.contextWindow as number) <= 100_000_000
       ? (entry.contextWindow as number)
@@ -556,7 +578,7 @@ export function readOfficialGroup(
 
     models.push({
       id: modelId,
-      name: rawName && rawName !== defaultName ? rawName : '',
+      name: rawName && rawName !== defaultName && rawName !== modelId ? rawName : '',
       overrides,
       ...(reasoningEffort ? { reasoningEffort } : {})
     });
@@ -571,37 +593,58 @@ export function readOfficialGroup(
     chatCompletions: hint?.endpoints?.chatCompletions ?? '',
     messages: hint?.endpoints?.messages ?? ''
   };
+  const hintUnifiedUrl = hint?.unified?.url ?? '';
+
+  const matchHintBaseUrl = (apiType: ApiType, ...candidates: Array<string | undefined>): string | undefined => {
+    const rawSet = observedRawUrls[apiType];
+    if (!rawSet || rawSet.size !== 1) return undefined;
+    for (const candidate of candidates) {
+      if (!candidate?.trim()) continue;
+      try {
+        const clean = validateUrl(candidate);
+        if (rawSet.has(resolveEndpoint(clean, apiType, 'chat'))) return clean;
+      } catch {
+        // Ignore invalid hint URL candidates.
+      }
+    }
+    return undefined;
+  };
 
   if (models.length === 0) {
     routingMode = hint?.routingMode === 'split' ? 'split' : 'unified';
     unified = hint?.unified && apiTypes.includes(hint.unified.apiType)
-      ? { apiType: hint.unified.apiType, url: hint.unified.url }
+      ? { apiType: hint.unified.apiType, url: hintUnifiedUrl }
       : { apiType: 'chatCompletions', url: '' };
     endpoints = hintEndpoints;
   } else if (distinctRoutes.size > 1) {
     routingMode = 'split';
     endpoints = {
-      responses: observedUrls.responses || hintEndpoints.responses,
-      chatCompletions: observedUrls.chatCompletions || hintEndpoints.chatCompletions,
-      messages: observedUrls.messages || hintEndpoints.messages
+      responses: matchHintBaseUrl('responses', hintEndpoints.responses, hintUnifiedUrl) ?? observedUrls.responses ?? hintEndpoints.responses,
+      chatCompletions: matchHintBaseUrl('chatCompletions', hintEndpoints.chatCompletions, hintUnifiedUrl) ?? observedUrls.chatCompletions ?? hintEndpoints.chatCompletions,
+      messages: matchHintBaseUrl('messages', hintEndpoints.messages, hintUnifiedUrl) ?? observedUrls.messages ?? hintEndpoints.messages
     };
     const firstApi = modelProtocols[models[0]!.id]!;
-    const firstUrl = observedUrls[firstApi] || '';
+    const firstUrl = endpoints[firstApi] || '';
     unified = {
       apiType: hint?.unified?.apiType && apiTypes.includes(hint.unified.apiType) ? hint.unified.apiType : firstApi,
-      url: hint?.unified?.url || firstUrl
+      url: hintUnifiedUrl || firstUrl
     };
   } else {
     const onlyApi = modelProtocols[models[0]!.id]!;
-    const onlyUrl = observedUrls[onlyApi] || '';
     if (hint?.routingMode === 'split') {
       routingMode = 'split';
+      const onlyUrl = matchHintBaseUrl(onlyApi, hintEndpoints[onlyApi], hintUnifiedUrl) ?? observedUrls[onlyApi] ?? '';
       endpoints = { ...hintEndpoints, [onlyApi]: onlyUrl || hintEndpoints[onlyApi] };
-      unified = { apiType: hint.unified?.apiType && apiTypes.includes(hint.unified.apiType) ? hint.unified.apiType : onlyApi, url: hint.unified?.url || onlyUrl };
+      unified = {
+        apiType: hint.unified?.apiType && apiTypes.includes(hint.unified.apiType) ? hint.unified.apiType : onlyApi,
+        url: hintUnifiedUrl || endpoints[onlyApi]
+      };
     } else {
       routingMode = 'unified';
-      unified = { apiType: onlyApi, url: onlyUrl || hint?.unified?.url || '' };
-      endpoints = { ...hintEndpoints, [onlyApi]: hintEndpoints[onlyApi] || onlyUrl };
+      const onlyUrl = matchHintBaseUrl(onlyApi, hintUnifiedUrl, hintEndpoints[onlyApi]) ?? observedUrls[onlyApi] ?? '';
+      const endpointOnlyUrl = matchHintBaseUrl(onlyApi, hintEndpoints[onlyApi], hintUnifiedUrl) ?? observedUrls[onlyApi] ?? '';
+      unified = { apiType: onlyApi, url: onlyUrl || hintUnifiedUrl || '' };
+      endpoints = { ...hintEndpoints, [onlyApi]: endpointOnlyUrl || hintEndpoints[onlyApi] || unified.url };
     }
   }
 

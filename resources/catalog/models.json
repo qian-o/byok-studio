@@ -674,6 +674,11 @@
           "xhigh",
           "max"
         ],
+        "protocols": {
+          "messages": {
+            "adaptiveThinking": true
+          }
+        },
         "releaseDate": "2026-11-09"
       },
       "claude-haiku-4-5": {
@@ -4398,6 +4403,11 @@
           "xhigh",
           "max"
         ],
+        "protocols": {
+          "messages": {
+            "adaptiveThinking": true
+          }
+        },
         "releaseDate": "2026-11-09"
       },
       "anthropic-claude-haiku-4.5": {
@@ -4623,6 +4633,11 @@
           "xhigh",
           "max"
         ],
+        "protocols": {
+          "messages": {
+            "adaptiveThinking": true
+          }
+        },
         "releaseDate": "2026-11-09"
       },
       "anthropic.claude-haiku-4-5-20251001-v1:0": {
@@ -4929,6 +4944,11 @@
           "xhigh",
           "max"
         ],
+        "protocols": {
+          "messages": {
+            "adaptiveThinking": true
+          }
+        },
         "releaseDate": "2026-11-09"
       },
       "anthropic/claude-fable-5.1": {
@@ -4966,6 +4986,11 @@
           "xhigh",
           "max"
         ],
+        "protocols": {
+          "messages": {
+            "adaptiveThinking": true
+          }
+        },
         "releaseDate": "2026-11-09"
       },
       "anthropic/claude-fable-5.2-fast": {
@@ -4982,6 +5007,11 @@
           "xhigh",
           "max"
         ],
+        "protocols": {
+          "messages": {
+            "adaptiveThinking": true
+          }
+        },
         "releaseDate": "2026-11-09"
       },
       "anthropic/claude-haiku-4-5": {
@@ -6380,6 +6410,11 @@
           "xhigh",
           "max"
         ],
+        "protocols": {
+          "messages": {
+            "adaptiveThinking": true
+          }
+        },
         "releaseDate": "2026-11-09"
       },
       "aws-bedrock/claude-haiku-4-5": {
@@ -8185,6 +8220,11 @@
           "xhigh",
           "max"
         ],
+        "protocols": {
+          "messages": {
+            "adaptiveThinking": true
+          }
+        },
         "releaseDate": "2026-11-09"
       },
       "claude-fable-5.1": {
@@ -8243,6 +8283,11 @@
           "xhigh",
           "max"
         ],
+        "protocols": {
+          "messages": {
+            "adaptiveThinking": true
+          }
+        },
         "releaseDate": "2026-11-09"
       },
       "claude-fable-5@default": {
@@ -12821,6 +12866,11 @@
           "xhigh",
           "max"
         ],
+        "protocols": {
+          "messages": {
+            "adaptiveThinking": true
+          }
+        },
         "releaseDate": "2026-11-09"
       },
       "global.anthropic.claude-haiku-4-5-20251001-v1:0": {
@@ -20508,6 +20558,11 @@
           "xhigh",
           "max"
         ],
+        "protocols": {
+          "messages": {
+            "adaptiveThinking": true
+          }
+        },
         "releaseDate": "2026-11-09"
       },
       "us.anthropic.claude-haiku-4-5-20251001-v1:0": {

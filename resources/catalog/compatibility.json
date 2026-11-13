@@ -189,6 +189,9 @@
     "claude-fable-5-1": {
       "profile": "messages-adaptive"
     },
+    "claude-fable-5-2": {
+      "profile": "messages-adaptive"
+    },
     "claude-haiku-4-5": {
       "profile": "messages-budget"
     },
