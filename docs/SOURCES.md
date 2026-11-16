@@ -7,9 +7,9 @@ Model presets are fetched online at runtime from [models.dev](https://models.dev
 
 ## Online sync & caching
 
-When opening BYOK Studio or refreshing provider models, the extension loads its local cache (`models-catalog.json` in VS Code `globalStorageUri`) and refreshes from `https://models.dev/catalog.json` when the cache is missing or expired (6 hours on open, 15 minutes on manual model refresh). If `models.dev` is temporarily unreachable, the extension falls back to the cached snapshot or conservative default parameters so provider configuration continues to work offline.
+When opening BYOK Studio or refreshing group models, the extension loads its local cache (`models-catalog.json` in VS Code `globalStorageUri`) and refreshes from `https://models.dev/catalog.json` when the cache is missing or expired (6 hours on open, 15 minutes on manual model refresh). If `models.dev` is temporarily unreachable, the extension falls back to the cached snapshot or conservative default parameters so group configuration continues to work offline.
 
-Provider configurations live directly in `chatLanguageModels.json`, while API keys for model discovery and manual export are stored in VS Code's `SecretStorage`.
+Each group compiles to a `customendpoint` entry in `chatLanguageModels.json`, while per-group API keys for model discovery and manual export are stored in VS Code's `SecretStorage`.
 
 ## Filtering & conversion rules
 

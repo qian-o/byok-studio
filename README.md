@@ -2,46 +2,45 @@
 
 English | [简体中文](README.zh-CN.md)
 
-A visual editor for Copilot's **Custom Endpoint** configuration in `chatLanguageModels.json`.
+A visual editor for Copilot's **Custom Endpoint** providers, key groups, and model presets in `chatLanguageModels.json`.
 
 ![Configuration page](docs/images/configuration-en.png)
 
 ## Configuration
 
-- Provider names, with an independent API key, endpoint URLs, and model list for each group.
-- **Chat Completions**, **Responses**, or **Messages** protocol settings, shared by all models or assigned per model.
-- Model lists, display names, Context, Output, capabilities, and reasoning defaults.
+- **Providers & key groups** — Organize multiple groups under one provider, each with its own API key, endpoint URLs, protocol mode, and model list.
+- **Protocol routing** — Configure **Chat Completions**, **Responses**, or **Messages**, either shared across a group or assigned per model.
+- **Model presets & parameters** — Sync presets online from [models.dev](https://models.dev) with local caching, and customize display names, Context, Output, capabilities, and reasoning levels in **Model settings** ([parameter sources and matching rules](docs/SOURCES.md)).
 
-Model presets are fetched online from [models.dev](https://models.dev) and cached locally by the extension. Adjust parameters in **Model settings**. [Parameter sources and matching rules](docs/SOURCES.md).
-
-Context and Output are written directly as `contextWindow` and `maxOutputTokens` in the official JSON. Saving a group removes its old `maxInputTokens`, `zeroDataRetentionEnabled`, and `statefulResponses` model fields. Groups outside that operation remain unchanged.
+Context and Output map directly to `contextWindow` and `maxOutputTokens` in `chatLanguageModels.json`. Saving a group strips retired `maxInputTokens`, `zeroDataRetentionEnabled`, and `statefulResponses` fields from that group while leaving other groups untouched.
 
 ## Usage
 
 Requires **VS Code 1.145+** and **GitHub Copilot Chat**.
 
-1. Run **BYOK Studio: Manage Models** from the Command Palette, or click the settings button at the bottom-right of Chat input.
-2. Add a provider, enter its URL and API key, and choose **One protocol** or **Per-model protocols**. **Add group** creates independent keys, URLs, and models under the same provider.
-3. Refresh or manually add models and adjust their settings.
-4. Click **Save group** to write the native configuration and refresh Copilot Chat's model list. Select the corresponding **Custom Endpoint** model in Copilot Chat.
+1. Click the settings icon at the bottom-right of the Chat input box, or run **BYOK Studio: Manage Models** from the Command Palette.
+2. Add a provider, use **Add group** (`+`) on the left when separating multiple API keys or endpoints, and choose **One protocol** or **Per-model protocols**.
+3. Click **Refresh** to discover models or **Add model** to configure one manually, then adjust model settings as needed.
+4. Click **Save group** (or press `Ctrl+S` / `Cmd+S`) to update `chatLanguageModels.json` and refresh Copilot Chat's model picker.
 
-Groups are created inline without a separate dialog. Switching providers or groups preserves unsaved drafts. Click the edit icon beside the active provider tab to rename it inline; Enter finishes editing and Esc cancels. Click **Save group** to apply the name change. Edit group names in the right-hand form. The tab's delete icon removes the entire provider after confirmation, including all its groups, models, saved API keys, and unsaved drafts; **Delete group** in the right-hand form removes only the current group.
+### Groups & native mapping
 
-The extension activates on command and reads `customendpoint` groups directly from `chatLanguageModels.json`. Starting VS Code, opening the panel, and reading configuration never write data. Only explicitly saving, importing, or deleting groups updates their corresponding official configuration groups.
+The extension activates on command and reads `customendpoint` entries directly from `chatLanguageModels.json`. Starting VS Code, opening the panel, or reading configuration never writes to disk; only explicit save, import, or delete actions modify the corresponding entries.
 
-Each Studio group becomes a native `customendpoint` group. Named groups appear as **Provider · Group**; the default group keeps the provider name. Renaming a provider or group changes native model identifiers, so VS Code treats the models as new and their selection, hidden, and pinned states must be restored. Renaming a provider updates all its groups together.
+Each Studio group maps to one native `customendpoint` group: the default group keeps the provider name, and named groups appear as **Provider · Group**. Use the edit and delete icons on the active provider tab to rename a provider inline or remove the provider with all its groups and saved keys; **Delete group** removes only the current group. Switching providers or groups preserves unsaved drafts, model selections, and scroll positions. Because renaming a provider or group changes native model IDs, VS Code treats renamed models as new entries (current selection, hidden, and pinned states need to be set again).
 
-**One protocol** mode uses a single protocol and URL for all models. **Per-model protocols** mode has no provider default: GPT / OpenAI models (including Codex) go to **Responses**, Claude models go to **Messages**, and other models go to **Chat Completions**. Change an individual model's **Request protocol**, or select models and move them to another protocol column. Switching modes preserves manual assignments.
+### Protocols & model management
 
-**Refresh** replaces the model list and resets protocol assignments using these model family rules. Matching IDs keep their names, token overrides, and reasoning settings; endpoint URLs and the API key are retained. Models follow discovery order. Failed refreshes leave the draft unchanged.
+- **One protocol** applies a single protocol and Base URL to every model in the group.
+- **Per-model protocols** routes GPT / OpenAI (including Codex) to **Responses**, Claude to **Messages**, and remaining models to **Chat Completions** by default. Reassign protocols individually in **Model settings**, or select models and move them across columns; switching modes preserves manual assignments.
+- **Refresh** replaces the group's model list in discovery order and resets protocol routing by model family while keeping custom names, token overrides, and reasoning settings for matching IDs. Failed refreshes leave the current draft intact.
+- Selecting models reveals batch **Delete** next to **Refresh** (with **Select all** on unified lists and protocol columns). Model deletions stay in the draft until the group is saved.
 
-Selecting models shows **Delete** immediately left of **Refresh**; deselecting all models hides it. **Select all** works on the unified list or an individual protocol column. Model deletion changes the draft until the group is saved. Completed saves show a green confirmation; failures show an error.
+### Import, export & official JSON
 
-**Save group** is enabled only when the current configuration is valid and has unsaved changes. Ctrl+S (Cmd+S on macOS) also saves. Duplicate submissions are blocked during saving, and failures retain the draft for retry. Switching groups preserves model selection and scroll position. Repeating the same save does not rewrite configuration or create another key reference.
-
-Use **Export** to select providers (all selected by default), then copy them to the clipboard or save a JSON file. Saved API keys are always included. **Import** reads from the clipboard or a JSON file and saves the selected providers; matching IDs or names update existing providers, and groups match by ID or provider-scoped name. Version 2 exports contain nested groups; version 1 exports and native configuration arrays remain supported. Close either dialog using its top-right close button or Esc. Transfer configurations between devices with manual import and export.
-
-Run **BYOK Studio: Open Official Model Configuration** to inspect the generated JSON. Official configuration uses protected key references; exported transfer JSON contains plaintext API keys. Native VS Code key updates replace key references. If a native operation removes Studio metadata, the group remains readable as a standalone provider; re-enter its API key in Studio and save if needed.
+- **Export** packages selected providers (all selected by default) with nested groups and saved plaintext API keys to the clipboard or a JSON file.
+- **Import** reads from the clipboard or a JSON file and updates matching providers and groups by ID or name. Version 2 bundles, legacy version 1 exports, and raw `customendpoint` arrays are all supported.
+- **BYOK Studio: Open Official Model Configuration** opens the underlying JSON, where credentials are stored as protected key references. If a native VS Code edit replaces a key reference or strips Studio metadata, the group remains readable as a standalone provider—re-enter its API key in Studio and save if needed.
 
 <details>
 <summary>Configuration example</summary>
@@ -49,25 +48,24 @@ Run **BYOK Studio: Open Official Model Configuration** to inspect the generated 
 ```json
 [
   {
-    "name": "Example Gateway",
+    "name": "Example Gateway · Gemini",
     "vendor": "customendpoint",
-    "byokStudioId": "demo-group",
+    "byokStudioId": "demo-group-gemini",
     "byokStudioProviderId": "demo-provider",
     "byokStudioProviderName": "Example Gateway",
-    "byokStudioGroupName": "",
+    "byokStudioGroupName": "Gemini",
     "models": [
       {
-        "id": "kimi-k3",
-        "name": "Kimi K3",
-        "url": "https://chat.example.com/v1/chat/completions",
+        "id": "gemini-4-argon",
+        "name": "Gemini 4 Argon",
+        "url": "https://api.example.com/v1/chat/completions",
         "apiType": "chat-completions",
         "toolCalling": true,
         "vision": true,
         "contextWindow": 1048576,
-        "maxOutputTokens": 131072,
+        "maxOutputTokens": 65536,
         "thinking": true,
-        "supportsReasoningEffort": ["low", "high", "max"],
-        "modelOptions": { "top_p": 0.95 }
+        "supportsReasoningEffort": ["low", "medium", "high"]
       }
     ]
   }
@@ -78,12 +76,12 @@ Run **BYOK Studio: Open Official Model Configuration** to inspect the generated 
 
 ## Development
 
-Run `node scripts/preview-ui.cjs` to preview the UI with data stored only in memory.
+Run `node scripts/preview-ui.cjs` to preview the UI with in-memory storage.
 
-- `src/` — extension and configuration logic
-- `resources/` — webview and shared modules
-- `scripts/` — local UI preview harness
-- `docs/` — screenshots and parameter sources
+- `src/` — extension host, JSONC persistence, discovery, and catalog sync
+- `resources/` — webview UI, localization, and shared routing logic
+- `scripts/` — local UI preview harness and service regression tests
+- `docs/` — screenshots and model parameter documentation
 
 ```powershell
 npm ci
