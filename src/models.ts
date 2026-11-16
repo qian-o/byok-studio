@@ -17,20 +17,25 @@ import {
 import type {
   ApiType,
   CatalogSnapshot,
+  ExportedGroup,
   ExportedProvider,
+  GroupConfig,
   ModelConfig,
   ModelDatabase,
   ModelParameters,
   OfficialGroup,
+  OfficialGroupEntry,
   OfficialModel,
   OfficialProtocol,
   ParameterOverrides,
   ProtocolProfile,
-  ProviderConfig,
+  ProviderInfo,
   RoutingHint
 } from './types';
 
 export const MAX_IMPORT_BYTES = 16 * 1024 * 1024;
+export const MAX_PROVIDER_NAME = 200;
+export const MAX_GROUP_NAME = 100;
 
 const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const OVERRIDE_KEYS = ['contextWindow', 'maxOutputTokens', 'toolCalling', 'vision', 'thinking', 'supportsReasoningEffort'] as const;
@@ -285,12 +290,12 @@ export function validateModel(value: unknown, database: ModelDatabase, apiType?:
 }
 
 export function compileOfficialModel(
-  provider: ProviderConfig,
+  group: GroupConfig,
   database: ModelDatabase,
   model: ModelConfig,
-  routing: RoutingConfig = normalizeRouting(provider)
+  routing: RoutingConfig = normalizeRouting(group)
 ): OfficialModel {
-  const route = routeForModel(provider, model.id, routing);
+  const route = routeForModel(group, model.id, routing);
   const apiType = officialProtocol(route.apiType);
   const preset = lookupPreset(database, model.id);
   const parameters = effectiveParameters(database, model, route.apiType);
@@ -341,11 +346,19 @@ export function compileOfficialModel(
   return result;
 }
 
-export function validateProvider(value: unknown, database: ModelDatabase, discovery = false): ProviderConfig {
+export function validateProviderInfo(value: unknown): ProviderInfo {
   const v = asObject(value, t('供应商'));
-  const id = validId(v.id, t('供应商标识'));
-  const name = asText(v.name, t('供应商名称'), 200);
-  if (!Array.isArray(v.models) || v.models.length > 5000) throw new Error(t('每个供应商最多支持 5000 个模型。'));
+  return {
+    id: validId(v.id, t('供应商标识')),
+    name: asText(v.name, t('供应商名称'), MAX_PROVIDER_NAME)
+  };
+}
+
+export function validateGroup(value: unknown, database: ModelDatabase, discovery = false): GroupConfig {
+  const v = asObject(value, t('分组'));
+  const id = validId(v.id, t('分组标识'));
+  const name = asText(v.name ?? '', t('分组名称'), MAX_GROUP_NAME, true);
+  if (!Array.isArray(v.models) || v.models.length > 5000) throw new Error(t('每个分组最多支持 5000 个模型。'));
   if (v.routingMode !== undefined && v.routingMode !== 'unified' && v.routingMode !== 'split') {
     throw new Error(t('请选择统一协议或区分协议。'));
   }
@@ -381,7 +394,7 @@ export function validateProvider(value: unknown, database: ModelDatabase, discov
     return validateModel(m, database, route.apiType);
   });
   if (new Set(models.map(m => m.id)).size !== models.length) {
-    throw new Error(t('同一供应商内不能重复添加模型 ID。'));
+    throw new Error(t('同一分组内不能重复添加模型 ID。'));
   }
 
   const routing = normalizeRouting({ ...(v as Record<string, unknown>), models });
@@ -390,18 +403,18 @@ export function validateProvider(value: unknown, database: ModelDatabase, discov
   }
   routing.unified.url = routing.unified.url.trim() ? validateUrl(routing.unified.url) : '';
 
-  const provider: ProviderConfig = { id, name, ...routing, models };
+  const group: GroupConfig = { id, name, ...routing, models };
   if (!discovery) {
     for (const model of models) {
-      const route = routeForModel(provider, model.id, routing);
+      const route = routeForModel(group, model.id, routing);
       if (!route.url) {
         const protocolLabel = { responses: 'Responses', chatCompletions: 'Chat Completions', messages: 'Messages' }[route.apiType];
         throw new Error(t('{0} 使用 {1}，请填写对应的基础 URL。', displayModelName(database, model), protocolLabel));
       }
-      compileOfficialModel(provider, database, model, routing);
+      compileOfficialModel(group, database, model, routing);
     }
   }
-  return provider;
+  return group;
 }
 
 export function manualGroupId(name: string): string {
@@ -420,13 +433,15 @@ export function groupIdentity(group: Record<string, unknown>): string | undefine
 }
 
 export function buildMergedOfficialGroup(
-  provider: ProviderConfig,
+  group: GroupConfig,
+  provider: ProviderInfo,
+  officialName: string,
   database: ModelDatabase,
   existing?: Record<string, unknown>,
   secretReference?: string
 ): Record<string, unknown> {
-  const routing = normalizeRouting(provider);
-  const compiledModels = provider.models.map(model => compileOfficialModel(provider, database, model, routing));
+  const routing = normalizeRouting(group);
+  const compiledModels = group.models.map(model => compileOfficialModel(group, database, model, routing));
   const oldModelsById = new Map<string, Record<string, unknown>>();
   if (Array.isArray(existing?.models)) {
     for (const item of existing.models) {
@@ -444,9 +459,12 @@ export function buildMergedOfficialGroup(
 
   const merged: Record<string, unknown> = {
     ...existing,
-    name: provider.name,
+    name: officialName,
     vendor: 'customendpoint',
-    byokStudioId: provider.id
+    byokStudioId: group.id,
+    byokStudioProviderId: provider.id,
+    byokStudioProviderName: provider.name,
+    byokStudioGroupName: group.name
   };
   delete merged.apiType;
   delete merged.zeroDataRetentionEnabled;
@@ -485,13 +503,29 @@ export function readOfficialGroup(
   group: Record<string, unknown>,
   database: ModelDatabase,
   hint?: RoutingHint
-): ProviderConfig | undefined {
+): OfficialGroupEntry | undefined {
   if (group.vendor !== 'customendpoint' || typeof group.name !== 'string' || !group.name.trim()) {
     return undefined;
   }
   const id = groupIdentity(group);
   if (!id || /\s|[\x00-\x1f\x7f]/.test(id) || UNSAFE_KEYS.has(id)) return undefined;
-  const name = group.name.trim().slice(0, 200);
+  const hasProviderMetadata = typeof group.byokStudioProviderId === 'string' && group.byokStudioProviderId.trim()
+    && typeof group.byokStudioProviderName === 'string' && group.byokStudioProviderName.trim();
+  const providerId = hasProviderMetadata
+    ? (group.byokStudioProviderId as string).trim().slice(0, 512)
+    : typeof hint?.providerId === 'string' && hint.providerId.trim() ? hint.providerId.trim().slice(0, 512) : id;
+  if (!providerId || /\s|[\x00-\x1f\x7f]/.test(providerId) || UNSAFE_KEYS.has(providerId)) return undefined;
+  const providerName = hasProviderMetadata
+    ? (group.byokStudioProviderName as string).trim().slice(0, MAX_PROVIDER_NAME)
+    : typeof hint?.providerName === 'string' && hint.providerName.trim()
+      ? hint.providerName.trim().slice(0, MAX_PROVIDER_NAME) : group.name.trim().slice(0, MAX_PROVIDER_NAME);
+  const rawGroupName = hasProviderMetadata
+    ? group.byokStudioGroupName
+    : typeof hint?.providerId === 'string' && hint.providerId.trim() ? hint?.groupName : undefined;
+  const name = rawGroupName === undefined || rawGroupName === null ? '' : String(rawGroupName).trim().slice(0, MAX_GROUP_NAME);
+  const officialName = group.name.trim();
+  const hasKey = isSecretReference(group.apiKey)
+    && (!hint?.secretReference || group.apiKey === hint.secretReference);
   const rawSettings = isRecord(group.settings) ? group.settings : {};
 
   const models: ModelConfig[] = [];
@@ -587,9 +621,9 @@ export function readOfficialGroup(
     });
   }
 
-  let routingMode: ProviderConfig['routingMode'];
-  let unified: ProviderConfig['unified'];
-  let endpoints: ProviderConfig['endpoints'];
+  let routingMode: GroupConfig['routingMode'];
+  let unified: GroupConfig['unified'];
+  let endpoints: GroupConfig['endpoints'];
 
   const hintEndpoints: Record<ApiType, string> = {
     responses: hint?.endpoints?.responses ?? '',
@@ -651,7 +685,7 @@ export function readOfficialGroup(
     }
   }
 
-  return { id, name, routingMode, unified, endpoints, modelProtocols, models };
+  return { id, name, providerId, providerName, officialName, hasKey, routingMode, unified, endpoints, modelProtocols, models };
 }
 
 export function parseImportData(value: unknown, database: ModelDatabase): ExportedProvider[] {
@@ -669,7 +703,7 @@ export function parseImportData(value: unknown, database: ModelDatabase): Export
     rawProviders = value;
   } else {
     const raw = asObject(value, t('导入的配置'));
-    if (raw.version !== 1 || !Array.isArray(raw.providers)) {
+    if ((raw.version !== 1 && raw.version !== 2) || !Array.isArray(raw.providers)) {
       throw new Error(t('导入的配置格式或版本不受支持。'));
     }
     rawProviders = raw.providers;
@@ -679,31 +713,79 @@ export function parseImportData(value: unknown, database: ModelDatabase): Export
     throw new Error(t('导入的供应商数量必须在 1–200 之间。'));
   }
 
-  const seenIds = new Set<string>();
-  const seenNames = new Set<string>();
+  const seenProviderIds = new Set<string>();
+  const seenProviderNames = new Set<string>();
+  const seenGroupIds = new Set<string>();
   const results: ExportedProvider[] = [];
+  let totalGroups = 0;
+
+  const readKey = (item: Record<string, unknown>): string | undefined => {
+    const rawKey = item.apiKey;
+    return rawKey === undefined || rawKey === null || rawKey === '' || isSecretReference(rawKey)
+      ? undefined : asText(rawKey, 'API Key', 16000);
+  };
+
+  const append = (info: ProviderInfo, group: ExportedGroup): void => {
+    if (seenGroupIds.has(group.id)) throw new Error(t('导入的配置包含重复的分组标识。'));
+    seenGroupIds.add(group.id);
+    let provider = results.find(p => p.id === info.id || p.name === info.name);
+    if (provider && (provider.id !== info.id || provider.name !== info.name)) {
+      throw new Error(t('导入的配置包含重复的供应商标识或名称。'));
+    }
+    if (!provider) {
+      if (seenProviderIds.has(info.id) || seenProviderNames.has(info.name)) {
+        throw new Error(t('导入的配置包含重复的供应商标识或名称。'));
+      }
+      seenProviderIds.add(info.id);
+      seenProviderNames.add(info.name);
+      provider = { ...info, groups: [] };
+      results.push(provider);
+    }
+    if (provider.groups.length >= 100 || ++totalGroups > 500) {
+      throw new Error(t('每个供应商最多支持 100 个分组，单次最多导入 500 个分组。'));
+    }
+    if (provider.groups.some(g => g.name === group.name)) {
+      throw new Error(t('供应商“{0}”包含重复的分组名称。', info.name));
+    }
+    provider.groups.push(group);
+  };
 
   for (const entry of rawProviders) {
     const item = asObject(entry, t('供应商'));
-    let provider: ProviderConfig;
     if (item.vendor === 'customendpoint' && item.unified === undefined && item.endpoints === undefined) {
       const converted = readOfficialGroup(item, database);
       if (!converted) continue;
-      provider = validateProvider({ ...converted, id: item.byokStudioId ?? `provider-${createHash('sha256').update(converted.name).digest('hex').slice(0, 12)}` }, database);
+      const id = validId(item.byokStudioId ?? converted.id, t('分组标识'));
+      const group = validateGroup({ ...converted, id }, database);
+      const info = validateProviderInfo({
+        id: item.byokStudioProviderId ?? converted.providerId,
+        name: item.byokStudioProviderName ?? converted.providerName
+      });
+      const apiKey = readKey(item);
+      append(info, apiKey === undefined ? group : { ...group, apiKey });
+    } else if (Array.isArray(item.groups)) {
+      const info = validateProviderInfo(item);
+      if (seenProviderIds.has(info.id) || seenProviderNames.has(info.name)) {
+        throw new Error(t('导入的配置包含重复的供应商标识或名称。'));
+      }
+      if (!item.groups.length || item.groups.length > 100) {
+        throw new Error(t('供应商“{0}”的分组数量必须在 1–100 之间。', info.name));
+      }
+      for (const rawGroup of item.groups) {
+        const raw = asObject(rawGroup, t('分组'));
+        const group = validateGroup(raw, database);
+        const apiKey = readKey(raw);
+        append(info, apiKey === undefined ? group : { ...group, apiKey });
+      }
     } else {
-      provider = validateProvider(item, database);
+      const info = validateProviderInfo(item);
+      if (seenProviderIds.has(info.id) || seenProviderNames.has(info.name)) {
+        throw new Error(t('导入的配置包含重复的供应商标识或名称。'));
+      }
+      const group = validateGroup({ ...item, name: '' }, database);
+      const apiKey = readKey(item);
+      append(info, apiKey === undefined ? group : { ...group, apiKey });
     }
-    if (seenIds.has(provider.id) || seenNames.has(provider.name)) {
-      throw new Error(t('导入的配置包含重复的供应商标识或名称。'));
-    }
-    seenIds.add(provider.id);
-    seenNames.add(provider.name);
-
-    const rawKey = item.apiKey;
-    const apiKey = rawKey === undefined || rawKey === null || rawKey === '' || isSecretReference(rawKey)
-      ? undefined
-      : asText(rawKey, 'API Key', 16000);
-    results.push(apiKey === undefined ? provider : { ...provider, apiKey });
   }
 
   if (!results.length) throw new Error(t('未读取到有效的配置内容。'));

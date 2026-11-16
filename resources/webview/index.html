@@ -13,6 +13,7 @@
     <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 4v6h-6M20 10a8 8 0 1 0-1 8"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
     <symbol id="i-edit" viewBox="0 0 24 24"><path d="m15 4 5 5M3 21l5-1L21 7l-5-5L3 15v6Z"/></symbol>
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol>
@@ -33,12 +34,18 @@
       <div class="provider-navigation" aria-label="{{t:供应商管理}}">
         <h2>{{t:供应商}}</h2>
         <nav id="provider-list" aria-label="{{t:供应商列表}}"></nav>
+        <div id="provider-name-field" class="field compact-field provider-name-field" hidden><label class="visually-hidden" for="provider-name">{{t:供应商}}</label><input id="provider-name" form="provider-form" maxlength="200" placeholder="{{t:供应商名称}}" autocomplete="off" required></div>
         <button class="add-provider" id="add-provider" type="button"><svg aria-hidden="true"><use href="#i-plus"/></svg>{{t:添加供应商}}</button>
       </div>
-      <section id="provider-panel" class="provider-panel" aria-label="{{t:供应商设置}}" hidden>
+      <div class="group-workspace">
+        <aside class="group-navigation" aria-label="{{t:分组管理}}">
+          <div class="group-navigation-header"><h2>{{t:分组}}</h2><button id="add-group" class="icon-button" type="button" title="{{t:添加分组}}" aria-label="{{t:添加分组}}"><svg aria-hidden="true"><use href="#i-plus"/></svg></button></div>
+          <nav id="group-list" aria-label="{{t:分组列表}}"></nav>
+        </aside>
+        <section id="provider-panel" class="provider-panel" aria-label="{{t:分组设置}}" hidden>
         <form id="provider-form" novalidate autocomplete="off">
           <div class="form-grid">
-            <div class="field compact-field"><label for="provider-name">{{t:名称}}</label><input id="provider-name" maxlength="200" placeholder="{{t:供应商名称}}" autocomplete="off" required></div>
+            <div class="field compact-field"><label for="group-name">{{t:分组}}</label><input id="group-name" maxlength="100" placeholder="{{t:默认分组}}" autocomplete="off"></div>
             <div class="field compact-field">
               <label for="api-key">API Key</label>
               <input id="api-key" type="password" maxlength="16000" placeholder="{{t:输入 API Key（可选）}}" autocomplete="off" spellcheck="false">
@@ -60,9 +67,10 @@
             <div id="model-list" class="model-list" role="region" aria-labelledby="models-heading"></div>
           </section>
           <p id="provider-error" class="inline-error" role="alert" hidden></p>
-          <footer class="panel-footer"><button id="delete-provider" class="button delete-provider" type="button">{{t:删除供应商}}</button><button id="save-provider" class="button primary" type="submit">{{t:保存供应商}}</button></footer>
+          <footer class="panel-footer"><button id="delete-provider" class="button delete-provider" type="button">{{t:删除分组}}</button><button id="save-provider" class="button primary" type="submit">{{t:保存分组}}</button></footer>
         </form>
-      </section>
+        </section>
+      </div>
       <section id="empty-provider" class="empty-provider" hidden><p>{{t:添加供应商，开始配置你的模型。}}</p><button id="empty-add" class="button primary" type="button">{{t:添加供应商}}</button></section>
     </div>
     <p id="request-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></p>
@@ -124,6 +132,7 @@
   <dialog id="confirm-dialog" aria-labelledby="confirm-title">
     <div class="dialog-scroll">
     <header class="dialog-header"><h2 id="confirm-title">{{t:确认操作}}</h2><button class="icon-button" type="button" data-close="confirm-dialog" aria-label="{{t:关闭确认}}"><svg aria-hidden="true"><use href="#i-close"/></svg></button></header>
+    <p id="confirm-detail" class="confirm-detail" hidden></p>
     <footer class="dialog-footer"><button id="confirm-cancel" class="button secondary" type="button" data-close="confirm-dialog">{{t:取消}}</button><button id="confirm-action" class="button primary" type="button">{{t:确认}}</button></footer>
     </div>
   </dialog>

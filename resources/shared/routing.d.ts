@@ -54,6 +54,7 @@ export function normalizeRouting(provider?: RoutingInput): RoutingConfig;
 export function routeForModel(provider: RoutingInput, modelId: string, routing?: RoutingConfig): { apiType: ApiType; url: string };
 export function protocolLists<T extends { id: string }>(provider: RoutingInput & { models: readonly T[] }): Array<{ apiType: ApiType; models: T[] }>;
 export function assignModels(provider: RoutingInput, ids: readonly string[], apiType: ApiType): Record<string, ApiType>;
+export function officialGroupName(providerName: string, groupName: string): string;
 export function replaceModels<T extends { id: string; name: string; overrides: object; reasoningEffort?: string }>(
   previous: readonly T[],
   discovered: readonly { id: string; name: string }[]

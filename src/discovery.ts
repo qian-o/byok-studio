@@ -1,7 +1,7 @@
 import { t } from '../resources/shared/i18n.js';
 import { isExcludedModel, normalizeRouting } from '../resources/shared/routing.js';
 import { isRecord, resolveEndpoint } from './models';
-import type { ApiType, DiscoveredModel, ProviderConfig } from './types';
+import type { ApiType, DiscoveredModel, GroupConfig } from './types';
 
 const MODELS_TIMEOUT_MS = 30_000;
 const MAX_JSON_BYTES = 16 * 1024 * 1024;
@@ -123,11 +123,11 @@ export interface DiscoveryResult {
 }
 
 export async function discoverProviderModels(
-  provider: ProviderConfig,
+  group: GroupConfig,
   apiKey: string,
   signal: AbortSignal
 ): Promise<DiscoveryResult> {
-  const routing = normalizeRouting(provider);
+  const routing = normalizeRouting(group);
   const priority: ApiType[] = routing.routingMode === 'unified'
     ? [routing.unified.apiType]
     : ['chatCompletions', 'responses', 'messages'];

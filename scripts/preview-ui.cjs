@@ -23,7 +23,8 @@ const root = path.resolve(__dirname, '..');
 const previewCacheFile = path.join(os.tmpdir(), 'byok-studio-preview-catalog.json');
 let cachedSnapshot;
 
-let officialText;
+let officialText = process.env.BYOK_PREVIEW_OFFICIAL
+  ? fs.readFileSync(path.resolve(process.env.BYOK_PREVIEW_OFFICIAL), 'utf8') : undefined;
 let secretCounter = 0;
 const secrets = new Map();
 let routingHints = {};
@@ -71,6 +72,7 @@ const service = new ConfigService({
       name: `BYOK Studio Key ${stagingId.slice(6, 14)}`,
       vendor: 'customendpoint',
       byokStudioId: stagingId,
+      byokStudioStageFor: stagingId,
       models: [],
       apiKey: reference
     });
@@ -171,9 +173,10 @@ const server = http.createServer(async (req, res) => {
       try {
         let output = null;
         if (m.command === 'getState') output = await service.getUiState();
-        else if (m.command === 'saveProvider') output = await service.saveProvider(p.provider, p.apiKey);
+        else if (m.command === 'saveGroup') output = await service.saveGroup(p.provider, p.group, p.apiKey);
+        else if (m.command === 'deleteGroup') output = await service.deleteGroup(p.id);
         else if (m.command === 'deleteProvider') output = await service.deleteProvider(p.id);
-        else if (m.command === 'discoverModels') output = await service.discoverModels(p.provider, p.apiKey, AbortSignal.timeout(15000));
+        else if (m.command === 'discoverModels') output = await service.discoverModels(p.group, p.apiKey, AbortSignal.timeout(15000));
         else if (m.command === 'exportProviders') {
           const bundle = await service.exportProviders(p.ids);
           const content = JSON.stringify(bundle, null, 2) + '\n';
@@ -187,7 +190,7 @@ const server = http.createServer(async (req, res) => {
         }
         result = { id: m.id, ok: true, data: output };
       } catch (e) {
-        const sensitive = [p.apiKey, ...(p.providers || []).map(item => item?.apiKey)].filter(key => typeof key === 'string');
+        const sensitive = [p.apiKey, ...(p.providers || []).flatMap(item => item?.groups?.map(group => group?.apiKey) || [])].filter(key => typeof key === 'string');
         result = { id: m.id, ok: false, error: sanitizeError(e, sensitive) };
       }
       res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });

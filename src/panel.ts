@@ -66,7 +66,11 @@ export class SettingsPanel implements vscode.Disposable {
     if (typeof payload.apiKey === 'string') sensitive.push(payload.apiKey);
     if (Array.isArray(payload.providers)) {
       for (const entry of payload.providers) {
-        if (isRecord(entry) && typeof entry.apiKey === 'string') sensitive.push(entry.apiKey);
+        if (isRecord(entry) && Array.isArray(entry.groups)) {
+          for (const group of entry.groups) {
+            if (isRecord(group) && typeof group.apiKey === 'string') sensitive.push(group.apiKey);
+          }
+        }
       }
     }
 
@@ -77,8 +81,12 @@ export class SettingsPanel implements vscode.Disposable {
           data = await this.service.getUiState();
           break;
 
-        case 'saveProvider':
-          data = await this.service.saveProvider(payload.provider, payload.apiKey);
+        case 'saveGroup':
+          data = await this.service.saveGroup(payload.provider, payload.group, payload.apiKey);
+          break;
+
+        case 'deleteGroup':
+          data = await this.service.deleteGroup(payload.id);
           break;
 
         case 'deleteProvider':
@@ -89,7 +97,7 @@ export class SettingsPanel implements vscode.Disposable {
           const controller = new AbortController();
           this.pending.add(controller);
           try {
-            data = await this.service.discoverModels(payload.provider, payload.apiKey, controller.signal);
+            data = await this.service.discoverModels(payload.group, payload.apiKey, controller.signal);
           } finally {
             this.pending.delete(controller);
           }
@@ -101,7 +109,9 @@ export class SettingsPanel implements vscode.Disposable {
           if (!target) throw new Error(t('请选择有效的导出方式。'));
           const bundle = await this.service.exportProviders(payload.ids);
           for (const provider of bundle.providers) {
-            if (provider.apiKey) sensitive.push(provider.apiKey);
+            for (const group of provider.groups) {
+              if (group.apiKey) sensitive.push(group.apiKey);
+            }
           }
           const content = JSON.stringify(bundle, null, 2) + '\n';
           if (target === 'clipboard') {

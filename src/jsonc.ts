@@ -1,4 +1,3 @@
-import { isDeepStrictEqual } from 'node:util';
 import { applyEdits, getNodeValue, modify, parseTree, type FormattingOptions, type Node, type ParseError } from 'jsonc-parser';
 import { t } from '../resources/shared/i18n.js';
 import { groupIdentity, isRecord } from './models';
@@ -74,15 +73,16 @@ export function findOfficialGroupIndex(groups: readonly Record<string, unknown>[
 export function upsertOfficialGroup(
   text: string,
   targetId: string,
-  nextGroup: Record<string, unknown>
+  nextGroup: Record<string, unknown>,
+  checkName = true
 ): string {
   const { groups, bom, body } = parseOfficialJsonc(text);
   const index = findOfficialGroupIndex(groups, targetId);
-  const nameConflict = groups.some((g, i) => i !== index && g.vendor === 'customendpoint' && g.name === nextGroup.name);
+  const nameConflict = checkName && groups.some((g, i) => i !== index && g.vendor === 'customendpoint' && g.name === nextGroup.name);
   if (nameConflict) {
-    throw new Error(t('官方配置已有同名分组“{0}”，请修改供应商名称后重试。', String(nextGroup.name)));
+    throw new Error(t('官方配置已有同名分组“{0}”，请修改名称后重试。', String(nextGroup.name)));
   }
-  if (index >= 0 && isDeepStrictEqual(groups[index], nextGroup)) {
+  if (index >= 0 && JSON.stringify(groups[index]) === JSON.stringify(nextGroup)) {
     return text;
   }
   const edits = modify(body, [index >= 0 ? index : -1], nextGroup, { formattingOptions: detectFormatting(body) });

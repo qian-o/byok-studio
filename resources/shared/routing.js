@@ -228,6 +228,12 @@
     return modelProtocols;
   }
 
+  function officialGroupName(providerName, groupName) {
+    const provider = String(providerName ?? '').trim();
+    const group = String(groupName ?? '').trim();
+    return group ? `${provider} · ${group}` : provider;
+  }
+
   function replaceModels(previous, discovered) {
     const existing = new Map(previous.map(model => [model.id, model]));
     const seen = new Set();
@@ -257,6 +263,7 @@
     routeForModel,
     protocolLists,
     assignModels,
+    officialGroupName,
     replaceModels
   };
 });

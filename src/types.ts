@@ -49,17 +49,39 @@ export interface RoutingHint {
   routingMode: RoutingMode;
   unified: { apiType: ApiType; url: string };
   endpoints: Record<ApiType, string>;
+  /** Local recovery data for native edits that reconstruct a group without Studio metadata. */
+  officialName?: string;
+  providerId?: string;
+  providerName?: string;
+  groupName?: string;
+  secretReference?: string;
 }
 
-export interface ProviderConfig extends RoutingHint {
+export interface GroupConfig extends RoutingHint {
   id: string;
+  /** Empty for a provider's default group, whose VS Code name is the provider name. */
   name: string;
   modelProtocols: Record<string, ApiType>;
   models: ModelConfig[];
 }
 
-export interface ProviderView extends ProviderConfig {
+export interface ProviderInfo {
+  id: string;
+  name: string;
+}
+
+export interface GroupView extends GroupConfig {
   hasKey: boolean;
+  officialName: string;
+}
+
+export interface ProviderView extends ProviderInfo {
+  groups: GroupView[];
+}
+
+export interface OfficialGroupEntry extends GroupView {
+  providerId: string;
+  providerName: string;
 }
 
 export interface UiState {
@@ -72,12 +94,16 @@ export interface DiscoveredModel {
   name: string;
 }
 
-export interface ExportedProvider extends ProviderConfig {
+export interface ExportedGroup extends GroupConfig {
   apiKey?: string;
 }
 
+export interface ExportedProvider extends ProviderInfo {
+  groups: ExportedGroup[];
+}
+
 export interface ExportBundle {
-  version: 1;
+  version: 2;
   exportedAt: string;
   providers: ExportedProvider[];
 }
@@ -105,6 +131,9 @@ export interface OfficialGroup {
   name: string;
   vendor: 'customendpoint';
   byokStudioId: string;
+  byokStudioProviderId: string;
+  byokStudioProviderName: string;
+  byokStudioGroupName: string;
   apiKey?: string;
   models: OfficialModel[];
   settings?: Record<string, Record<string, unknown>>;

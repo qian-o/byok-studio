@@ -47,7 +47,15 @@
         "title": "%command.openOfficialConfiguration%",
         "category": "BYOK Studio"
       }
-    ]
+    ],
+    "menus": {
+      "chat/input/status": [
+        {
+          "command": "byokStudio.manage",
+          "group": "navigation@100"
+        }
+      ]
+    }
   },
   "scripts": {
     "build": "tsc -p .",
