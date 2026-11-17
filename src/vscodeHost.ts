@@ -10,7 +10,7 @@ import {
 } from './catalogBuilder';
 import type { ConfigHost } from './configService';
 import { listOfficialGroups, removeOfficialGroup } from './jsonc';
-import { isSecretReference, validateCatalogSnapshot } from './models';
+import { isSecretReference, sanitizeError, validateCatalogSnapshot } from './models';
 import type { CatalogSnapshot, ModelDatabase, RoutingHint } from './types';
 
 const ROUTING_HINTS_KEY = 'byokStudio.routing.v1';
@@ -32,10 +32,12 @@ export function createVsCodeAdapter(context: vscode.ExtensionContext): VsCodeCon
 
   let cachedCatalog: CatalogSnapshot | undefined;
   let inflightCatalog: Promise<CatalogSnapshot> | undefined;
+  let routingHints: Record<string, RoutingHint> | undefined;
 
-  let routingHints: Record<string, RoutingHint> = structuredClone(
-    context.globalState.get<Record<string, RoutingHint>>(ROUTING_HINTS_KEY, {})
-  );
+  const readRoutingHints = (): Record<string, RoutingHint> => {
+    routingHints ??= structuredClone(context.globalState.get<Record<string, RoutingHint>>(ROUTING_HINTS_KEY, {}));
+    return routingHints;
+  };
 
   const isSameConfigUri = (uri: vscode.Uri): boolean =>
     ['file', 'vscode-userdata'].includes(uri.scheme)
@@ -220,7 +222,7 @@ export function createVsCodeAdapter(context: vscode.ExtensionContext): VsCodeCon
 
     writeOfficialText,
 
-    async provisionSecretReference(_providerId: string, apiKey: string, beforeText: string | undefined): Promise<{ currentText: string; reference: string }> {
+    async provisionSecretReference(_groupId: string, apiKey: string, beforeText: string | undefined): Promise<{ currentText: string; reference: string }> {
       await ensureCopilotReady();
       ensureNoDirtyOpenDocument();
       const diskNow = await readDiskText();
@@ -264,17 +266,17 @@ export function createVsCodeAdapter(context: vscode.ExtensionContext): VsCodeCon
       await vscode.lm.selectChatModels({ vendor: 'customendpoint' });
     },
 
-    getSecret(providerId: string): Promise<string | undefined> {
-      return Promise.resolve(context.secrets.get(secretKey(providerId)));
+    getSecret(groupId: string): Promise<string | undefined> {
+      return Promise.resolve(context.secrets.get(secretKey(groupId)));
     },
 
-    async setSecret(providerId: string, apiKey: string | undefined): Promise<void> {
-      if (apiKey === undefined) await context.secrets.delete(secretKey(providerId));
-      else await context.secrets.store(secretKey(providerId), apiKey);
+    async setSecret(groupId: string, apiKey: string | undefined): Promise<void> {
+      if (apiKey === undefined) await context.secrets.delete(secretKey(groupId));
+      else await context.secrets.store(secretKey(groupId), apiKey);
     },
 
     getRoutingHints(): Record<string, RoutingHint> {
-      return structuredClone(routingHints);
+      return structuredClone(readRoutingHints());
     },
 
     async saveRoutingHints(hints: Record<string, RoutingHint>): Promise<void> {
@@ -288,12 +290,12 @@ export function createVsCodeAdapter(context: vscode.ExtensionContext): VsCodeCon
     try {
       const document = await openOrCreateDocument(false);
       if (!document) {
-        await vscode.window.showInformationMessage(t('尚未保存官方模型配置，请先保存供应商。'));
+        await vscode.window.showInformationMessage(t('尚未保存官方模型配置，请先保存分组。'));
         return;
       }
       await vscode.window.showTextDocument(document, { preview: false });
     } catch (error) {
-      await vscode.window.showErrorMessage(error instanceof Error ? error.message : t('操作失败，请重试。'));
+      await vscode.window.showErrorMessage(sanitizeError(error));
     }
   };
 

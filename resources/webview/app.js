@@ -228,8 +228,19 @@
   }
   function groupName(draft) { return draft.group.name.trim() || t('默认分组'); }
   function modelLabel(model) { return routing.displayModelName(state.database, model); }
-  function switchGroup(id) {
+  function settleProviderRename(rerender = false) {
+    if (!providerEdit) return;
+    const target = [...drafts.values()].find(item => item.provider.id === providerEdit.id);
+    if (target) {
+      const nextName = providerNameProblem(target.provider) ? providerEdit.originalName : target.provider.name.trim();
+      setProviderName(providerEdit.id, nextName);
+      dirtyStates.clear();
+    }
     providerEdit = null;
+    if (rerender) changed(true);
+  }
+  function switchGroup(id) {
+    settleProviderRename();
     activeId = id;
     const draft = currentDraft();
     if (draft) activeGroups.set(draft.provider.id, id);
@@ -401,7 +412,7 @@
         tab.append(button);
       }
       if (dirty) {
-        const dot = node('span', 'provider-dirty');
+        const dot = node('span', 'dirty-dot');
         dot.setAttribute('aria-hidden', 'true');
         tab.append(dot);
       }
@@ -444,7 +455,7 @@
         if (id === activeId) button.setAttribute('aria-current', 'page');
         button.append(node('span', 'group-label', name), node('span', 'group-count', String(item.group.models.length)));
         if (isDirty(item)) {
-          const dot = node('span', 'provider-dirty');
+          const dot = node('span', 'dirty-dot');
           dot.setAttribute('aria-label', t('未保存修改'));
           button.append(dot);
         }
@@ -474,9 +485,9 @@
         button.querySelector('.provider-label').textContent = name;
         button.querySelector('.provider-avatar').textContent = ([...name][0] || '?').toUpperCase();
       }
-      const dot = tab.querySelector('.provider-dirty');
+      const dot = tab.querySelector('.dirty-dot');
       if (provider.dirty && !dot) {
-        const next = node('span', 'provider-dirty');
+        const next = node('span', 'dirty-dot');
         next.setAttribute('aria-hidden', 'true');
         tab.insertBefore(next, tab.querySelector('.provider-actions'));
       } else if (!provider.dirty) dot?.remove();
@@ -488,9 +499,9 @@
       button.querySelector('.group-label').textContent = groupName(draft);
       button.querySelector('.group-count').textContent = String(draft.group.models.length);
       button.title = `${t('VS Code 名称：{0}', draft.group.officialName || routing.officialGroupName(draft.provider.name, draft.group.name))}${dirty ? `\n${t('未保存修改')}` : ''}`;
-      const dot = button.querySelector('.provider-dirty');
+      const dot = button.querySelector('.dirty-dot');
       if (dirty && !dot) {
-        const next = node('span', 'provider-dirty');
+        const next = node('span', 'dirty-dot');
         next.setAttribute('aria-label', t('未保存修改'));
         button.append(next);
       } else if (!dirty) dot?.remove();
@@ -499,11 +510,11 @@
 
   function renderStatus() {
     const draft = currentDraft();
-    const problem = draft ? providerProblem(preparedProvider(draft)) : null;
+    const problem = draft ? submissionProblem(prepareGroupSubmission(draft)) : null;
     const invalidKey = draft && draft.apiKey.length > 16000;
     unavailable($('import-providers'), !state);
     unavailable($('export-providers'), !state?.providers.length);
-    unavailable($('save-provider'), !draft || !isDirty(draft) || Boolean(problem) || invalidKey);
+    unavailable($('save-group'), !draft || !isDirty(draft) || Boolean(problem) || invalidKey);
     unavailable($('refresh-models'), !draft);
     unavailable($('add-group'), !draft);
     if (!draft) return;
@@ -697,8 +708,8 @@
     renderSidebar();
     renderGroups();
     const draft = currentDraft();
-    $('provider-panel').parentElement.hidden = !draft;
-    $('provider-panel').hidden = !draft;
+    $('group-panel').parentElement.hidden = !draft;
+    $('group-panel').hidden = !draft;
     $('empty-provider').hidden = Boolean(draft);
     $('group-list').parentElement.hidden = !draft;
     if (draft) {
@@ -707,8 +718,8 @@
         $('provider-name').value = draft.provider.name;
         $('group-name').value = group.name;
         $('api-key').value = draft.apiKey;
-        clearValidation('provider-form');
-        message('provider-error');
+        clearValidation('group-form');
+        message('group-error');
       }
       renderRouting();
       renderModels();
@@ -721,8 +732,8 @@
 
   function changed(updateProviders = false) {
     dirtyStates.clear();
-    message('provider-error');
-    clearValidation('provider-form');
+    message('group-error');
+    clearValidation('group-form');
     if (updateProviders) renderSidebar();
     syncDraftNavigation();
     renderStatus();
@@ -798,25 +809,25 @@
     return null;
   }
 
-  function providerProblem(provider, discovery = false) {
-    const nameProblem = providerNameProblem({ id: provider.providerId, name: provider.providerName });
+  function submissionProblem(submission, discovery = false) {
+    const nameProblem = providerNameProblem({ id: submission.providerId, name: submission.providerName });
     if (nameProblem) return nameProblem;
-    if (provider.groupName.length > 100) {
+    if (submission.groupName.length > 100) {
       return { text: t('分组名称不能超过 100 个字符。'), field: 'group-name' };
     }
-    const savedProvider = state.providers.find(item => item.id === provider.providerId);
-    const siblings = [...drafts.values()].filter(draft => draft.group.id !== provider.id && draft.provider.id === provider.providerId);
-    if (siblings.some(draft => draft.group.name.trim() === provider.groupName.trim())
-      || savedProvider?.groups.some(group => group.id !== provider.id && group.name === provider.groupName.trim())) {
-      return { text: t('同一供应商内不能重复分组名称“{0}”。', provider.groupName.trim() || t('默认分组')), field: 'group-name' };
+    const savedProvider = state.providers.find(item => item.id === submission.providerId);
+    const siblings = [...drafts.values()].filter(draft => draft.group.id !== submission.id && draft.provider.id === submission.providerId);
+    if (siblings.some(draft => draft.group.name.trim() === submission.groupName.trim())
+      || savedProvider?.groups.some(group => group.id !== submission.id && group.name === submission.groupName.trim())) {
+      return { text: t('同一供应商内不能重复分组名称“{0}”。', submission.groupName.trim() || t('默认分组')), field: 'group-name' };
     }
-    const savedGroup = savedProvider?.groups.find(group => group.id === provider.id);
-    const providerRenamed = savedProvider && savedProvider.name !== provider.providerName.trim();
-    const names = new Map([[provider.id, savedGroup && !providerRenamed && savedGroup.name === provider.groupName.trim()
-      ? savedGroup.officialName : routing.officialGroupName(provider.providerName, provider.groupName)]]);
+    const savedGroup = savedProvider?.groups.find(group => group.id === submission.id);
+    const providerRenamed = savedProvider && savedProvider.name !== submission.providerName.trim();
+    const names = new Map([[submission.id, savedGroup && !providerRenamed && savedGroup.name === submission.groupName.trim()
+      ? savedGroup.officialName : routing.officialGroupName(submission.providerName, submission.groupName)]]);
     if (providerRenamed) {
       for (const group of savedProvider.groups) {
-        if (group.id !== provider.id) names.set(group.id, routing.officialGroupName(provider.providerName, group.name));
+        if (group.id !== submission.id) names.set(group.id, routing.officialGroupName(submission.providerName, group.name));
       }
     }
     const existingNames = new Set(state.providers.flatMap(item => item.groups)
@@ -827,11 +838,11 @@
       }
       existingNames.add(nativeName);
     }
-    const norm = routing.normalizeRouting(provider);
-    const split = provider.routingMode === 'split';
+    const norm = routing.normalizeRouting(submission);
+    const split = submission.routingMode === 'split';
     const routes = split
-      ? API_TYPES.map(apiType => ({ apiType, url: provider.endpoints[apiType], field: ENDPOINT_FIELDS[apiType] }))
-      : [{ ...provider.unified, field: 'unified-url' }];
+      ? API_TYPES.map(apiType => ({ apiType, url: submission.endpoints[apiType], field: ENDPOINT_FIELDS[apiType] }))
+      : [{ ...submission.unified, field: 'unified-url' }];
 
     for (const route of routes) {
       const invalidUrl = route.url.trim() ? urlError(route.url) : null;
@@ -842,8 +853,8 @@
         ? null
         : { text: split ? t('请至少填写一个协议的基础 URL，再刷新模型。') : t('请填写统一协议的基础 URL，再刷新模型。'), field: routes[0].field };
     }
-    for (const model of provider.models) {
-      const route = routing.routeForModel(provider, model.id, norm);
+    for (const model of submission.models) {
+      const route = routing.routeForModel(submission, model.id, norm);
       if (!route.url.trim()) {
         return {
           text: t('{0} 使用 {1}，请填写对应的基础 URL。', modelLabel(model), PROTOCOL_NAMES[route.apiType]),
@@ -851,15 +862,15 @@
         };
       }
     }
-    if (provider.models.length > 5000) return { text: t('每个分组最多支持 5000 个模型。') };
+    if (submission.models.length > 5000) return { text: t('每个分组最多支持 5000 个模型。') };
 
     const ids = new Set();
-    for (const model of provider.models) {
+    for (const model of submission.models) {
       if (!validId(model.id) || ids.has(model.id)) {
         return { text: t('模型请求 ID 无效或重复，请打开模型设置检查。'), field: 'add-model' };
       }
       ids.add(model.id);
-      const route = routing.routeForModel(provider, model.id, norm);
+      const route = routing.routeForModel(submission, model.id, norm);
       const base = routing.baseParametersForProtocol(state.database, model.id, route.apiType);
       const parameters = { ...base, ...model.overrides };
       const invalidTokens = tokenError(parameters, model.id, route.apiType);
@@ -871,27 +882,27 @@
     return null;
   }
 
-  function preparedProvider(draft) {
-    const provider = {
+  function prepareGroupSubmission(draft) {
+    const submission = {
       ...sanitizeGroup(draft.group),
       providerId: draft.provider.id,
       providerName: draft.provider.name,
       groupName: draft.group.name.trim()
     };
-    provider.name = provider.name.trim();
-    provider.unified.url = provider.unified.url.trim();
-    for (const apiType of API_TYPES) provider.endpoints[apiType] = provider.endpoints[apiType].trim();
-    const norm = routing.normalizeRouting(provider);
-    for (const model of provider.models) {
-      const route = routing.routeForModel(provider, model.id, norm);
+    submission.name = submission.name.trim();
+    submission.unified.url = submission.unified.url.trim();
+    for (const apiType of API_TYPES) submission.endpoints[apiType] = submission.endpoints[apiType].trim();
+    const norm = routing.normalizeRouting(submission);
+    for (const model of submission.models) {
+      const route = routing.routeForModel(submission, model.id, norm);
       const base = routing.baseParametersForProtocol(state.database, model.id, route.apiType);
       const parameters = { ...base, ...model.overrides };
       if (model.reasoningEffort && (!parameters.thinking || !parameters.supportsReasoningEffort.includes(model.reasoningEffort))) {
         delete model.reasoningEffort;
       }
     }
-    delete provider.officialName;
-    return provider;
+    delete submission.officialName;
+    return submission;
   }
 
   function showDialog(id, focusId) {
@@ -934,7 +945,7 @@
     if (event.isComposing) return;
     if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 's') {
       event.preventDefault();
-      if (!event.repeat && !busy && !document.querySelector('dialog[open]') && !$('save-provider').disabled) {
+      if (!event.repeat && !busy && !document.querySelector('dialog[open]') && !$('save-group').disabled) {
         void saveGroup(activeId);
       }
       return;
@@ -974,7 +985,7 @@
     if (!providerEdit || !draft || busy) return;
     if (!cancel) {
       const problem = providerNameProblem(draft.provider);
-      if (problem) { formError('provider-error', problem.text, problem.field); return; }
+      if (problem) { formError('group-error', problem.text, problem.field); return; }
     }
     setProviderName(providerEdit.id, cancel ? providerEdit.originalName : draft.provider.name.trim());
     providerEdit = null;
@@ -985,6 +996,7 @@
   function confirmProviderDeletion() {
     const draft = currentDraft();
     if (!draft || busy) return;
+    settleProviderRename(true);
     const id = draft.provider.id;
     const groupIds = new Set(state.providers.find(provider => provider.id === id)?.groups.map(group => group.id));
     for (const item of drafts.values()) {
@@ -1000,11 +1012,12 @@
         ? await request('deleteProvider', { id }) : state;
       applyState(next, { deletedProviderId: id });
       showToast(t('已删除'), false);
-    }, 'provider-error');
+    }, 'group-error');
   }
 
   function addProvider() {
     if (!state || busy) return;
+    settleProviderRename();
     const provider = { id: `provider-${crypto.randomUUID()}`, name: uniqueProviderName() };
     const group = { id: `group-${crypto.randomUUID()}`, name: '', ...routing.normalizeRouting({}), models: [] };
     drafts.set(group.id, makeDraft(provider, group, false));
@@ -1016,6 +1029,7 @@
   function addGroup() {
     const draft = currentDraft();
     if (!draft || busy) return;
+    settleProviderRename();
     const group = {
       ...sanitizeGroup(draft.group),
       id: `group-${crypto.randomUUID()}`,
@@ -1032,10 +1046,10 @@
   async function saveGroup(id, confirmed = false) {
     const draft = drafts.get(id);
     if (!draft || busy || !isDirty(draft)) return;
-    const prepared = preparedProvider(draft);
-    const problem = providerProblem(prepared);
-    if (problem) { formError('provider-error', problem.text, problem.field); return; }
-    if (draft.apiKey.length > 16000) { formError('provider-error', t('API Key 不能超过 16000 个字符。'), 'api-key'); return; }
+    const prepared = prepareGroupSubmission(draft);
+    const problem = submissionProblem(prepared);
+    if (problem) { formError('group-error', problem.text, problem.field); return; }
+    if (draft.apiKey.length > 16000) { formError('group-error', t('API Key 不能超过 16000 个字符。'), 'api-key'); return; }
     const provider = { id: prepared.providerId, name: prepared.providerName.trim() };
     const { providerId: _providerId, providerName: _providerName, groupName: _groupName, ...group } = prepared;
     const savedProvider = state.providers.find(item => item.id === provider.id);
@@ -1053,7 +1067,7 @@
       applyState(next, { savedIds: [id], savedProviderId: provider.id, focusId: id });
       $('api-key').value = '';
       showToast(t('已保存'), false);
-    }, 'provider-error', 'save-provider');
+    }, 'group-error', 'save-group');
   }
 
   async function deleteGroup(id) {
@@ -1073,19 +1087,19 @@
       const next = await request('deleteGroup', { id });
       applyState(next, { deletedId: id });
       showToast(t('已删除'), false);
-    }, 'provider-error');
+    }, 'group-error');
   }
 
   async function discoverModels() {
     const draft = currentDraft();
     if (!draft || busy) return;
-    const provider = preparedProvider(draft);
-    const problem = providerProblem(provider, true);
-    if (problem) { formError('provider-error', problem.text, problem.field); return; }
-    if (draft.apiKey.length > 16000) { formError('provider-error', t('API Key 不能超过 16000 个字符。'), 'api-key'); return; }
+    const submission = prepareGroupSubmission(draft);
+    const problem = submissionProblem(submission, true);
+    if (problem) { formError('group-error', problem.text, problem.field); return; }
+    if (draft.apiKey.length > 16000) { formError('group-error', t('API Key 不能超过 16000 个字符。'), 'api-key'); return; }
     $('model-list').setAttribute('aria-busy', 'true');
     await runAction(t('正在刷新模型…'), async () => {
-      const { providerId: _providerId, providerName: _providerName, groupName: _groupName, ...group } = preparedProvider(draft);
+      const { providerId: _providerId, providerName: _providerName, groupName: _groupName, ...group } = prepareGroupSubmission(draft);
       const payload = { group };
       if (draft.apiKey.trim()) payload.apiKey = draft.apiKey.trim();
       const result = await request('discoverModels', payload);
@@ -1101,7 +1115,7 @@
       target.group.modelProtocols = routing.normalizeRouting({ ...target.group, models, modelProtocols: {} }).modelProtocols;
       target.selectedModels.clear();
       renderMain(false);
-    }, 'provider-error', 'refresh-models');
+    }, 'group-error', 'refresh-models');
     $('model-list').setAttribute('aria-busy', 'false');
     renderStatus();
   }
@@ -1129,6 +1143,10 @@
     switchGroup(target.group.id);
     renderMain();
     $('provider-list').querySelector('[aria-current="page"]')?.focus();
+  });
+  $('provider-list').addEventListener('dblclick', event => {
+    const button = event.target.closest('[data-provider-id]');
+    if (button && !busy && button.dataset.providerId === currentDraft()?.provider.id) beginProviderRename();
   });
   $('group-list').addEventListener('click', event => {
     const button = event.target.closest('[data-group-id]');
@@ -1270,14 +1288,14 @@
     });
   });
 
-  $('provider-form').addEventListener('submit', event => {
+  $('group-form').addEventListener('submit', event => {
     event.preventDefault();
     const draft = currentDraft();
     if (!draft || busy) return;
     void saveGroup(draft.group.id);
   });
 
-  $('delete-provider').addEventListener('click', () => {
+  $('delete-group').addEventListener('click', () => {
     const draft = currentDraft();
     if (!draft) return;
     const id = draft.group.id;
@@ -1288,7 +1306,7 @@
   $('refresh-models').addEventListener('click', () => { void discoverModels(); });
 
   function currentDialogProtocol() {
-    const draft = drafts.get(modelSession.providerId);
+    const draft = drafts.get(modelSession.groupId);
     if (draft.group.routingMode === 'unified') return draft.group.unified.apiType;
     return $('model-protocol').value || routing.recommendedProtocol($('model-id').value.trim());
   }
@@ -1347,6 +1365,7 @@
   function openModel(id = null) {
     const draft = currentDraft();
     if (!draft || busy) return;
+    settleProviderRename(true);
     const model = id ? draft.group.models.find(item => item.id === id) : { id: '', name: '', overrides: {} };
     if (!model) return;
     ensureModelDatalist();
@@ -1357,7 +1376,7 @@
     const defaultName = model.id ? routing.displayModelName(state.database, { id: model.id, name: '' }) : '';
 
     modelSession = {
-      providerId: draft.group.id,
+      groupId: draft.group.id,
       original: clone(model),
       editingId: id,
       requestId: model.id,
@@ -1470,7 +1489,7 @@
     event.preventDefault();
     if (!modelSession || busy) return;
     clearValidation('model-form');
-    const draft = drafts.get(modelSession.providerId);
+    const draft = drafts.get(modelSession.groupId);
     if (!draft) return;
 
     const id = $('model-id').value.trim();
@@ -1605,6 +1624,7 @@
 
   function openTransferDialog(mode) {
     if (!state || busy || (mode === 'export' && !state.providers.length)) return;
+    settleProviderRename(true);
     const providers = mode === 'export' ? state.providers : [];
     transferSession = { mode, providers, selected: new Set(providers.map(p => p.id)) };
     message(`${mode}-error`);

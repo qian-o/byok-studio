@@ -18,14 +18,16 @@ Context and Output map directly to `contextWindow` and `maxOutputTokens` in `cha
 
 Requires **VS Code 1.145+** and **GitHub Copilot Chat**.
 
-1. Click the settings icon at the bottom-right of the Chat input box, or run **BYOK Studio: Manage Models** from the Command Palette.
+1. Run **BYOK Studio: Manage Models** from the Command Palette (or click the **key icon** to the left of the Copilot icon in the status bar when enabled).
 2. Add a provider, use **Add group** (`+`) on the left when separating multiple API keys or endpoints, and choose **One protocol** or **Per-model protocols**.
 3. Click **Refresh** to discover models or **Add model** to configure one manually, then adjust model settings as needed.
 4. Click **Save group** (or press `Ctrl+S` / `Cmd+S`) to update `chatLanguageModels.json` and refresh Copilot Chat's model picker.
 
+To show a quick-access key icon in the VS Code status bar, enable **BYOK Studio: Show Status Bar Item** (`byokStudio.showStatusBarItem`) in VS Code Settings. It is disabled by default and takes effect immediately.
+
 ### Groups & native mapping
 
-The extension activates on command and reads `customendpoint` entries directly from `chatLanguageModels.json`. Starting VS Code, opening the panel, or reading configuration never writes to disk; only explicit save, import, or delete actions modify the corresponding entries.
+Opening the management panel reads `customendpoint` entries directly from `chatLanguageModels.json`. Starting VS Code, opening the panel, or reading configuration never writes model configuration; only explicit save, import, or delete actions modify the corresponding entries.
 
 Each Studio group maps to one native `customendpoint` group: the default group keeps the provider name, and named groups appear as **Provider · Group**. Use the edit and delete icons on the active provider tab to rename a provider inline or remove the provider with all its groups and saved keys; **Delete group** removes only the current group. Switching providers or groups preserves unsaved drafts, model selections, and scroll positions. Because renaming a provider or group changes native model IDs, VS Code treats renamed models as new entries (current selection, hidden, and pinned states need to be set again).
 
@@ -85,8 +87,7 @@ Run `node scripts/preview-ui.cjs` to preview the UI with in-memory storage.
 
 ```powershell
 npm ci
-npm run build
-node --test scripts/configService.test.cjs
+npm test
 npm run package
 ```
 

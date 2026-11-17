@@ -2,7 +2,7 @@
   "name": "byok-studio",
   "displayName": "BYOK Studio",
   "description": "%extension.description%",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "publisher": "qian-o",
   "license": "MIT",
   "icon": "resources/icon.png",
@@ -23,6 +23,9 @@
     "gemini"
   ],
   "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "extensionKind": [
     "ui"
   ],
@@ -37,7 +40,7 @@
         "command": "byokStudio.manage",
         "title": "%command.manage%",
         "category": "BYOK Studio",
-        "icon": "$(settings-gear)"
+        "icon": "$(key)"
       },
       {
         "command": "byokStudio.openModels",
@@ -50,18 +53,22 @@
         "category": "BYOK Studio"
       }
     ],
-    "menus": {
-      "chat/input/status": [
-        {
-          "command": "byokStudio.manage",
-          "group": "navigation@100"
+    "configuration": {
+      "title": "BYOK Studio",
+      "properties": {
+        "byokStudio.showStatusBarItem": {
+          "type": "boolean",
+          "default": false,
+          "scope": "window",
+          "description": "%configuration.showStatusBarItem%"
         }
-      ]
+      }
     }
   },
   "scripts": {
     "build": "tsc -p .",
     "watch": "tsc -watch -p .",
+    "test": "npm run build && node --test scripts/configService.test.cjs scripts/statusBarEntry.test.cjs",
     "vscode:prepublish": "npm run build",
     "package": "vsce package --out releases/",
     "prebuild": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""

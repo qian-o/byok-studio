@@ -15,14 +15,14 @@ export class SettingsPanel implements vscode.Disposable {
 
   async open(): Promise<void> {
     if (this.panel) {
-      this.panel.reveal();
+      this.panel.reveal(this.panel.viewColumn, false);
       return;
     }
     const resources = vscode.Uri.joinPath(this.context.extensionUri, 'resources');
     const panel = vscode.window.createWebviewPanel(
       'byokStudio.settings',
       t('BYOK Studio · 模型设置'),
-      vscode.ViewColumn.Active,
+      { viewColumn: vscode.ViewColumn.Active, preserveFocus: false },
       { enableScripts: true, localResourceRoots: [resources], retainContextWhenHidden: true }
     );
     this.panel = panel;
@@ -37,16 +37,22 @@ export class SettingsPanel implements vscode.Disposable {
       if (this.panel === panel) this.panel = undefined;
     });
 
-    const rawHtml = Buffer.from(
-      await vscode.workspace.fs.readFile(vscode.Uri.joinPath(resources, 'webview', 'index.html'))
-    ).toString('utf8');
-    const nonce = randomBytes(24).toString('base64');
-    panel.webview.html = renderHtml(rawHtml)
-      .replace(/\{\{resource:((?:webview|shared)\/[a-z0-9.-]+)\}\}/g, (_, relPath: string) =>
-        panel.webview.asWebviewUri(vscode.Uri.joinPath(resources, ...relPath.split('/'))).toString()
-      )
-      .replace(/\{\{CSP_SOURCE\}\}/g, panel.webview.cspSource)
-      .replace(/\{\{NONCE\}\}/g, nonce);
+    try {
+      const rawHtml = Buffer.from(
+        await vscode.workspace.fs.readFile(vscode.Uri.joinPath(resources, 'webview', 'index.html'))
+      ).toString('utf8');
+      if (this.panel !== panel) return;
+      const nonce = randomBytes(24).toString('base64');
+      panel.webview.html = renderHtml(rawHtml)
+        .replace(/\{\{resource:((?:webview|shared)\/[a-z0-9.-]+)\}\}/g, (_, relPath: string) =>
+          panel.webview.asWebviewUri(vscode.Uri.joinPath(resources, ...relPath.split('/'))).toString()
+        )
+        .replace(/\{\{CSP_SOURCE\}\}/g, panel.webview.cspSource)
+        .replace(/\{\{NONCE\}\}/g, nonce);
+    } catch (error) {
+      panel.dispose();
+      throw error;
+    }
   }
 
   private async handle(message: unknown, panel: vscode.WebviewPanel): Promise<void> {

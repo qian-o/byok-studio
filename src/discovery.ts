@@ -122,7 +122,7 @@ export interface DiscoveryResult {
   models: DiscoveredModel[];
 }
 
-export async function discoverProviderModels(
+export async function discoverGroupModels(
   group: GroupConfig,
   apiKey: string,
   signal: AbortSignal

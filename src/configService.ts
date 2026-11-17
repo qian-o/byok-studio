@@ -1,5 +1,5 @@
 import { t } from '../resources/shared/i18n.js';
-import { discoverProviderModels, type DiscoveryResult } from './discovery';
+import { discoverGroupModels, type DiscoveryResult } from './discovery';
 import { officialGroupName } from '../resources/shared/routing.js';
 import { findOfficialGroupIndex, listOfficialGroups, removeOfficialGroup, upsertOfficialGroup } from './jsonc';
 import {
@@ -29,10 +29,10 @@ export interface ConfigHost {
   readCatalog(forceRefresh?: boolean, signal?: AbortSignal): Promise<ModelDatabase>;
   readOfficialText(): Promise<string | undefined>;
   writeOfficialText(expectedBefore: string | undefined, nextText: string): Promise<void>;
-  provisionSecretReference(providerId: string, apiKey: string, beforeText: string | undefined): Promise<{ currentText: string; reference: string }>;
+  provisionSecretReference(groupId: string, apiKey: string, beforeText: string | undefined): Promise<{ currentText: string; reference: string }>;
   refreshChatModels(): Promise<void>;
-  getSecret(providerId: string): Promise<string | undefined>;
-  setSecret(providerId: string, apiKey: string | undefined): Promise<void>;
+  getSecret(groupId: string): Promise<string | undefined>;
+  setSecret(groupId: string, apiKey: string | undefined): Promise<void>;
   getRoutingHints(): Record<string, RoutingHint>;
   saveRoutingHints(hints: Record<string, RoutingHint>): Promise<void>;
 }
@@ -444,7 +444,7 @@ export class ConfigService {
       ? (await this.host.getSecret(group.id) ?? '')
       : asText(rawApiKey, 'API Key', 16000, true);
     const [discovered, refreshedDb] = await Promise.all([
-      discoverProviderModels(group, key, signal),
+      discoverGroupModels(group, key, signal),
       this.database(true, signal).catch(() => initialDb)
     ]);
     return this.rawCatalogRef !== beforeRef

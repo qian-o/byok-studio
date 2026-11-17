@@ -18,14 +18,16 @@ Context 和 Output 直接写入官方 JSON 的 `contextWindow` 和 `maxOutputTok
 
 需要 **VS Code 1.145+** 和 **GitHub Copilot Chat**。
 
-1. 点击 Chat 输入框右下角的设置按钮，或在命令面板执行 **BYOK Studio: 管理模型**。
+1. 在命令面板执行 **BYOK Studio: 管理模型**（启用状态栏入口后，也可直接点击底部状态栏 Copilot 图标左侧的 **钥匙图标**）。
 2. 添加供应商；需要拆分多个 API Key 或端点地址时，点击左侧 **添加分组**（`+`），并选择 **统一协议** 或 **区分协议**。
 3. 点击 **刷新** 自动拉取模型或点击 **添加模型** 手动录入，按需调整模型参数。
 4. 点击 **保存分组**（或按 `Ctrl+S` / `Cmd+S`）写入 `chatLanguageModels.json` 并刷新 Copilot Chat 模型列表。
 
+如需在 VS Code 底部状态栏显示快捷入口，可在设置中开启 **BYOK Studio: Show Status Bar Item**（`byokStudio.showStatusBarItem`），默认关闭且更改后立即生效。
+
 ### 分组与原生映射
 
-扩展按命令激活，直接读取 `chatLanguageModels.json` 中的 `customendpoint` 分组。启动 VS Code、打开面板或读取配置均不写入磁盘；只有显式保存、导入或删除操作才会修改对应配置。
+打开管理面板时直接读取 `chatLanguageModels.json` 中的 `customendpoint` 分组。启动 VS Code、打开面板或读取配置均不会写入模型配置；只有显式保存、导入或删除操作才会修改对应配置。
 
 每个 Studio 分组对应一个原生 `customendpoint` 分组：默认分组沿用供应商名称，命名分组显示为 **供应商 · 分组**。通过当前供应商标签旁的编辑与删除图标可内联重命名供应商，或连同其全部分组与已存密钥一并删除；右侧 **删除分组** 仅移除当前分组。切换供应商或分组会保留未保存草稿、模型勾选与滚动位置。由于重命名供应商或分组会改变原生模型标识，VS Code 会将其视为新模型，当前模型选择、隐藏与固定状态需重新设置。
 
@@ -85,8 +87,7 @@ Context 和 Output 直接写入官方 JSON 的 `contextWindow` 和 `maxOutputTok
 
 ```powershell
 npm ci
-npm run build
-node --test scripts/configService.test.cjs
+npm test
 npm run package
 ```
 

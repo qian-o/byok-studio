@@ -34,7 +34,7 @@
       <div class="provider-navigation" aria-label="{{t:供应商管理}}">
         <h2>{{t:供应商}}</h2>
         <nav id="provider-list" aria-label="{{t:供应商列表}}"></nav>
-        <div id="provider-name-field" class="field compact-field provider-name-field" hidden><label class="visually-hidden" for="provider-name">{{t:供应商}}</label><input id="provider-name" form="provider-form" maxlength="200" placeholder="{{t:供应商名称}}" autocomplete="off" required></div>
+        <div id="provider-name-field" class="field compact-field provider-name-field" hidden><label class="visually-hidden" for="provider-name">{{t:供应商}}</label><input id="provider-name" form="group-form" maxlength="200" placeholder="{{t:供应商名称}}" autocomplete="off" required></div>
         <button class="add-provider" id="add-provider" type="button"><svg aria-hidden="true"><use href="#i-plus"/></svg>{{t:添加供应商}}</button>
       </div>
       <div class="group-workspace">
@@ -42,15 +42,15 @@
           <div class="group-navigation-header"><h2>{{t:分组}}</h2><button id="add-group" class="icon-button" type="button" title="{{t:添加分组}}" aria-label="{{t:添加分组}}"><svg aria-hidden="true"><use href="#i-plus"/></svg></button></div>
           <nav id="group-list" aria-label="{{t:分组列表}}"></nav>
         </aside>
-        <section id="provider-panel" class="provider-panel" aria-label="{{t:分组设置}}" hidden>
-        <form id="provider-form" novalidate autocomplete="off">
+        <section id="group-panel" class="group-panel" aria-label="{{t:分组设置}}" hidden>
+        <form id="group-form" novalidate autocomplete="off">
           <div class="form-grid">
             <div class="field compact-field"><label for="group-name">{{t:分组}}</label><input id="group-name" maxlength="100" placeholder="{{t:默认分组}}" autocomplete="off"></div>
             <div class="field compact-field">
               <label for="api-key">API Key</label>
               <input id="api-key" type="password" maxlength="16000" placeholder="{{t:输入 API Key（可选）}}" autocomplete="off" spellcheck="false">
             </div>
-            <div class="provider-options">
+            <div class="group-options">
               <fieldset class="plain-fieldset routing-mode"><legend class="visually-hidden">{{t:协议模式}}</legend><div class="segmented-control"><label><input id="routing-unified" type="radio" name="routing-mode" value="unified"><span>{{t:统一协议}}</span></label><label><input id="routing-split" type="radio" name="routing-mode" value="split"><span>{{t:区分协议}}</span></label></div></fieldset>
             </div>
             <div id="unified-endpoint" class="unified-endpoint">
@@ -66,8 +66,8 @@
             </header>
             <div id="model-list" class="model-list" role="region" aria-labelledby="models-heading"></div>
           </section>
-          <p id="provider-error" class="inline-error" role="alert" hidden></p>
-          <footer class="panel-footer"><button id="delete-provider" class="button delete-provider" type="button">{{t:删除分组}}</button><button id="save-provider" class="button primary" type="submit">{{t:保存分组}}</button></footer>
+          <p id="group-error" class="inline-error" role="alert" hidden></p>
+          <footer class="panel-footer"><button id="delete-group" class="button delete-group" type="button">{{t:删除分组}}</button><button id="save-group" class="button primary" type="submit">{{t:保存分组}}</button></footer>
         </form>
         </section>
       </div>

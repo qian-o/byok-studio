@@ -45,10 +45,13 @@ export interface ModelConfig {
   reasoningEffort?: string;
 }
 
-export interface RoutingHint {
+export interface RoutingState {
   routingMode: RoutingMode;
   unified: { apiType: ApiType; url: string };
   endpoints: Record<ApiType, string>;
+}
+
+export interface RoutingHint extends RoutingState {
   /** Local recovery data for native edits that reconstruct a group without Studio metadata. */
   officialName?: string;
   providerId?: string;
@@ -57,7 +60,7 @@ export interface RoutingHint {
   secretReference?: string;
 }
 
-export interface GroupConfig extends RoutingHint {
+export interface GroupConfig extends RoutingState {
   id: string;
   /** Empty for a provider's default group, whose VS Code name is the provider name. */
   name: string;

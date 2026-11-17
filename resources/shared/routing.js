@@ -177,52 +177,52 @@
     return preset.name || formatModelName(model.id);
   }
 
-  function normalizeRouting(provider) {
-    const legacyUrl = typeof provider?.url === 'string' ? provider.url : '';
+  function normalizeRouting(group) {
+    const legacyUrl = typeof group?.url === 'string' ? group.url : '';
     const endpoints = Object.fromEntries(apiTypes.map(api => [
       api,
-      typeof provider?.endpoints?.[api] === 'string' ? provider.endpoints[api] : legacyUrl
+      typeof group?.endpoints?.[api] === 'string' ? group.endpoints[api] : legacyUrl
     ]));
-    const routingMode = provider?.routingMode === 'split' || provider?.routingMode === 'unified'
-      ? provider.routingMode
-      : provider?.endpoints ? 'split' : 'unified';
-    const preferredApi = apiTypes.includes(provider?.unified?.apiType)
-      ? provider.unified.apiType
-      : apiTypes.includes(provider?.apiType) ? provider.apiType : 'chatCompletions';
+    const routingMode = group?.routingMode === 'split' || group?.routingMode === 'unified'
+      ? group.routingMode
+      : group?.endpoints ? 'split' : 'unified';
+    const preferredApi = apiTypes.includes(group?.unified?.apiType)
+      ? group.unified.apiType
+      : apiTypes.includes(group?.apiType) ? group.apiType : 'chatCompletions';
     const unified = {
       apiType: preferredApi,
-      url: typeof provider?.unified?.url === 'string' ? provider.unified.url : (legacyUrl || endpoints[preferredApi])
+      url: typeof group?.unified?.url === 'string' ? group.unified.url : (legacyUrl || endpoints[preferredApi])
     };
     const modelProtocols = Object.fromEntries(
-      (provider?.models || [])
+      (group?.models || [])
         .filter(model => model && !isExcludedModel(model.id))
         .map(model => {
-          const supplied = Object.hasOwn(provider?.modelProtocols || {}, model.id) ? provider.modelProtocols[model.id] : undefined;
+          const supplied = Object.hasOwn(group?.modelProtocols || {}, model.id) ? group.modelProtocols[model.id] : undefined;
           return [model.id, apiTypes.includes(supplied) ? supplied : recommendedProtocol(model.id)];
         })
     );
     return { routingMode, unified, endpoints, modelProtocols };
   }
 
-  function routeForModel(provider, modelId, routing = normalizeRouting(provider)) {
+  function routeForModel(group, modelId, routing = normalizeRouting(group)) {
     if (routing.routingMode === 'unified') return { ...routing.unified };
     const apiType = Object.hasOwn(routing.modelProtocols, modelId) ? routing.modelProtocols[modelId] : recommendedProtocol(modelId);
     return { apiType, url: routing.endpoints[apiType] };
   }
 
-  function protocolLists(provider) {
-    const routing = normalizeRouting(provider);
+  function protocolLists(group) {
+    const routing = normalizeRouting(group);
     return apiTypes.map(apiType => ({
       apiType,
-      models: (provider.models || []).filter(model => !isExcludedModel(model.id) && routeForModel(provider, model.id, routing).apiType === apiType)
+      models: (group.models || []).filter(model => !isExcludedModel(model.id) && routeForModel(group, model.id, routing).apiType === apiType)
     }));
   }
 
-  function assignModels(provider, ids, apiType) {
+  function assignModels(group, ids, apiType) {
     if (!apiTypes.includes(apiType)) throw new Error('Unsupported protocol.');
-    const modelProtocols = normalizeRouting(provider).modelProtocols;
+    const modelProtocols = normalizeRouting(group).modelProtocols;
     const selected = new Set(ids);
-    for (const model of provider.models || []) {
+    for (const model of group.models || []) {
       if (selected.has(model.id) && !isExcludedModel(model.id)) modelProtocols[model.id] = apiType;
     }
     return modelProtocols;

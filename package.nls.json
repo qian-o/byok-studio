@@ -2,5 +2,6 @@
   "extension.description": "Visual manager for Copilot Custom Endpoint providers, key groups, protocol routing, and model presets.",
   "command.manage": "Manage Models",
   "command.openModels": "Open Chat Models",
-  "command.openOfficialConfiguration": "Open Official Model Configuration"
+  "command.openOfficialConfiguration": "Open Official Model Configuration",
+  "configuration.showStatusBarItem": "Show the BYOK key icon in the VS Code status bar. Changes take effect immediately."
 }
