@@ -3,7 +3,7 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const { ConfigService } = require('../dist/configService');
-const { emptyCatalogSnapshot } = require('../dist/catalogBuilder');
+const { buildModelCatalog, emptyCatalogSnapshot } = require('../dist/catalogBuilder');
 const { groupIdentity, parseImportData } = require('../dist/models');
 
 function nativeGroup(id, providerId, name) {
@@ -19,7 +19,7 @@ function nativeGroup(id, providerId, name) {
   };
 }
 
-function fixture(groups) {
+function fixture(groups, readCatalog = async () => emptyCatalogSnapshot().database) {
   let text = JSON.stringify(groups, null, 2) + '\n';
   let hints = {};
   let rejectWrite = false;
@@ -42,7 +42,7 @@ function fixture(groups) {
     };
   }
   const service = new ConfigService({
-    async readCatalog() { return emptyCatalogSnapshot().database; },
+    readCatalog,
     async readOfficialText() { return text; },
     async writeOfficialText(expected, next) {
       assert.equal(expected, text);
@@ -97,6 +97,58 @@ function fixture(groups) {
     rejectNextRefresh() { rejectNextRefresh = true; }
   };
 }
+
+test('model refresh uses the latest text chat catalog and keeps provider order', async t => {
+  const cached = emptyCatalogSnapshot().database;
+  cached.models['old-model'] = { ...cached.defaults, name: 'Old model' };
+  const catalogEntry = {
+    name: 'GPT-6.2 Sol',
+    modalities: { input: ['text', 'image'], output: ['text'] },
+    limit: { context: 128000, output: 16000 }
+  };
+  const fresh = buildModelCatalog({
+    models: {
+      'openai/gpt-6.2-sol': catalogEntry,
+      'example/image-output': { ...catalogEntry, modalities: { input: ['text'], output: ['image'] } },
+      'example/image-input': { ...catalogEntry, modalities: { input: ['image'], output: ['text'] } }
+    },
+    providers: {
+      openrouter: { models: { 'gateway/sol': { ...catalogEntry, canonical_model_id: 'openai/gpt-6.2-sol' } } }
+    }
+  }, '2026-11-20T00:00:00Z').database;
+  const f = fixture([nativeGroup('a1', 'gateway', 'GPT')], async force => force ? fresh : cached);
+  const group = (await f.service.getUiState()).providers[0].groups[0];
+  const ids = [
+    'gateway/sol', 'codex-auto-review', 'old-model', 'image-output', 'image-input',
+    'gpt-6.2-sol:experimental', 'gpt-6.2-sol', 'gateway/sol',
+    ...Array.from({ length: 5001 }, (_, index) => `uncataloged-${index}`)
+  ];
+  t.mock.method(globalThis, 'fetch', async () => Response.json({ data: ids.map(id => ({ id })) }));
+
+  const result = await f.service.discoverModels(group, undefined, new AbortController().signal);
+
+  assert.deepEqual(result.models.map(model => model.id), ['gateway/sol', 'gpt-6.2-sol']);
+  assert.deepEqual(result.database, fresh);
+  assert.equal(f.writes.length, 0);
+});
+
+test('model refresh without a usable catalog or any matches leaves saved models intact', async t => {
+  const native = { ...nativeGroup('a1', 'gateway', 'GPT'), models: [{ id: 'codex-auto-review', name: 'Codex Auto Review' }] };
+  const empty = emptyCatalogSnapshot().database;
+  const available = { ...empty, models: { 'text-chat': { ...empty.defaults, name: 'Text chat' } } };
+  t.mock.method(globalThis, 'fetch', async () => Response.json({ data: [{ id: 'codex-auto-review' }] }));
+
+  for (const [database, error] of [
+    [empty, /models.dev catalog is temporarily unavailable/],
+    [available, /No text chat models matched the models.dev catalog/]
+  ]) {
+    const f = fixture([native], async () => database);
+    const { providers } = await f.service.getUiState();
+    await assert.rejects(f.service.discoverModels(providers[0].groups[0], undefined, new AbortController().signal), error);
+    assert.deepEqual(f.groups(), [native]);
+    assert.equal(f.writes.length, 0);
+  }
+});
 
 test('deleting a provider removes all its groups in one write and preserves other providers', async () => {
   const other = { ...nativeGroup('b1', 'gateway-a-backup', 'GPT'), customSetting: { retained: true } };

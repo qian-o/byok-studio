@@ -20,8 +20,8 @@ Requires **VS Code 1.145+** and **GitHub Copilot Chat**.
 
 1. Run **BYOK Studio: Manage Models** from the Command Palette (or click the **key icon** to the left of the Copilot icon in the status bar when enabled).
 2. Add a provider, use **Add group** (`+`) on the left when separating multiple API keys or endpoints, and choose **One protocol** or **Per-model protocols**.
-3. Click **Refresh** to discover models or **Add model** to configure one manually, then adjust model settings as needed.
-4. Click **Save group** (or press `Ctrl+S` / `Cmd+S`) to update `chatLanguageModels.json` and refresh Copilot Chat's model picker.
+3. In the model list, click **Refresh** to discover models or **Add** to configure one manually, then adjust model settings as needed.
+4. Click **Save** (or press `Ctrl+S` / `Cmd+S`) to update `chatLanguageModels.json` and refresh Copilot Chat's model picker.
 
 To show a quick-access key icon in the VS Code status bar, enable **BYOK Studio: Show Status Bar Item** (`byokStudio.showStatusBarItem`) in VS Code Settings. It is disabled by default and takes effect immediately.
 
@@ -29,13 +29,13 @@ To show a quick-access key icon in the VS Code status bar, enable **BYOK Studio:
 
 Opening the management panel reads `customendpoint` entries directly from `chatLanguageModels.json`. Starting VS Code, opening the panel, or reading configuration never writes model configuration; only explicit save, import, or delete actions modify the corresponding entries.
 
-Each Studio group maps to one native `customendpoint` group: the default group keeps the provider name, and named groups appear as **Provider · Group**. Use the edit and delete icons on the active provider tab to rename a provider inline or remove the provider with all its groups and saved keys; **Delete group** removes only the current group. Switching providers or groups preserves unsaved drafts, model selections, and scroll positions. Because renaming a provider or group changes native model IDs, VS Code treats renamed models as new entries (current selection, hidden, and pinned states need to be set again).
+Each Studio group maps to one native `customendpoint` group: the default group keeps the provider name, and named groups appear as **Provider · Group**. Use the edit and delete icons on the active provider tab to rename a provider inline or remove the provider with all its groups and saved keys. **Delete** at the bottom of the group panel removes only the current group. Switching providers or groups preserves unsaved drafts, model selections, and scroll positions. Because renaming a provider or group changes native model IDs, VS Code treats renamed models as new entries (current selection, hidden, and pinned states need to be set again).
 
 ### Protocols & model management
 
 - **One protocol** applies a single protocol and Base URL to every model in the group.
 - **Per-model protocols** routes GPT / OpenAI (including Codex) to **Responses**, Claude to **Messages**, and remaining models to **Chat Completions** by default. Reassign protocols individually in **Model settings**, or select models and move them across columns; switching modes preserves manual assignments.
-- **Refresh** replaces the group's model list in discovery order and resets protocol routing by model family while keeping custom names, token overrides, and reasoning settings for matching IDs. Failed refreshes leave the current draft intact.
+- **Refresh** keeps the provider's models whose IDs match text chat entries in the models.dev catalog. It replaces the draft list in discovery order and assigns protocols by model family, keeping custom names, token overrides, and reasoning settings for matching IDs. If the catalog is unavailable or no models match, the current list stays in place.
 - Selecting models reveals batch **Delete** next to **Refresh** (with **Select all** on unified lists and protocol columns). Model deletions stay in the draft until the group is saved.
 
 ### Import, export & official JSON

@@ -164,7 +164,6 @@ export async function discoverGroupModels(
         if (!result.has(model.id)) result.set(model.id, model);
       }
     }
-    if (result.size > 5000) throw new Error(t('返回的聊天模型超过 5000 个，请缩小端点模型范围。'));
     return { models: [...result.values()] };
   } finally {
     controller.abort();

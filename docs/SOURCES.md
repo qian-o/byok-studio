@@ -7,11 +7,13 @@ Model presets are fetched online at runtime from [models.dev](https://models.dev
 
 ## Online sync & caching
 
-When opening BYOK Studio or refreshing group models, the extension loads its local cache (`models-catalog.json` in VS Code `globalStorageUri`) and refreshes from `https://models.dev/catalog.json` when the cache is missing or expired (6 hours on open, 15 minutes on manual model refresh). If `models.dev` is temporarily unreachable, the extension falls back to the cached snapshot or conservative default parameters so group configuration continues to work offline.
+On the first catalog read, BYOK Studio uses its local cache (`models-catalog.json` in VS Code `globalStorageUri`) and updates it in the background if it is more than six hours old. Refreshing a group's models waits for a catalog update if the cache is more than 15 minutes old. With no usable cache, the extension tries to fetch the catalog immediately. A failed download falls back to the last usable cache when available. Manual model configuration can use conservative defaults when the catalog is unavailable.
 
 Each group compiles to a `customendpoint` entry in `chatLanguageModels.json`, while per-group API keys for model discovery and manual export are stored in VS Code's `SecretStorage`.
 
 ## Filtering & conversion rules
+
+**Refresh** matches the model IDs returned by the provider against the IDs and aliases in the text chat catalog index. An unavailable catalog or a refresh with no matches leaves the draft list in place.
 
 1. **Chat-only filtering**: Only models whose `type` is `chat`, `text`, or omitted, whose `modalities.input` includes `text`, whose `modalities.output` is strictly `["text"]`, and whose ID does not match non-chat exclusion patterns (image, video, audio, TTS, transcription, embeddings, reranking, moderation, realtime) are retained.
 2. **Canonical + provider aggregation**: All valid canonical chat models in `models` are indexed alongside their leaf IDs and enriched with `reasoning_options` (`effort` levels and `budget_tokens`) from ranked linked provider entries. Unambiguous provider aliases, date-stripped first-party base slugs, and standalone chat models are also indexed.

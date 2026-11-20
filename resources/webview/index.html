@@ -24,8 +24,14 @@
     <header class="page-header">
       <h1>{{t:模型设置}}</h1>
       <div class="header-actions">
-        <button id="import-providers" class="header-action" type="button" disabled><svg aria-hidden="true"><use href="#i-import"/></svg>{{t:导入}}</button>
-        <button id="export-providers" class="header-action" type="button" disabled><svg aria-hidden="true"><use href="#i-export"/></svg>{{t:导出}}</button>
+        <button id="import-providers" class="header-action" type="button" disabled>
+          <svg aria-hidden="true"><use href="#i-import"/></svg>
+          <span>{{t:导入}}</span>
+        </button>
+        <button id="export-providers" class="header-action" type="button" disabled>
+          <svg aria-hidden="true"><use href="#i-export"/></svg>
+          <span>{{t:导出}}</span>
+        </button>
       </div>
     </header>
     <div id="loading-state" class="notice" role="status">{{t:正在加载配置…}}</div>
@@ -35,7 +41,11 @@
         <h2>{{t:供应商}}</h2>
         <nav id="provider-list" aria-label="{{t:供应商列表}}"></nav>
         <div id="provider-name-field" class="field compact-field provider-name-field" hidden><label class="visually-hidden" for="provider-name">{{t:供应商}}</label><input id="provider-name" form="group-form" maxlength="200" placeholder="{{t:供应商名称}}" autocomplete="off" required></div>
-        <button class="add-provider" id="add-provider" type="button"><svg aria-hidden="true"><use href="#i-plus"/></svg>{{t:添加供应商}}</button>
+        <button class="add-provider" id="add-provider" type="button"
+                title="{{t:添加供应商}}" aria-label="{{t:添加供应商}}">
+          <svg aria-hidden="true"><use href="#i-plus"/></svg>
+          {{t:添加}}
+        </button>
       </div>
       <div class="group-workspace">
         <aside class="group-navigation" aria-label="{{t:分组管理}}">
@@ -45,7 +55,10 @@
         <section id="group-panel" class="group-panel" aria-label="{{t:分组设置}}" hidden>
         <form id="group-form" novalidate autocomplete="off">
           <div class="form-grid">
-            <div class="field compact-field"><label for="group-name">{{t:分组}}</label><input id="group-name" maxlength="100" placeholder="{{t:默认分组}}" autocomplete="off"></div>
+            <div class="field compact-field">
+              <label for="group-name">{{t:分组}}</label>
+              <input id="group-name" maxlength="100" placeholder="{{t:默认}}" autocomplete="off">
+            </div>
             <div class="field compact-field">
               <label for="api-key">API Key</label>
               <input id="api-key" type="password" maxlength="16000" placeholder="{{t:输入 API Key（可选）}}" autocomplete="off" spellcheck="false">
@@ -62,12 +75,28 @@
             <header class="model-box-header">
               <div class="model-heading"><h3 id="models-heading">{{t:模型}}</h3><span id="model-total" class="model-total"></span></div>
               <label id="unified-model-selection" class="checkbox compact"><input id="select-all-unified" type="checkbox" data-select-all="unified" aria-label="{{t:全选模型}}">{{t:全选}}</label>
-              <div class="model-header-actions"><button id="delete-selected-models" class="button secondary small delete-models" type="button" hidden>{{t:删除}}</button><button id="refresh-models" class="button secondary small" type="button"><svg aria-hidden="true"><use href="#i-refresh"/></svg><span>{{t:刷新}}</span></button><button id="add-model" class="button primary small" type="button"><svg aria-hidden="true"><use href="#i-plus"/></svg>{{t:添加模型}}</button></div>
+              <div class="model-header-actions">
+                <button id="delete-selected-models" class="button secondary small delete-models" type="button" hidden>{{t:删除}}</button>
+                <button id="refresh-models" class="button secondary small" type="button">
+                  <svg aria-hidden="true"><use href="#i-refresh"/></svg>
+                  <span>{{t:刷新}}</span>
+                </button>
+                <button id="add-model" class="button primary small" type="button"
+                        title="{{t:添加模型}}" aria-label="{{t:添加模型}}">
+                  <svg aria-hidden="true"><use href="#i-plus"/></svg>
+                  {{t:添加}}
+                </button>
+              </div>
             </header>
             <div id="model-list" class="model-list" role="region" aria-labelledby="models-heading"></div>
           </section>
           <p id="group-error" class="inline-error" role="alert" hidden></p>
-          <footer class="panel-footer"><button id="delete-group" class="button delete-group" type="button">{{t:删除分组}}</button><button id="save-group" class="button primary" type="submit">{{t:保存分组}}</button></footer>
+          <footer class="panel-footer">
+            <button id="delete-group" class="button delete-group" type="button"
+                    title="{{t:删除分组}}" aria-label="{{t:删除分组}}">{{t:删除}}</button>
+            <button id="save-group" class="button primary" type="submit"
+                    title="{{t:保存分组}}" aria-label="{{t:保存分组}}">{{t:保存}}</button>
+          </footer>
         </form>
         </section>
       </div>

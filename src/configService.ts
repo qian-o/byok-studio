@@ -436,19 +436,24 @@ export class ConfigService {
     rawGroup: unknown,
     rawApiKey: unknown,
     signal: AbortSignal
-  ): Promise<DiscoveryResult & { database?: ModelDatabase }> {
+  ): Promise<DiscoveryResult & { database: ModelDatabase }> {
     const initialDb = await this.database(false, signal);
-    const beforeRef = this.rawCatalogRef;
     const group = validateGroup(rawGroup, initialDb, true);
     const key = rawApiKey === undefined || rawApiKey === null || rawApiKey === ''
       ? (await this.host.getSecret(group.id) ?? '')
       : asText(rawApiKey, 'API Key', 16000, true);
-    const [discovered, refreshedDb] = await Promise.all([
+    const [discovered, database] = await Promise.all([
       discoverGroupModels(group, key, signal),
       this.database(true, signal).catch(() => initialDb)
     ]);
-    return this.rawCatalogRef !== beforeRef
-      ? { models: discovered.models, database: refreshedDb }
-      : { models: discovered.models };
+    signal.throwIfAborted();
+    if (!Object.keys(database.models).length) {
+      throw new Error(t('models.dev 模型目录暂不可用。'));
+    }
+
+    const models = discovered.models.filter(model => Object.hasOwn(database.models, model.id));
+    if (!models.length) throw new Error(t('未找到与 models.dev 目录匹配的文本聊天模型。'));
+    if (models.length > 5000) throw new Error(t('返回的聊天模型超过 5000 个，请缩小端点模型范围。'));
+    return { models, database };
   }
 }

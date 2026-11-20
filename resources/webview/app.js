@@ -226,7 +226,7 @@
     dirtyStates.set(draft, dirty);
     return dirty;
   }
-  function groupName(draft) { return draft.group.name.trim() || t('默认分组'); }
+  function groupName(draft) { return draft.group.name.trim() || t('默认'); }
   function modelLabel(model) { return routing.displayModelName(state.database, model); }
   function settleProviderRename(rerender = false) {
     if (!providerEdit) return;

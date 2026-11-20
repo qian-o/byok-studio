@@ -38,6 +38,7 @@
     "保存分组": "Save group",
     "删除分组": "Delete group",
     "默认分组": "Default group",
+    "默认": "Default",
     "新分组": "New group",
     "{0} 个分组": "Groups: {0}",
     "VS Code 名称：{0}": "VS Code name: {0}",
@@ -84,6 +85,7 @@
     "默认（不指定）": "Default (unspecified)",
     "取消": "Cancel",
     "添加": "Add",
+    "保存": "Save",
     "确定": "Apply",
 
     // Import, export & confirmation dialogs
@@ -185,6 +187,8 @@
 
     // Discovery, official config & import/export validation
     "模型目录数据格式无效。": "Invalid model catalog data.",
+    "models.dev 模型目录暂不可用。": "The models.dev catalog is temporarily unavailable.",
+    "未找到与 models.dev 目录匹配的文本聊天模型。": "No text chat models matched the models.dev catalog.",
     "服务商请求超时。": "The provider request timed out.",
     "服务商请求已取消。": "The provider request was cancelled.",
     "服务商连接或响应无效。": "The provider connection or response was invalid.",
